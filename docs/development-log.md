@@ -1,0 +1,34 @@
+## 2026-08-27 - WPF MCP 작업 관제 앱 계획 반영
+
+- 변경 파일:
+  - `AGENTS.md`
+  - `README.md`
+  - `docs/development-log.md`
+  - `docs/wpf-mcp-dashboard-project-plan.md`
+  - `docs/wpf-mcp-dashboard-project-plan.html`
+  - `prompts/workflow-graph-multi-agent-instructions.md`
+  - `samples/dashboard-sample.html`
+- 변경 사유:
+  - WPF 기반 로컬 MCP 작업 관제 앱 계획과 원본 지시 자료를 저장소에 보존하고, 이후 개발 작업 기준을 명시하기 위해 추가했다.
+- 실행 명령:
+  - `multica issue get 01a040fc-db04-78b7-b3f7-6bc952dab5a8 --output json`
+  - `multica issue comment list 01a040fc-db04-78b7-b3f7-6bc952dab5a8 --roots-only --summary --compact --output json`
+  - `multica repo checkout https://github.com/arscabar/SMSR.git`
+  - `git clone https://github.com/arscabar/SMSR.git SMSR`
+  - `multica attachment download <attachment-id> -o ./attachments`
+  - `git diff --check`
+  - `git status --short`
+  - `git commit -m "MQTT-1: add WPF MCP dashboard planning docs"`
+  - `git push origin HEAD:refs/heads/mika/MQTT-1-wpf-mcp-dashboard-docs`
+  - `gh pr create --repo arscabar/SMSR --base main --head mika/MQTT-1-wpf-mcp-dashboard-docs ...`
+- 검증 결과:
+  - 저장소가 비어 있어 기존 문서/프롬프트 패턴은 없었다.
+  - 첨부 파일 4개를 기본 위치에 추가했다.
+  - `git diff --check` 통과.
+  - 변경 브랜치 `mika/MQTT-1-wpf-mcp-dashboard-docs`를 원격 저장소에 push했다.
+- 남은 위험:
+  - 아직 애플리케이션 코드가 없어 빌드/테스트 명령을 실행할 대상이 없다.
+  - GitHub CLI 인증이 없어 PR 생성 명령이 실패했다.
+  - 원격 저장소가 비어 있어 `main` 기준 브랜치가 아직 없다.
+- 다음 조치:
+  - GitHub CLI 인증과 기준 브랜치를 준비한 뒤 `mika/MQTT-1-wpf-mcp-dashboard-docs` 브랜치에서 PR을 생성한다.

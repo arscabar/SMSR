@@ -64,7 +64,10 @@ Browser Dashboard
   - SSE 구독
   - 작업 그래프/이벤트/요약 표시
 ```
+<<<<<<< HEAD
 
+=======
+>>>>>>> 9d46865fd28ba3b0879a2f09520a4a37ddd3d9ff
 ## 4. 주요 기능
 
 ### WPF 앱
@@ -318,4 +321,7 @@ Windows DPAPI
 Markdown export
 Static HTML dashboard
 ```
+<<<<<<< HEAD
 
+=======
+>>>>>>> 9d46865fd28ba3b0879a2f09520a4a37ddd3d9ff
