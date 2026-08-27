@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>작업 그래프 대시보드 샘플</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+  <style>
+    :root { color-scheme:dark; font-family:system-ui,sans-serif; background:#10151f; color:#e8edf6; }
+    * { box-sizing:border-box; } body { margin:0; min-width:980px; } header { height:64px; padding:14px 20px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #293243; background:#151c29; }
+    h1,h2 { margin:0; } h1 { font-size:18px; } h2 { font-size:15px; margin-bottom:12px; } .muted { color:#9ba8bc; font-size:13px; } .chip,.badge { border-radius:999px; padding:4px 8px; font-size:11px; font-weight:700; } .chip { border:1px solid #344158; } .summary { display:flex; gap:10px; }
+    #alert { display:none; padding:10px 20px; background:#5a1e28; color:#ffd8dc; border-bottom:1px solid #9d3444; } main { display:grid; grid-template-columns:270px minmax(500px,1fr) 330px; height:calc(100vh - 64px); }
+    aside,section { min-width:0; overflow:auto; } #agents,#details { padding:16px; background:#151c29; } #agents { border-right:1px solid #293243; } #details { border-left:1px solid #293243; } #flow { padding:18px; background:#10151f; }
+    .agent { width:100%; padding:11px; margin:8px 0; text-align:left; color:inherit; border:1px solid #2c374a; border-radius:8px; background:#1a2332; cursor:pointer; } .agent:hover,.agent.selected,.agent.active { border-color:#61a8ff; background:#1e3048; } .line { display:flex; align-items:center; justify-content:space-between; gap:8px; } .agent-name { font-weight:700; }
+    .idle { background:#344158; } .working { background:#124d88; color:#cce7ff; } .validating { background:#51388e; color:#e4d8ff; } .retrying,.blocked,.stale { background:#7f2837; color:#ffe0e3; }
+    #breadcrumb { border:0; padding:0; color:#91c5ff; background:transparent; cursor:pointer; font-size:13px; } .flow-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; } .graph-controls { display:flex; gap:6px; } .graph-controls button { min-width:31px; padding:4px 7px; color:#dce8f8; border:1px solid #3c4a61; border-radius:5px; background:#202c3f; cursor:pointer; } #graph { min-height:480px; padding:20px; overflow:auto; border:1px solid #293243; border-radius:10px; background:#141b27; cursor:grab; touch-action:none; } #graph.dragging { cursor:grabbing; user-select:none; } #graph svg { min-width:100%; transform-origin:0 0; }
+    #graph .active > rect,#graph .active > polygon,#graph .active > path { stroke:#62adff !important; stroke-width:4px !important; animation:pulse 1.5s infinite; } #graph .active > .label { font-weight:700; } @keyframes pulse { 50% { filter:drop-shadow(0 0 8px #62adff); } }
+    .detail { margin:0; padding:12px; border:1px solid #2c374a; border-radius:8px; background:#1a2332; } .detail dt { margin-top:11px; color:#9ba8bc; font-size:12px; } .detail dt:first-child { margin-top:0; } .detail dd { margin:3px 0 0; white-space:pre-wrap; overflow-wrap:anywhere; }
+    #drilldown { display:none; width:100%; margin:12px 0; padding:10px; color:white; border:0; border-radius:7px; background:#2777c8; cursor:pointer; } #history { padding-left:19px; } #history li { margin:7px 0; } .progress { height:7px; margin-top:7px; overflow:hidden; border-radius:8px; background:#2b3548; } .progress div { height:100%; background:#57a7ff; }
+  </style>
+</head>
+<body>
+  <header>
+    <div><h1>작업 그래프 대시보드</h1><button id="breadcrumb" type="button">홈 / 메인 작업 흐름</button></div>
+    <div class="summary"><span id="counts" class="chip"></span><span id="progress" class="chip"></span></div>
+  </header>
+  <div id="alert" role="alert"></div>
+  <main>
+    <aside id="agents"><h2>에이전트</h2><div id="agent-list"></div></aside>
+    <section id="flow"><div class="flow-heading"><h2 id="graph-title">메인 작업 흐름</h2><div class="graph-controls"><button id="zoom-out" type="button" aria-label="축소">−</button><button id="zoom-reset" type="button">100%</button><button id="zoom-in" type="button" aria-label="확대">+</button></div></div><div id="graph"></div></section>
+    <aside id="details"><h2>작업 상세</h2><div id="detail-content" class="muted">순서도 노드 또는 에이전트를 선택하세요.</div><button id="drilldown" type="button">내부 순서도 보기</button><h2>최근 기록</h2><ul id="history" class="muted"></ul></aside>
+  </main>
+  <script>
+    mermaid.initialize({ startOnLoad:false, theme:'dark', securityLevel:'loose', flowchart:{ htmlLabels:true, curve:'basis' } });
+    const sampleState = {
+      updated_at:'2026-08-26T10:30:00+09:00',
+      nodes:[
+        { id:'STEP_01', title:'요구사항 분석', status:'SUCCESS', agent_id:'MAIN_01', depends_on:[], retry_count:0, progress_percentage:100, message:'작업계획서와 완료 기준을 정리했습니다.', artifacts:['/workspace/plan.md'] },
+        { id:'STEP_02', title:'구현 및 검증 페이즈', status:'IN_PROGRESS', agent_id:'WORKER_01', depends_on:['STEP_01'], retry_count:0, progress_percentage:40, message:'로그인 API 구현과 검증을 진행합니다.', has_subgraph:'IMPLEMENTATION' },
+        { id:'STEP_03', title:'통합 테스트', status:'PENDING', agent_id:'VALIDATOR_01', depends_on:['STEP_02'], retry_count:0, progress_percentage:0, message:'내부 검증 완료 후 시작합니다.' },
+        { id:'STEP_02_IMPLEMENT', parent_id:'STEP_02', title:'로그인 API 구현', status:'SUCCESS', agent_id:'WORKER_01', depends_on:[], retry_count:0, progress_percentage:100, message:'입력 검증과 API 구현을 완료했습니다.', artifacts:['/workspace/src/auth.ts'] },
+        { id:'STEP_02_VALIDATE', parent_id:'STEP_02', title:'구현 검증', status:'VALIDATING', agent_id:'VALIDATOR_01', depends_on:['STEP_02_IMPLEMENT'], retry_count:0, progress_percentage:60, message:'회귀 테스트를 실행하는 중입니다.' },
+        { id:'STEP_02_DECIDE', parent_id:'STEP_02', title:'검증 결과 판단', status:'PENDING', agent_id:'MAIN_01', depends_on:['STEP_02_VALIDATE'], retry_count:0, progress_percentage:0, message:'검증 결과를 기다립니다.' },
+        { id:'STEP_02_FIX', parent_id:'STEP_02', title:'핫픽스 재작업', status:'PENDING', agent_id:'WORKER_01', depends_on:['STEP_02_DECIDE'], retry_count:0, progress_percentage:0, message:'실패 시에만 활성화됩니다.' }
+      ],
+      agents:[
+        { id:'MAIN_01', role:'SUPERVISOR', status:'IDLE', active_node_id:null, last_seen_at:'2026-08-26T10:30:00+09:00' },
+        { id:'WORKER_01', role:'WORKER', status:'WORKING', active_node_id:'STEP_02', last_seen_at:'2026-08-26T10:30:00+09:00' },
+        { id:'VALIDATOR_01', role:'VALIDATOR', status:'VALIDATING', active_node_id:'STEP_02_VALIDATE', last_seen_at:'2026-08-26T10:30:00+09:00' }
+      ],
+      history:['STEP_01 요구사항 분석 완료', 'STEP_02 내부 검증 시작', 'VALIDATOR_01 회귀 테스트 실행 중']
+    };
+    let state = sampleState, graphId = 'MAIN', selectedNodeId = 'STEP_02', viewport = {scale:1,x:0,y:0}, drag;
+    const $ = id => document.getElementById(id); const active = new Set(['IN_PROGRESS','VALIDATING','RETRYING']); const getNode = id => state.nodes.find(node => node.id === id); const klass = value => String(value || '').toLowerCase().replaceAll('_','-');
+    const isActive = (node, seen = new Set()) => node && !seen.has(node.id) && (active.has(node.status) || state.nodes.some(child => child.parent_id === node.id && isActive(child, new Set([...seen, node.id]))));
+    const escapeMermaid = value => String(value || '').replace(/["{}[\]<>|]/g, ' ').replace(/\r?\n/g, ' ').trim();
+    const label = node => `${escapeMermaid(node.id)}: ${escapeMermaid(node.title)}<br/>${escapeMermaid(node.agent_id)} · ${escapeMermaid(node.status)}`;
+    const nodeClass = node => isActive(node) ? 'active' : node.status === 'SUCCESS' ? 'success' : ['FAILED','BLOCKED','RETRYING'].includes(node.status) ? 'error' : node.status === 'VALIDATING' ? 'validating' : 'pending';
+    function applyViewport() { const svg = $('graph').querySelector('svg'); if (svg) svg.style.transform = `translate(${viewport.x}px,${viewport.y}px) scale(${viewport.scale})`; $('zoom-reset').textContent = `${Math.round(viewport.scale * 100)}%`; }
+    function zoomBy(factor) { viewport.scale = Math.min(2.5, Math.max(.4, viewport.scale * factor)); applyViewport(); }
+    function navigate(nextGraph) { graphId = nextGraph; selectedNodeId = null; viewport = {scale:1,x:0,y:0}; render(); }
+    function bindViewport() { const graph = $('graph'); graph.addEventListener('wheel', event => { event.preventDefault(); const bounds = graph.getBoundingClientRect(), oldScale = viewport.scale, nextScale = Math.min(2.5, Math.max(.4, oldScale * (event.deltaY < 0 ? 1.1 : .9))), x = event.clientX - bounds.left, y = event.clientY - bounds.top; viewport.x = x - (x - viewport.x) * nextScale / oldScale; viewport.y = y - (y - viewport.y) * nextScale / oldScale; viewport.scale = nextScale; applyViewport(); }, {passive:false}); graph.addEventListener('pointerdown', event => { if (event.button !== 0 || event.target.closest?.('.node, .cluster, a')) return; drag = {id:event.pointerId,x:event.clientX,y:event.clientY,originX:viewport.x,originY:viewport.y,moved:false}; graph.setPointerCapture(event.pointerId); }); graph.addEventListener('pointermove', event => { if (!drag || event.pointerId !== drag.id) return; const dx = event.clientX - drag.x, dy = event.clientY - drag.y; drag.moved ||= Math.abs(dx) + Math.abs(dy) > 3; if (!drag.moved) return; viewport.x = drag.originX + dx; viewport.y = drag.originY + dy; graph.classList.add('dragging'); applyViewport(); }); graph.addEventListener('pointerup', event => { if (!drag || event.pointerId !== drag.id) return; graph.releasePointerCapture(event.pointerId); graph.classList.remove('dragging'); drag = null; }); }
+    const graphDefinitions = () => {
+      const n = id => getNode(id); const main = [n('STEP_01'),n('STEP_02'),n('STEP_03')]; const sub = [n('STEP_02_IMPLEMENT'),n('STEP_02_VALIDATE'),n('STEP_02_DECIDE'),n('STEP_02_FIX')];
+      return {
+        MAIN:`flowchart TD
+          STEP_01["${label(main[0])}"] --> STEP_02{{"${label(main[1])}<br/>내부 순서도"}} --> STEP_03["${label(main[2])}"]
+          ${main.map(node => `click ${node.id} call showPanel(\"${node.id}\")`).join('\n')}
+          ${main.map(node => `class ${node.id} ${nodeClass(node)}`).join('\n')}
+          classDef success fill:#173d2b,stroke:#39a66d,color:#edf2fa;
+          classDef active fill:#1d3f68,stroke:#62adff,color:#edf2fa;
+          classDef validating fill:#38275d,stroke:#9d7bea,color:#edf2fa;
+          classDef error fill:#51232c,stroke:#dd5668,color:#edf2fa;
+          classDef pending fill:#283347,stroke:#677892,color:#edf2fa;`,
+        IMPLEMENTATION:`flowchart TD
+          STEP_02_IMPLEMENT["${label(sub[0])}"] --> STEP_02_VALIDATE["${label(sub[1])}"] --> STEP_02_DECIDE{"${label(sub[2])}<br/>통과?"}
+          STEP_02_DECIDE -->|통과| DONE["상위 흐름으로 복귀"]
+          STEP_02_DECIDE -->|실패| STEP_02_FIX["${label(sub[3])}"] --> STEP_02_VALIDATE
+          ${sub.map(node => `click ${node.id} call showPanel(\"${node.id}\")`).join('\n')}
+          ${sub.map(node => `class ${node.id} ${nodeClass(node)}`).join('\n')}
+          classDef success fill:#173d2b,stroke:#39a66d,color:#edf2fa;
+          classDef active fill:#1d3f68,stroke:#62adff,color:#edf2fa;
+          classDef validating fill:#38275d,stroke:#9d7bea,color:#edf2fa;
+          classDef error fill:#51232c,stroke:#dd5668,color:#edf2fa;
+          classDef pending fill:#283347,stroke:#677892,color:#edf2fa;`
+      };
+    };
+    function renderAgents() {
+      const list = $('agent-list'); list.replaceChildren(); const agentActive = (agent,node) => ['WORKING','VALIDATING','RETRYING'].includes(agent.status) || isActive(node); const rank = agent => agentActive(agent,getNode(agent.active_node_id)) ? 0 : ['BLOCKED','STALE'].includes(agent.status) ? 1 : 2;
+      [...state.agents].sort((a,b) => rank(a)-rank(b)).forEach(agent => { const node = getNode(agent.active_node_id) || state.nodes.find(item => item.agent_id === agent.id && isActive(item)); const button = document.createElement('button'); button.className = `agent${agentActive(agent,node) ? ' active' : ''}${node?.id === selectedNodeId ? ' selected' : ''}`; button.onclick = () => { if (!node) return; const parent = getNode(node.parent_id); if (parent?.has_subgraph && graphId !== parent.has_subgraph) navigate(parent.has_subgraph); else { selectedNodeId = node.id; render(); } };
+        const row = document.createElement('div'); row.className = 'line'; const name = document.createElement('span'); name.className = 'agent-name'; name.textContent = agent.id; const badge = document.createElement('span'); badge.className = `badge ${klass(agent.status)}`; badge.textContent = agent.status; row.append(name,badge); const task = document.createElement('div'); task.className = 'muted'; task.style.marginTop = '7px'; task.textContent = node ? `${node.id} · ${node.title}` : `${agent.role} · 대기`; button.append(row,task); list.append(button); });
+    }
+    function renderDetails() {
+      const node = getNode(selectedNodeId), panel = $('detail-content'), list = $('history'); panel.replaceChildren(); list.replaceChildren(); if (!node) { panel.textContent = '순서도 노드 또는 에이전트를 선택하세요.'; $('drilldown').style.display = 'none'; return; }
+      const agent = state.agents.find(item => item.id === node.agent_id), detail = document.createElement('dl'); detail.className = 'detail'; [['작업',`${node.id} · ${node.title}`],['상태',node.status],['담당',`${node.agent_id} (${agent?.role || '알 수 없음'})`],['진행률',`${node.progress_percentage || 0}%`],['현재 작업',node.message || '-'],['재시도',String(node.retry_count || 0)],['산출물',(node.artifacts || []).join('\n') || '-']].forEach(([term,value]) => { const dt=document.createElement('dt'),dd=document.createElement('dd'); dt.textContent=term; dd.textContent=value; detail.append(dt,dd); }); panel.append(detail);
+      (state.history || [node.message]).slice(-5).forEach(entry => { const li=document.createElement('li'); li.textContent=entry; list.append(li); }); const drilldown = $('drilldown'); drilldown.style.display = node.has_subgraph ? 'block' : 'none'; drilldown.onclick = () => navigate(node.has_subgraph);
+    }
+    async function renderGraph() { const graph = $('graph'); $('graph-title').textContent = graphId === 'MAIN' ? '메인 작업 흐름' : '구현 및 검증 페이즈'; $('breadcrumb').textContent = graphId === 'MAIN' ? '홈 / 메인 작업 흐름' : '홈 / 메인 작업 흐름 / 구현 및 검증'; const definition = graphDefinitions()[graphId]; try { const id = `workflow-${graphId}-${Date.now()}`; const { svg, bindFunctions } = await mermaid.render(id, definition); graph.innerHTML = svg; bindFunctions?.(graph); applyViewport(); } catch (error) { graph.textContent = `순서도 렌더링 오류: ${error.message}`; } }
+    function renderSummary() { const main = state.nodes.filter(node => ['STEP_01','STEP_02','STEP_03'].includes(node.id)), completed = main.filter(node => node.status === 'SUCCESS').length; $('counts').textContent = `완료 ${completed} / ${main.length}`; $('progress').textContent = `전체 진행률 ${main.length ? Math.round(completed / main.length * 100) : 0}%`; const blocked = state.nodes.filter(node => node.status === 'BLOCKED'); $('alert').style.display = blocked.length ? 'block' : 'none'; $('alert').textContent = blocked.length ? `사용자 결정 필요: ${blocked.map(node => `${node.id} ${node.title}`).join(', ')}` : ''; }
+    function render() { renderSummary(); renderAgents(); renderDetails(); renderGraph(); }
+    window.showPanel = nodeId => { selectedNodeId = nodeId; renderAgents(); renderDetails(); };
+    $('breadcrumb').onclick = () => navigate('MAIN'); $('zoom-in').onclick = () => zoomBy(1.15); $('zoom-out').onclick = () => zoomBy(1 / 1.15); $('zoom-reset').onclick = () => { viewport = {scale:1,x:0,y:0}; applyViewport(); };
+    async function refreshFromServer() { if (!location.protocol.startsWith('http')) return; try { const response = await fetch(`workflow-state.json?t=${Date.now()}`, {cache:'no-store'}); if (!response.ok) return; const next = await response.json(); if (Array.isArray(next.nodes) && Array.isArray(next.agents)) { state = {...state,...next}; if (!getNode(selectedNodeId)) selectedNodeId = state.nodes[0]?.id; render(); } } catch { /* 상태 파일이 없으면 내장 예시를 계속 표시한다. */ } }
+    bindViewport(); render(); refreshFromServer(); setInterval(refreshFromServer,2000);
+  </script>
+</body>
+</html>
