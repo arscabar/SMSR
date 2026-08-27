@@ -381,3 +381,31 @@
   - 관측한 워크플로우별 SSE 신호는 메모리에 유지된다. 매우 많은 서로 다른 워크플로우를 감시할 때만 만료 정책을 추가한다.
 - 다음 조치:
   - 실제 LLM 에이전트 연결로 장시간 SSE와 대용량 이벤트 수용량을 측정한다.
+
+## 2026-08-27 - 저자원 데이터 경로 최적화
+
+- 변경 파일:
+  - `src/SMSR.App/Mvp/EventStore.cs`
+  - `src/SMSR.App/Mvp/EventStoreWrites.cs`
+  - `src/SMSR.App/Mvp/EventStoreStateQueries.cs`
+  - `src/SMSR.App/Mvp/EventStoreEvents.cs`
+  - `src/SMSR.App/Mvp/EventStoreCatalog.cs`
+  - `src/SMSR.App/Mvp/LocalServerEndpoints.cs`
+  - `src/SMSR.App/Mvp/WorkflowSummaryService.cs`
+  - `src/SMSR.App/Mvp/WorkflowExportService.cs`
+  - `src/SMSR.App/ViewModels/WorkflowMonitorViewModel.cs`
+  - `src/SMSR.App/Mvp/MvpSelfCheck.cs`
+  - `docs/development-log.md`
+- 변경 사유:
+  - 상태 조회를 활성 노드 테이블로 전환하고, SSE 중복 상태 전송과 요약·내보내기의 전체 이벤트 메모리 적재를 없앤다.
+- 실행 명령:
+  - `dotnet build SMSR.slnx --no-restore --verbosity:minimal`
+  - `dotnet run --project src/SMSR.App/SMSR.App.csproj --no-build -- --self-test`
+  - `git diff --check`
+- 검증 결과:
+  - `dotnet build`가 경고 0, 오류 0으로 통과했고 전체 self-check도 통과했다.
+  - self-check가 현재 상태 테이블 갱신, SSE 변경 알림, 최신 이벤트 조회, JSONL 내보내기 파일 생성을 확인했다.
+- 남은 위험:
+  - 내보내기 ZIP 생성은 사용자 요청 시 단일 백그라운드 작업을 사용하며, 운영 환경의 실제 데이터량에서 소요 시간 측정이 필요하다.
+- 다음 조치:
+  - SQLite 파일·내보내기 보관 기간과 장시간 LLM 이벤트 부하의 측정 기준을 정한다.

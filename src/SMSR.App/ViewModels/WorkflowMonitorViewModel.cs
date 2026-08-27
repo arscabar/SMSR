@@ -10,6 +10,7 @@ public sealed class WorkflowMonitorViewModel : ViewModelBase
     private readonly LocalServerHost _host;
     private readonly DispatcherTimer _pollTimer = new() { Interval = TimeSpan.FromSeconds(2) };
     private CancellationTokenSource? _streamCancellation;
+    private bool _isRefreshing;
     private string _summary = "선택한 워크플로우의 상태를 조회하세요.";
     private string _updateMode = "수동 새로 고침";
 
@@ -86,8 +87,11 @@ public sealed class WorkflowMonitorViewModel : ViewModelBase
 
     private async Task PollAsync()
     {
+        if (_isRefreshing) return;
+        _isRefreshing = true;
         try { await RefreshAsync(_projectId, _workflowId); }
         catch { }
+        finally { _isRefreshing = false; }
     }
 
     private string _projectId = "";

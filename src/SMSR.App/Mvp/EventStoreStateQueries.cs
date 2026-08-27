@@ -10,10 +10,8 @@ public sealed partial class EventStore
         await connection.OpenAsync(cancellationToken);
         var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT node_id, agent_id, status, summary, error, created_at_utc FROM (
-              SELECT *, ROW_NUMBER() OVER (PARTITION BY node_id ORDER BY created_at_utc DESC, rowid DESC) AS position
-              FROM events WHERE project_id = $projectId AND workflow_id = $workflowId)
-            WHERE position = 1 ORDER BY node_id;
+            SELECT node_id, agent_id, status, summary, error, updated_at_utc FROM current_state
+            WHERE project_id = $projectId AND workflow_id = $workflowId ORDER BY node_id;
             """;
         command.Parameters.AddWithValue("$projectId", projectId);
         command.Parameters.AddWithValue("$workflowId", workflowId);

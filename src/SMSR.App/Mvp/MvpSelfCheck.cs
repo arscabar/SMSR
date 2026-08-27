@@ -41,6 +41,7 @@ public static class MvpSelfCheck
             if (state.Nodes.Count != 1 || state.Nodes[0].Status != "SUCCESS") throw new InvalidOperationException("최신 상태 계산이 실패했습니다.");
             var recent = await store.GetRecentEventsAsync("demo", "wf-1");
             if (recent.Count != 2 || recent[0].Status != "SUCCESS") throw new InvalidOperationException("최근 이벤트 조회가 실패했습니다.");
+            if ((await store.GetLatestEventAsync("demo", "wf-1"))?.EventId != "evt-2") throw new InvalidOperationException("최신 이벤트 조회가 실패했습니다.");
             var concurrent = await Task.WhenAll(Enumerable.Range(0, 16).Select(index => store.RecordAsync(first with { EventId = $"evt-load-{index}", NodeId = $"node-load-{index}" })));
             if (concurrent.Any(inserted => !inserted) || (await store.GetStateAsync("demo", "wf-1")).Nodes.Count != 17)
                 throw new InvalidOperationException("동시 이벤트 기록이 실패했습니다.");
@@ -86,7 +87,7 @@ public static class MvpSelfCheck
                 using var sseTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
                 var changedEvent = await streamReader.ReadLineAsync(sseTimeout.Token);
                 if (!recordResponse.IsSuccessStatusCode) throw new InvalidOperationException($"MCP record_event 호출 실패: {recordJson}");
-                if (denied.StatusCode != HttpStatusCode.Unauthorized || !stateResponse.IsSuccessStatusCode || !dashboardResponse.IsSuccessStatusCode || !streamResponse.IsSuccessStatusCode || initialEvent != "event: state" || initialData is null || changedEvent != "event: state" || !recordResponse.IsSuccessStatusCode || !recordJson.Contains("evt-mcp-1") || !recordedState.Contains("mcp-node") || !recordedDashboard.Contains("최근 이벤트") || !recordedDashboard.Contains("mcp-node"))
+                if (denied.StatusCode != HttpStatusCode.Unauthorized || !stateResponse.IsSuccessStatusCode || !dashboardResponse.IsSuccessStatusCode || !streamResponse.IsSuccessStatusCode || initialEvent != "event: state" || initialData != "data: changed" || changedEvent != "event: state" || !recordResponse.IsSuccessStatusCode || !recordJson.Contains("evt-mcp-1") || !recordedState.Contains("mcp-node") || !recordedDashboard.Contains("최근 이벤트") || !recordedDashboard.Contains("mcp-node"))
                     throw new InvalidOperationException("로컬 서버 검증이 실패했습니다.");
             }
             await using (var host = new LocalServerHost(serverPath))
@@ -101,7 +102,7 @@ public static class MvpSelfCheck
                 await viewModel.Workspace.Monitor.RefreshAsync("demo", "wf-1");
                 var summary = await host.GenerateSummaryAsync("demo", "wf-1");
                 var export = await host.ExportAsync("demo", "wf-1");
-                if (platform.CopiedToken != host.Token || !platform.OpenedUrl.Contains("projectId=demo") || viewModel.Workspace.Monitor.Nodes.Count == 0 || summary.Content.Length == 0 || !File.Exists(export.ZipPath))
+                if (platform.CopiedToken != host.Token || !platform.OpenedUrl.Contains("projectId=demo") || viewModel.Workspace.Monitor.Nodes.Count == 0 || summary.Content.Length == 0 || !File.Exists(export.ZipPath) || !File.ReadAllText(Path.Combine(export.DirectoryPath, "events.jsonl")).Contains("evt-mcp-1"))
                     throw new InvalidOperationException("WPF 서버 제어·요약·내보내기 검증이 실패했습니다.");
                 await host.StopAsync();
                 if (host.IsRunning || viewModel.Workspace.ExportCommand.CanExecute(null) || !File.ReadAllText(host.LogPath).Contains("server started") || !File.ReadAllText(host.LogPath).Contains("server stopped"))

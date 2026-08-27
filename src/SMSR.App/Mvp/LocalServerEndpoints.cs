@@ -1,6 +1,5 @@
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using ModelContextProtocol.Server;
@@ -27,14 +26,14 @@ internal static class LocalServerEndpoints
         });
         app.MapGet("/api/state", (string? projectId, string? workflowId, EventStore events, CancellationToken ct) => GetStateAsync(projectId, workflowId, events, ct));
         app.MapGet("/api/summary", (string? projectId, string? workflowId, EventStore events, CancellationToken ct) => GetSummaryAsync(projectId, workflowId, events, ct));
-        app.MapGet("/api/events/stream", async (string? projectId, string? workflowId, HttpResponse response, EventStore events, WorkflowEventNotifier notifier, CancellationToken ct) =>
+        app.MapGet("/api/events/stream", async (string? projectId, string? workflowId, HttpResponse response, WorkflowEventNotifier notifier, CancellationToken ct) =>
         {
             if (string.IsNullOrWhiteSpace(projectId) || string.IsNullOrWhiteSpace(workflowId))
             {
                 response.StatusCode = StatusCodes.Status400BadRequest;
                 return;
             }
-            await StreamAsync(projectId, workflowId, response, events, notifier, ct);
+            await StreamAsync(projectId, workflowId, response, notifier, ct);
         });
         app.MapGet("/dashboard", async (string? projectId, string? workflowId, EventStore events, CancellationToken ct) =>
         {
@@ -68,15 +67,14 @@ internal static class LocalServerEndpoints
         return summary is null ? Results.NotFound() : Results.Ok(summary);
     }
 
-    private static async Task StreamAsync(string projectId, string workflowId, HttpResponse response, EventStore events, WorkflowEventNotifier notifier, CancellationToken cancellationToken)
+    private static async Task StreamAsync(string projectId, string workflowId, HttpResponse response, WorkflowEventNotifier notifier, CancellationToken cancellationToken)
     {
         response.Headers.CacheControl = "no-cache";
         response.ContentType = "text/event-stream";
         var version = notifier.Version(projectId, workflowId);
         while (!cancellationToken.IsCancellationRequested)
         {
-            var state = await events.GetStateAsync(projectId, workflowId, cancellationToken);
-            await response.WriteAsync($"event: state\ndata: {JsonSerializer.Serialize(state)}\n\n", cancellationToken);
+            await response.WriteAsync("event: state\ndata: changed\n\n", cancellationToken);
             await response.Body.FlushAsync(cancellationToken);
             await notifier.WaitForChangeAsync(projectId, workflowId, version, cancellationToken);
             version = notifier.Version(projectId, workflowId);
