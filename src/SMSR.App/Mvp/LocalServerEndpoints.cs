@@ -72,14 +72,14 @@ internal static class LocalServerEndpoints
     {
         response.Headers.CacheControl = "no-cache";
         response.ContentType = "text/event-stream";
-        var version = notifier.Version;
+        var version = notifier.Version(projectId, workflowId);
         while (!cancellationToken.IsCancellationRequested)
         {
             var state = await events.GetStateAsync(projectId, workflowId, cancellationToken);
             await response.WriteAsync($"event: state\ndata: {JsonSerializer.Serialize(state)}\n\n", cancellationToken);
             await response.Body.FlushAsync(cancellationToken);
-            await notifier.WaitForChangeAsync(version, cancellationToken);
-            version = notifier.Version;
+            await notifier.WaitForChangeAsync(projectId, workflowId, version, cancellationToken);
+            version = notifier.Version(projectId, workflowId);
         }
     }
 }

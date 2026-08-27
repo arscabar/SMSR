@@ -61,8 +61,8 @@ public sealed class LocalServer(WebApplication app, string token, EventStore eve
 
     public async ValueTask DisposeAsync()
     {
-        await app.StopAsync();
-        await app.DisposeAsync();
+        await app.StopAsync().ConfigureAwait(false);
+        await app.DisposeAsync().ConfigureAwait(false);
     }
 
     internal static bool IsAuthorized(HttpRequest request, string token)

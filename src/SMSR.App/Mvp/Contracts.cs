@@ -59,12 +59,18 @@ public static class EventValidation
 
     public static string? Validate(RecordEventRequest request)
     {
-        foreach (var id in new[] { request.EventId, request.ProjectId, request.WorkflowId, request.NodeId, request.AgentId })
-            if (string.IsNullOrWhiteSpace(id) || id.Length > 128) return "식별자는 1~128자여야 합니다.";
+        if (ValidateIds(request.EventId, request.ProjectId, request.WorkflowId, request.NodeId, request.AgentId) is { } error) return error;
 
         if (request.EventType != "NODE_STATUS_CHANGED") return "eventType은 NODE_STATUS_CHANGED여야 합니다.";
         if (!Statuses.Contains(request.Status)) return "지원하지 않는 status입니다.";
         if (request.Summary?.Length > 2000 || request.Error?.Length > 2000) return "summary와 error는 2,000자 이하여야 합니다.";
+        if (request.Commands?.Count > 100 || request.Artifacts?.Count > 100 || request.Commands?.Any(value => value is null || value.Length > 1000) == true || request.Artifacts?.Any(value => value is null || value.Length > 1000) == true)
+            return "commands와 artifacts는 각각 100개, 항목당 1,000자 이하여야 합니다.";
         return null;
     }
+
+    public static string? ValidateWorkflowIds(string projectId, string workflowId) => ValidateIds(projectId, workflowId);
+
+    private static string? ValidateIds(params string[] values)
+        => values.Any(value => string.IsNullOrWhiteSpace(value) || value.Length > 128) ? "식별자는 1~128자여야 합니다." : null;
 }

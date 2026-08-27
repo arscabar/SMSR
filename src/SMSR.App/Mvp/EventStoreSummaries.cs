@@ -6,16 +6,22 @@ public sealed partial class EventStore
 {
     public async Task SaveSummaryAsync(WorkflowSummary summary, string? sourceEventId, CancellationToken cancellationToken = default)
     {
-        await using var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
-        var command = connection.CreateCommand();
-        command.CommandText = "INSERT INTO summaries(project_id, workflow_id, source_last_event_id, content, created_at_utc) VALUES ($projectId, $workflowId, $sourceEventId, $content, $createdAt);";
-        command.Parameters.AddWithValue("$projectId", summary.ProjectId);
-        command.Parameters.AddWithValue("$workflowId", summary.WorkflowId);
-        command.Parameters.AddWithValue("$sourceEventId", sourceEventId ?? (object)DBNull.Value);
-        command.Parameters.AddWithValue("$content", summary.Content);
-        command.Parameters.AddWithValue("$createdAt", summary.CreatedAt.ToString("O"));
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        if (EventValidation.ValidateWorkflowIds(summary.ProjectId, summary.WorkflowId) is { } error) throw new ArgumentException(error);
+        await _writeGate.WaitAsync(cancellationToken);
+        try
+        {
+            await using var connection = new SqliteConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+            var command = connection.CreateCommand();
+            command.CommandText = "INSERT INTO summaries(project_id, workflow_id, source_last_event_id, content, created_at_utc) VALUES ($projectId, $workflowId, $sourceEventId, $content, $createdAt);";
+            command.Parameters.AddWithValue("$projectId", summary.ProjectId);
+            command.Parameters.AddWithValue("$workflowId", summary.WorkflowId);
+            command.Parameters.AddWithValue("$sourceEventId", sourceEventId ?? (object)DBNull.Value);
+            command.Parameters.AddWithValue("$content", summary.Content);
+            command.Parameters.AddWithValue("$createdAt", summary.CreatedAt.ToString("O"));
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+        finally { _writeGate.Release(); }
     }
 
     public async Task<WorkflowSummary?> GetLatestSummaryAsync(string projectId, string workflowId, CancellationToken cancellationToken = default)

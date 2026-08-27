@@ -24,6 +24,13 @@ public static class MvpSelfCheck
             await activityLog.WriteAsync("rotated");
             if (!File.Exists(activityLog.PreviousPath) || !File.ReadAllText(activityLog.Path).Contains("rotated"))
                 throw new InvalidOperationException("활동 로그 회전이 실패했습니다.");
+            var notifier = new WorkflowEventNotifier();
+            using var notifierTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+            var otherWorkflowChanged = notifier.WaitForChangeAsync("demo", "wf-other", notifier.Version("demo", "wf-other"), notifierTimeout.Token);
+            notifier.Publish("demo", "wf-1");
+            if (otherWorkflowChanged.IsCompleted) throw new InvalidOperationException("워크플로우별 SSE 분리가 실패했습니다.");
+            notifier.Publish("demo", "wf-other");
+            await otherWorkflowChanged;
             var store = new EventStore(path);
             await store.InitializeAsync();
             var first = new RecordEventRequest("evt-1", "demo", "wf-1", "node-1", "agent-1", "NODE_STATUS_CHANGED", "IN_PROGRESS", "시작", null, null, null);
@@ -37,8 +44,16 @@ public static class MvpSelfCheck
             var concurrent = await Task.WhenAll(Enumerable.Range(0, 16).Select(index => store.RecordAsync(first with { EventId = $"evt-load-{index}", NodeId = $"node-load-{index}" })));
             if (concurrent.Any(inserted => !inserted) || (await store.GetStateAsync("demo", "wf-1")).Nodes.Count != 17)
                 throw new InvalidOperationException("동시 이벤트 기록이 실패했습니다.");
+            await Task.WhenAll(Enumerable.Range(0, 8).Select(async index =>
+            {
+                await store.SaveSummaryAsync(new WorkflowSummary("demo", "wf-1", $"요약 {index}", DateTimeOffset.UtcNow), null);
+                if (!await store.RecordAsync(first with { EventId = $"evt-summary-{index}", NodeId = $"node-summary-{index}" }))
+                    throw new InvalidOperationException("동시 요약 저장이 실패했습니다.");
+            }));
             if (!(await store.GetProjectIdsAsync()).Contains("demo") || !(await store.GetWorkflowIdsAsync("demo")).Contains("wf-1")) throw new InvalidOperationException("프로젝트·워크플로우 목록 조회가 실패했습니다.");
             if (EventValidation.Validate(first with { Status = "INVALID" }) is null) throw new InvalidOperationException("입력 검증이 실패했습니다.");
+            if (EventValidation.Validate(first with { Commands = Enumerable.Repeat("command", 101).ToArray() }) is null || EventValidation.ValidateWorkflowIds("", "wf-1") is null)
+                throw new InvalidOperationException("입력 크기 검증이 실패했습니다.");
             var page = DashboardPage.Render(new WorkflowState("demo", "wf-1", [new StateNode("node-1", "agent-1", "SUCCESS", "<script>", null, DateTimeOffset.UtcNow)]), [new RecentEvent("node-1", "agent-1", "SUCCESS", "<script>", null, DateTimeOffset.UtcNow)]);
             if (page.Contains("<script>") || !page.Contains("&lt;script&gt;")) throw new InvalidOperationException("대시보드 이스케이프가 실패했습니다.");
             var request = new DefaultHttpContext().Request;
@@ -89,7 +104,7 @@ public static class MvpSelfCheck
                 if (platform.CopiedToken != host.Token || !platform.OpenedUrl.Contains("projectId=demo") || viewModel.Workspace.Monitor.Nodes.Count == 0 || summary.Content.Length == 0 || !File.Exists(export.ZipPath))
                     throw new InvalidOperationException("WPF 서버 제어·요약·내보내기 검증이 실패했습니다.");
                 await host.StopAsync();
-                if (host.IsRunning || !File.ReadAllText(host.LogPath).Contains("server started") || !File.ReadAllText(host.LogPath).Contains("server stopped"))
+                if (host.IsRunning || viewModel.Workspace.ExportCommand.CanExecute(null) || !File.ReadAllText(host.LogPath).Contains("server started") || !File.ReadAllText(host.LogPath).Contains("server stopped"))
                     throw new InvalidOperationException("서버 중지·로그 복구 검증이 실패했습니다.");
             }
         }

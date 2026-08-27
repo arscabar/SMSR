@@ -92,6 +92,7 @@ public sealed class WorkflowWorkspaceViewModel : ViewModelBase
     private void OnHostStateChanged(object? sender, EventArgs eventArgs)
     {
         if (!_host.IsRunning) Monitor.StopLiveUpdates();
-        _openDashboardCommand.NotifyCanExecuteChanged();
+        foreach (var command in new[] { RefreshMonitorCommand, GenerateSummaryCommand, ExportCommand, OpenDashboardCommand })
+            ((RelayCommand)command).NotifyCanExecuteChanged();
     }
 }

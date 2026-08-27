@@ -13,6 +13,6 @@ public sealed class LocalActivityLog(string directory)
         Directory.CreateDirectory(directory);
         if (File.Exists(Path) && new FileInfo(Path).Length >= MaxBytes)
             File.Move(Path, PreviousPath, true);
-        await File.AppendAllTextAsync(Path, $"{DateTimeOffset.UtcNow:O} {message}{Environment.NewLine}");
+        await File.AppendAllTextAsync(Path, $"{DateTimeOffset.UtcNow:O} {message}{Environment.NewLine}").ConfigureAwait(false);
     }
 }

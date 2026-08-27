@@ -23,12 +23,12 @@ public sealed class LocalServerHost(string? dataPath = null) : IAsyncDisposable
             if (_server is null)
             {
                 _server = await LocalServer.StartAsync(_dataPath);
-                await _log.WriteAsync("server started");
+                await WriteLogAsync("server started");
             }
         }
         catch
         {
-            await _log.WriteAsync("server start failed");
+            await WriteLogAsync("server start failed");
             throw;
         }
         finally { _gate.Release(); }
@@ -43,7 +43,7 @@ public sealed class LocalServerHost(string? dataPath = null) : IAsyncDisposable
             if (_server is not null)
             {
                 await _server.DisposeAsync();
-                await _log.WriteAsync("server stopped");
+                await WriteLogAsync("server stopped");
             }
             _server = null;
         }
@@ -61,11 +61,27 @@ public sealed class LocalServerHost(string? dataPath = null) : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        await StopAsync();
+        await _gate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            if (_server is not null)
+            {
+                await _server.DisposeAsync().ConfigureAwait(false);
+                _server = null;
+                await WriteLogAsync("server stopped").ConfigureAwait(false);
+            }
+        }
+        finally { _gate.Release(); }
         _gate.Dispose();
     }
 
     private LocalServer Server => _server ?? throw new InvalidOperationException("로컬 서버가 실행 중이 아닙니다.");
+
+    private async Task WriteLogAsync(string message)
+    {
+        try { await _log.WriteAsync(message); }
+        catch { }
+    }
 
     private static string ResolveDataPath(string? path)
         => path ?? System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SMSR");

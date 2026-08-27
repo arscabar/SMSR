@@ -17,7 +17,7 @@ public sealed class WorkflowTools(EventStore events, WorkflowEventNotifier notif
         var validationError = EventValidation.Validate(request);
         if (validationError is not null) return JsonSerializer.Serialize(new { error = validationError });
         var inserted = await events.RecordAsync(request);
-        if (inserted) notifier.Publish();
+        if (inserted) notifier.Publish(projectId, workflowId);
         return JsonSerializer.Serialize(new { eventId, duplicate = !inserted });
     }
 
@@ -32,6 +32,7 @@ public sealed class WorkflowTools(EventStore events, WorkflowEventNotifier notif
     [McpServerTool(Name = "save_summary"), Description("외부에서 생성한 요약을 저장합니다.")]
     public async Task<string> SaveSummary(string projectId, string workflowId, string content)
     {
+        if (EventValidation.ValidateWorkflowIds(projectId, workflowId) is { } error) return JsonSerializer.Serialize(new { error });
         if (string.IsNullOrWhiteSpace(content) || content.Length > 10000) return JsonSerializer.Serialize(new { error = "content는 1~10,000자여야 합니다." });
         var summary = new WorkflowSummary(projectId, workflowId, content, DateTimeOffset.UtcNow);
         await events.SaveSummaryAsync(summary, null);

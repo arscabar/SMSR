@@ -353,3 +353,31 @@
   - 최근 로그 파일 2개만 보관하므로 장기 감사 보관이 필요하면 Windows 이벤트 로그 또는 외부 수집기를 연동해야 한다.
 - 다음 조치:
   - 설치 패키징과 장시간 연결·대용량 이벤트 수용 시험을 수행한다.
+
+## 2026-08-27 - 저자원 관제 안정화
+
+- 변경 파일:
+  - `src/SMSR.App/Mvp/EventStoreSummaries.cs`
+  - `src/SMSR.App/Mvp/Contracts.cs`
+  - `src/SMSR.App/Mvp/WorkflowTools.cs`
+  - `src/SMSR.App/Mvp/WorkflowEventNotifier.cs`
+  - `src/SMSR.App/Mvp/LocalServerEndpoints.cs`
+  - `src/SMSR.App/Mvp/LocalServer.cs`
+  - `src/SMSR.App/Services/LocalActivityLog.cs`
+  - `src/SMSR.App/Services/LocalServerHost.cs`
+  - `src/SMSR.App/ViewModels/WorkflowWorkspaceViewModel.cs`
+  - `src/SMSR.App/Mvp/MvpSelfCheck.cs`
+  - `docs/development-log.md`
+- 변경 사유:
+  - LLM 작업 현황 관제의 CPU·스레드·SQLite 사용량을 낮추고, 서버 종료·동시 저장·입력 검증의 경계 조건을 보완한다.
+- 실행 명령:
+  - `dotnet build SMSR.slnx --no-restore --verbosity:minimal`
+  - `dotnet run --project src/SMSR.App/SMSR.App.csproj --no-build -- --self-test`
+  - `git diff --check`
+- 검증 결과:
+  - `dotnet build`가 경고 0, 오류 0으로 통과했고 전체 self-check도 통과했다.
+  - self-check가 워크플로우별 SSE 신호 분리, 이벤트·요약 동시 SQLite 저장, 배열 크기·식별자 검증, 서버 중지 후 명령 비활성화를 확인했다.
+- 남은 위험:
+  - 관측한 워크플로우별 SSE 신호는 메모리에 유지된다. 매우 많은 서로 다른 워크플로우를 감시할 때만 만료 정책을 추가한다.
+- 다음 조치:
+  - 실제 LLM 에이전트 연결로 장시간 SSE와 대용량 이벤트 수용량을 측정한다.
