@@ -32,3 +32,276 @@
   - 원격 저장소가 비어 있어 `main` 기준 브랜치가 아직 없다.
 - 다음 조치:
   - GitHub CLI 인증과 기준 브랜치를 준비한 뒤 `mika/MQTT-1-wpf-mcp-dashboard-docs` 브랜치에서 PR을 생성한다.
+
+## 2026-08-27 - MVP 범위 확정
+
+- 변경 파일:
+  - `docs/wpf-mcp-dashboard-project-plan.md`
+  - `docs/development-log.md`
+- 변경 사유:
+  - 단계적 구현을 위해 SQLite 단일 원본, 최소 MCP 도구, polling 대시보드 범위를 확정하고 문서의 병합 표식을 제거했다.
+- 실행 명령:
+  - `rg -n '^(<<<<<<<|=======|>>>>>>>)' -g '!bin' -g '!obj'`
+  - `dotnet build SMSR.slnx --no-restore --verbosity:minimal`
+- 검증 결과:
+  - 병합 표식이 계획서에서 제거되었다.
+  - `dotnet build SMSR.slnx --no-restore --verbosity:minimal` 통과(경고 0, 오류 0).
+- 남은 위험:
+  - local token의 발급·전달 방식과 MCP 전송 규약은 서버 구현 전에 구체화해야 한다.
+- 다음 조치:
+  - SQLite 스키마와 `record_event`/`get_state`의 입출력 계약을 정의한다.
+
+## 2026-08-27 - 단계적 개발계획 구체화
+
+- 변경 파일:
+  - `docs/wpf-mcp-dashboard-project-plan.md`
+  - `docs/wpf-mcp-dashboard-project-plan.html`
+  - `docs/development-log.md`
+- 변경 사유:
+  - 1인 4주 MVP 가정을 명시하고, 일정·역할·자원·리스크·QA·커뮤니케이션·에이전트 작업 분할을 실행 가능한 기준으로 보강했다.
+- 실행 명령:
+  - `rg -n '^(<<<<<<<|=======|>>>>>>>)' -g '!bin' -g '!obj'`
+  - `dotnet build SMSR.slnx --no-restore --verbosity:minimal`
+- 검증 결과:
+  - Markdown과 HTML 계획서에 동일한 MVP 범위와 4주 실행 계획을 반영했다.
+  - 계획서에 병합 표식이 없고 애플리케이션 빌드가 통과했다.
+- 남은 위험:
+  - 실제 MCP 클라이언트 연결 규약과 local token 발급·전달 방식은 1주차 계약 작업에서 확정해야 한다.
+- 다음 조치:
+  - `record_event`와 `get_state`의 JSON 계약 및 SQLite schema를 작성한다.
+
+## 2026-08-27 - MVP 이벤트 저장·상태 조회 기반 구현
+
+- 변경 파일:
+  - `src/SMSR.App/SMSR.App.csproj`
+  - `src/SMSR.App/App.xaml`
+  - `src/SMSR.App/App.xaml.cs`
+  - `src/SMSR.App/MainWindow.xaml`
+  - `src/SMSR.App/MainWindow.xaml.cs`
+  - `src/SMSR.App/Mvp/Contracts.cs`
+  - `src/SMSR.App/Mvp/EventStore.cs`
+  - `src/SMSR.App/Mvp/EventStoreStateQueries.cs`
+  - `src/SMSR.App/Mvp/EventStoreCatalog.cs`
+  - `src/SMSR.App/Mvp/LocalServer.cs`
+  - `src/SMSR.App/Mvp/LocalServerEndpoints.cs`
+  - `src/SMSR.App/Mvp/LocalTokenStore.cs`
+  - `src/SMSR.App/Mvp/MvpSelfCheck.cs`
+  - `docs/wpf-mcp-dashboard-project-plan.md`
+  - `docs/wpf-mcp-dashboard-project-plan.html`
+  - `docs/development-log.md`
+- 변경 사유:
+  - 주간 계획을 제거하고, SQLite 이벤트 저장·상태 조회·127.0.0.1 도구 API·DPAPI 토큰 보관을 실제 구현했다.
+- 실행 명령:
+  - `dotnet build SMSR.slnx --verbosity:minimal`
+  - `dotnet run --project src/SMSR.App/SMSR.App.csproj --no-build -- --self-test`
+- 검증 결과:
+  - 빌드가 경고 0, 오류 0으로 통과했다.
+  - self-check가 event_id 중복 무시, 최신 노드 상태 계산, 잘못된 상태 거부, bearer token 비교를 확인했다.
+  - 계획서에서 주차 기반 일정 표를 제거했다.
+- 남은 위험:
+  - 현재는 표준 MCP Streamable HTTP 전송 전의 로컬 HTTP 도구 계약이다. 외부 MCP 클라이언트 연결 전에는 공식 MCP 전송 어댑터와 인증 미들웨어를 추가해야 한다.
+- 다음 조치:
+  - 표준 Streamable HTTP MCP 어댑터를 `record_event`와 `get_state` 계약에 연결하고, 브라우저 상태 대시보드를 추가한다.
+
+## 2026-08-27 - 표준 MCP Streamable HTTP 연결
+
+- 변경 파일:
+  - `src/SMSR.App/SMSR.App.csproj`
+  - `src/SMSR.App/MainWindow.xaml`
+  - `src/SMSR.App/Mvp/LocalServer.cs`
+  - `src/SMSR.App/Mvp/MvpSelfCheck.cs`
+  - `src/SMSR.App/Mvp/WorkflowTools.cs`
+  - `docs/wpf-mcp-dashboard-project-plan.md`
+  - `docs/wpf-mcp-dashboard-project-plan.html`
+  - `docs/development-log.md`
+- 변경 사유:
+  - 로컬 HTTP 계약을 공식 MCP SDK의 `/mcp` Streamable HTTP 전송으로 노출해 MCP 클라이언트가 표준 도구 목록과 호출 계약을 사용할 수 있게 했다.
+- 실행 명령:
+  - `dotnet build SMSR.slnx --verbosity:minimal`
+  - `dotnet run --project src/SMSR.App/SMSR.App.csproj --no-build -- --self-test`
+- 검증 결과:
+  - 빌드가 경고 0, 오류 0으로 통과했다.
+  - self-check가 미인증 `/mcp` 요청의 401 응답, `/api/state`의 200 응답, 표준 JSON-RPC `tools/list`의 `record_event`·`get_state` 노출을 확인했다.
+- 남은 위험:
+  - 실제 사용할 MCP 클라이언트가 bearer token 사용자 지정 헤더를 지원하는지 수동 연결에서 확인해야 한다.
+- 다음 조치:
+  - `/api/state`를 사용하는 정적 브라우저 대시보드를 추가한다.
+
+## 2026-08-27 - 브라우저 상태 대시보드 추가
+
+- 변경 파일:
+  - `src/SMSR.App/MainWindow.xaml`
+  - `src/SMSR.App/MainWindow.xaml.cs`
+  - `src/SMSR.App/Mvp/DashboardPage.cs`
+  - `src/SMSR.App/Mvp/LocalServer.cs`
+  - `src/SMSR.App/Mvp/MvpSelfCheck.cs`
+  - `docs/wpf-mcp-dashboard-project-plan.md`
+  - `docs/wpf-mcp-dashboard-project-plan.html`
+  - `docs/development-log.md`
+- 변경 사유:
+  - 프로젝트·워크플로우 ID로 최신 노드 상태를 기본 브라우저에서 확인할 수 있도록 최소 대시보드와 WPF 열기 동작을 추가했다.
+- 실행 명령:
+  - `dotnet build SMSR.slnx --no-restore --verbosity:minimal`
+  - `dotnet run --project src/SMSR.App/SMSR.App.csproj --no-build -- --self-test`
+- 검증 결과:
+  - 빌드가 경고 0, 오류 0으로 통과했다.
+  - self-check가 `/dashboard`의 200 응답과 신뢰하지 않는 문자열의 HTML 이스케이프를 확인했다.
+- 남은 위험:
+  - 현재 대시보드는 표·전체 새로 고침 방식이며 그래프, 상세 타임라인, SSE는 아직 제공하지 않는다.
+- 다음 조치:
+  - MCP `record_event` 호출 예제와 실제 클라이언트 연결 절차를 문서화한다.
+
+## 2026-08-27 - MCP 연결 절차 문서화
+
+- 변경 파일:
+  - `README.md`
+  - `docs/mcp-connection.md`
+  - `docs/development-log.md`
+- 변경 사유:
+  - 앱의 `/mcp` endpoint, bearer token 전달, `record_event` 입력 규칙, 수동 연결 점검 예제를 제공하기 위해 추가했다.
+- 실행 명령:
+  - `git diff --check`
+  - `dotnet build SMSR.slnx --no-restore --verbosity:minimal`
+  - `dotnet run --project src/SMSR.App/SMSR.App.csproj --no-build -- --self-test`
+- 검증 결과:
+  - README에서 연결 문서로 이동할 수 있다.
+  - 문서의 도구 이름과 입력 필드는 현재 `WorkflowTools` 구현과 일치한다.
+- 남은 위험:
+  - 사용하는 MCP 클라이언트의 endpoint·헤더 설정 UI는 제품마다 다르다.
+- 다음 조치:
+  - 실제 사용할 MCP 클라이언트에서 endpoint와 bearer token을 설정해 `record_event` 호출을 점검한다.
+
+## 2026-08-27 - MCP record_event 실제 호출 검증
+
+- 변경 파일:
+  - `src/SMSR.App/Mvp/MvpSelfCheck.cs`
+  - `docs/mcp-connection.md`
+  - `docs/development-log.md`
+- 변경 사유:
+  - 표준 MCP `tools/call`로 `record_event`를 호출하고 상태 API 반영까지 검증하도록 self-check를 확장했다. `MCP-Name` 헤더는 호출 도구명과 일치하도록 예제를 수정했다.
+- 실행 명령:
+  - `dotnet build SMSR.slnx --no-restore --verbosity:minimal`
+  - `dotnet run --project src/SMSR.App/SMSR.App.csproj --no-build -- --self-test`
+- 검증 결과:
+  - 임시 MCP 서버에서 `tools/call`의 `record_event`가 HTTP 200으로 완료됐다.
+  - 이어진 `/api/state` 조회에서 기록한 `mcp-node`를 확인했다.
+- 남은 위험:
+  - 실제 MCP 클라이언트의 사용자 지정 bearer header 설정은 해당 클라이언트에서 별도로 확인해야 한다.
+- 다음 조치:
+  - 대시보드에서 상태별 요약과 최근 이벤트를 표시한다.
+
+## 2026-08-27 - 대시보드 상태 요약 및 최근 이벤트
+
+- 변경 파일:
+  - `src/SMSR.App/Mvp/Contracts.cs`
+  - `src/SMSR.App/Mvp/EventStore.cs`
+  - `src/SMSR.App/Mvp/DashboardPage.cs`
+  - `src/SMSR.App/Mvp/LocalServer.cs`
+  - `src/SMSR.App/Mvp/MvpSelfCheck.cs`
+  - `docs/development-log.md`
+- 변경 사유:
+  - 현재 노드 상태의 상태별 집계와 최근 이벤트 10건을 기본 대시보드에서 함께 확인하도록 했다.
+- 실행 명령:
+  - `dotnet build SMSR.slnx --no-restore --verbosity:minimal`
+  - `dotnet run --project src/SMSR.App/SMSR.App.csproj --no-build -- --self-test`
+- 검증 결과:
+  - 빌드가 경고 0, 오류 0으로 통과했다.
+  - self-check가 최근 이벤트의 최신순 조회, HTML 이스케이프, MCP 기록 이벤트의 대시보드 표시를 확인했다.
+- 남은 위험:
+  - 전체 새로 고침 방식이므로 실시간 스트림과 대량 이벤트 탐색에는 적합하지 않다.
+- 다음 조치:
+  - WPF에서 로컬 서버 상태와 프로젝트·워크플로우 목록을 관리한다.
+
+## 2026-08-27 - WPF MVVM 화면 구조화
+
+- 변경 파일:
+  - `src/SMSR.App/Views/MainWindow.xaml`
+  - `src/SMSR.App/Views/MainWindow.xaml.cs`
+  - `src/SMSR.App/ViewModels/MainWindowViewModel.cs`
+  - `src/SMSR.App/Infrastructure/IPlatformActions.cs`
+  - `src/SMSR.App/Infrastructure/WindowsPlatformActions.cs`
+  - `src/SMSR.App/Infrastructure/RelayCommand.cs`
+  - `src/SMSR.App/Themes/FlatTheme.xaml`
+  - `src/SMSR.App/Themes/Controls.xaml`
+  - `src/SMSR.App/App.xaml`
+  - `src/SMSR.App/App.xaml.cs`
+  - `src/SMSR.App/Mvp/MvpSelfCheck.cs`
+  - `docs/development-log.md`
+- 변경 사유:
+  - WPF XAML, 화면 상태·명령, Windows 플랫폼 연동을 분리해 코드비하인드 없이 MVVM 방식으로 화면을 구성하고, 테마 리소스에 flat 2D 스타일을 적용했다.
+- 실행 명령:
+  - `dotnet build SMSR.slnx --no-restore --verbosity:minimal`
+  - `dotnet run --project src/SMSR.App/SMSR.App.csproj --no-build -- --self-test`
+- 검증 결과:
+  - 빌드가 경고 0, 오류 0으로 통과했다.
+  - self-check가 ViewModel의 토큰 복사·대시보드 열기 명령과 기존 MCP 기록 흐름을 확인했다.
+- 남은 위험:
+  - 현재 프로젝트·워크플로우 목록을 위한 별도 저장 모델은 아직 없다.
+- 다음 조치:
+  - 이벤트 저장소에서 프로젝트·워크플로우 목록을 조회하고 WPF 선택 UI에 연결한다.
+
+## 2026-08-27 - WPF 프로젝트·워크플로우 선택
+
+- 변경 파일:
+  - `src/SMSR.App/Mvp/EventStore.cs`
+  - `src/SMSR.App/Mvp/LocalServer.cs`
+  - `src/SMSR.App/ViewModels/ViewModelBase.cs`
+  - `src/SMSR.App/ViewModels/WorkflowSelectionViewModel.cs`
+  - `src/SMSR.App/ViewModels/MainWindowViewModel.cs`
+  - `src/SMSR.App/Views/MainWindow.xaml`
+  - `src/SMSR.App/Themes/Controls.xaml`
+  - `src/SMSR.App/App.xaml.cs`
+  - `src/SMSR.App/Mvp/MvpSelfCheck.cs`
+  - `docs/development-log.md`
+- 변경 사유:
+  - SQLite 이벤트에서 고유 프로젝트·워크플로우 ID를 조회해 WPF에서 선택하거나 직접 입력할 수 있도록 했다.
+- 실행 명령:
+  - `dotnet build SMSR.slnx --no-restore --verbosity:minimal`
+  - `dotnet run --project src/SMSR.App/SMSR.App.csproj --no-build -- --self-test`
+- 검증 결과:
+  - 빌드가 경고 0, 오류 0으로 통과했다.
+  - self-check가 이벤트 저장소의 고유 ID 조회와 MCP 기록 뒤 WPF 선택 목록 갱신을 확인했다.
+- 남은 위험:
+  - 워크플로우 목록은 프로젝트 변경 뒤 목록 새로 고침을 눌러 갱신한다.
+- 다음 조치:
+  - WPF에서 선택한 워크플로우의 최신 상태와 최근 이벤트를 표시한다.
+
+## 2026-08-27 - WPF 관제·실시간·요약·내보내기 확장
+
+- 변경 파일:
+  - `src/SMSR.App/App.xaml.cs`
+  - `src/SMSR.App/Services/LocalServerHost.cs`
+  - `src/SMSR.App/ViewModels/MainWindowViewModel.cs`
+  - `src/SMSR.App/ViewModels/ServerControlViewModel.cs`
+  - `src/SMSR.App/ViewModels/WorkflowMonitorViewModel.cs`
+  - `src/SMSR.App/ViewModels/WorkflowWorkspaceViewModel.cs`
+  - `src/SMSR.App/ViewModels/WorkflowSelectionViewModel.cs`
+  - `src/SMSR.App/Views/MainWindow.xaml`
+  - `src/SMSR.App/Views/ServerPanel.xaml`
+  - `src/SMSR.App/Views/WorkflowPanel.xaml`
+  - `src/SMSR.App/Mvp/Contracts.cs`
+  - `src/SMSR.App/Mvp/EventStore.cs`
+  - `src/SMSR.App/Mvp/EventStoreEvents.cs`
+  - `src/SMSR.App/Mvp/EventStoreSummaries.cs`
+  - `src/SMSR.App/Mvp/LocalServer.cs`
+  - `src/SMSR.App/Mvp/LocalServerEndpoints.cs`
+  - `src/SMSR.App/Mvp/WorkflowEventNotifier.cs`
+  - `src/SMSR.App/Mvp/WorkflowSummaryService.cs`
+  - `src/SMSR.App/Mvp/WorkflowExportService.cs`
+  - `src/SMSR.App/Mvp/WorkflowTools.cs`
+  - `src/SMSR.App/Mvp/MvpSelfCheck.cs`
+  - `docs/development-log.md`
+- 변경 사유:
+  - WPF에서 최신 노드 상태·최근 이벤트를 표시하고, 로컬 서버 시작·중지, SSE 상태 스트림, 로컬 요약 저장, HTML·Markdown·JSON·ZIP 내보내기를 제공한다.
+- 실행 명령:
+  - `dotnet build SMSR.slnx --no-restore --verbosity:minimal`
+  - `dotnet run --project src/SMSR.App/SMSR.App.csproj --no-build -- --self-test`
+  - `git diff --check`
+- 검증 결과:
+  - 빌드가 경고 0, 오류 0으로 통과했다.
+  - self-check가 실제 MCP 기록, SSE 초기·변경 이벤트, 서버 재시작·중지, WPF 상태 조회, 요약 생성·저장, ZIP 내보내기를 확인했다.
+- 남은 위험:
+  - 대시보드의 기본 폴링은 2초 전체 새로 고침이며, SSE 소비 UI는 후속 개선 대상이다.
+  - 요약은 외부 LLM이 아닌 로컬 상태·이벤트 기반 결정형 문장이다.
+- 다음 조치:
+  - WPF에서 SSE를 직접 구독하는 선택적 갱신과 SQLite 동시 쓰기 부하 검증을 추가한다.

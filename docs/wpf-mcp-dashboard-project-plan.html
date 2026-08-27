@@ -31,6 +31,15 @@
   </header>
 
   <section class="card">
+    <h2>계획 가정과 MVP 성공 지표</h2>
+    <ul>
+      <li>1인 개발 기준으로 기능 완료 기준에 맞춰 MVP를 진행한다.</li>
+      <li>특정 에이전트 제품에 종속하지 않고, 로컬 MCP 클라이언트용 공통 계약만 제공한다.</li>
+      <li>이벤트 1건이 중복 없이 저장되고 서버 재시작 뒤에도 API와 브라우저에 같은 상태로 표시되면 MVP를 성공으로 본다.</li>
+    </ul>
+  </section>
+
+  <section class="card">
     <h2>1. 범위와 목표</h2>
     <ul>
       <li>WPF + WPF-UI 기반의 가벼운 Windows 앱</li>
@@ -51,7 +60,7 @@
       <tr><td>대시보드</td><td>Edge/Chrome 같은 기본 브라우저</td></tr>
       <tr><td>서버</td><td>앱이 관리하는 localhost 웹서버</td></tr>
       <tr><td>저장소</td><td>SQLite</td></tr>
-      <tr><td>실시간</td><td>SSE, 실패 시 polling fallback</td></tr>
+      <tr><td>실시간</td><td>MVP는 polling, 이후 SSE와 polling fallback</td></tr>
       <tr><td>MCP</td><td>기록 입력 및 상태 조회</td></tr>
     </table>
   </section>
@@ -143,6 +152,14 @@ summaries</pre>
       <tr><td>3</td><td>실시간과 요약</td><td>SSE 갱신과 summary 저장/표시</td></tr>
       <tr><td>4</td><td>Export와 안정화</td><td>프로젝트 기록 export 가능</td></tr>
     </table>
+    <h3>MVP 확정 범위</h3>
+    <ul>
+      <li>SQLite를 프로젝트·이벤트·상태의 단일 원본으로 사용한다.</li>
+      <li>MCP는 <code>/mcp</code>의 표준 Streamable HTTP 전송으로 <code>record_event</code>, <code>get_state</code>를 제공하고 local token을 검증한다.</li>
+      <li>서버는 127.0.0.1에만 bind하며 대시보드는 polling한다.</li>
+      <li><code>/dashboard?projectId=...&amp;workflowId=...</code>는 고정 템플릿으로 최신 노드 상태를 2초마다 표시한다.</li>
+      <li>JSON 파일, SSE, 요약, export, WPF 관리 기능은 MVP 뒤에 추가한다.</li>
+    </ul>
   </section>
 
   <section class="card">
@@ -155,6 +172,45 @@ summaries</pre>
       <li>export 결과에 summary, state, events 포함</li>
       <li>artifact path traversal 차단</li>
     </ul>
+    <p><strong>승인:</strong> 빌드 경고·오류가 없고, token 검증 → 저장 → 조회 → 재시작 복구와 브라우저 수용 점검이 재현 가능해야 한다.</p>
+  </section>
+
+  <section class="card">
+    <h2>11. 팀 구성과 자원</h2>
+    <table>
+      <tr><th>역할</th><th>기본 담당</th><th>산출물</th></tr>
+      <tr><td>PM/기획</td><td>사용자 또는 개발자</td><td>범위 승인, 우선순위, 차단 결정</td></tr>
+      <tr><td>설계·백엔드</td><td>개발자</td><td>SQLite schema, MCP/HTTP 계약, 서버</td></tr>
+      <tr><td>프론트엔드</td><td>개발자</td><td>정적 대시보드, WPF 최소 제어 화면</td></tr>
+      <tr><td>QA</td><td>개발자 또는 검토자</td><td>승인 점검표와 결함 기록</td></tr>
+    </table>
+    <p>1인 개발 기준 약 1 M/M이며, SQLite와 localhost Kestrel은 추가 운영비가 없다. 선택 LLM API, 코드 서명, 설치 패키지는 도입 시 별도 산정한다.</p>
+  </section>
+
+  <section class="card">
+    <h2>12. 리스크와 개발 방법</h2>
+    <table>
+      <tr><th>리스크</th><th>대응</th><th>Plan B</th></tr>
+      <tr><td>MCP 클라이언트별 연결 차이</td><td>공통 계약과 예제 요청을 먼저 검증</td><td>MVP를 HTTP 요청 어댑터로 제한</td></tr>
+      <tr><td>SQLite 동시 쓰기</td><td>짧은 트랜잭션, event_id 고유 제약</td><td>단일 쓰기 큐 추가</td></tr>
+      <tr><td>local token 노출</td><td>OS 보안 저장소, 로그 마스킹, loopback bind</td><td>토큰 재발급·폐기</td></tr>
+      <tr><td>일정 초과</td><td>MVP 밖 기능 분리</td><td>WPF·SSE를 후속 단계로 이동</td></tr>
+    </table>
+    <p>주 단위 마일스톤을 빌드 가능한 상태로 끝내며, 범위 변경·실행 명령·검증 결과·위험은 개발 이력에 기록한다. 같은 원인으로 3회 실패하거나 사용자 결정이 필요하면 작업을 멈추고 보고한다.</p>
+  </section>
+
+  <section class="card">
+    <h2>13. 에이전트 작업 분할</h2>
+    <table>
+      <tr><th>에이전트</th><th>산출물</th><th>의존성</th><th>완료 기준</th></tr>
+      <tr><td>Contract Agent</td><td>JSON 계약과 상태 전이표</td><td>없음</td><td>중복·오류 규칙 확정</td></tr>
+      <tr><td>Storage Agent</td><td>SQLite schema와 저장소</td><td>계약</td><td>재시작 뒤 이벤트 조회</td></tr>
+      <tr><td>Server Agent</td><td>token 검증과 두 도구</td><td>계약·schema</td><td>loopback 요청 성공</td></tr>
+      <tr><td>Dashboard Agent</td><td>polling 대시보드</td><td>계약</td><td>상태·오류 안전 표시</td></tr>
+      <tr><td>WPF Agent</td><td>시작/중지·브라우저 열기</td><td>서버</td><td>수동 제어 가능</td></tr>
+      <tr><td>QA Agent</td><td>재현 가능한 승인 점검</td><td>각 작업</td><td>승인 기준 충족</td></tr>
+    </table>
+    <p>공통 지시: 기존 계약을 임의로 변경하지 않고 변경 파일·실행 명령·검증 결과·남은 위험만 기록한다.</p>
   </section>
 </main>
 </body>
