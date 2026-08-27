@@ -15,8 +15,15 @@ public static class MvpSelfCheck
     {
         var path = Path.Combine(Path.GetTempPath(), $"smsr-{Guid.NewGuid():N}.db");
         var serverPath = Path.Combine(Path.GetTempPath(), $"smsr-server-{Guid.NewGuid():N}");
+        var logPath = Path.Combine(Path.GetTempPath(), $"smsr-log-{Guid.NewGuid():N}");
         try
         {
+            var activityLog = new LocalActivityLog(logPath);
+            Directory.CreateDirectory(logPath);
+            await File.WriteAllTextAsync(activityLog.Path, new string('x', 1_000_000));
+            await activityLog.WriteAsync("rotated");
+            if (!File.Exists(activityLog.PreviousPath) || !File.ReadAllText(activityLog.Path).Contains("rotated"))
+                throw new InvalidOperationException("활동 로그 회전이 실패했습니다.");
             var store = new EventStore(path);
             await store.InitializeAsync();
             var first = new RecordEventRequest("evt-1", "demo", "wf-1", "node-1", "agent-1", "NODE_STATUS_CHANGED", "IN_PROGRESS", "시작", null, null, null);
@@ -91,6 +98,7 @@ public static class MvpSelfCheck
             foreach (var file in new[] { path, $"{path}-shm", $"{path}-wal" })
                 if (File.Exists(file)) File.Delete(file);
             if (Directory.Exists(serverPath)) Directory.Delete(serverPath, true);
+            if (Directory.Exists(logPath)) Directory.Delete(logPath, true);
         }
     }
 

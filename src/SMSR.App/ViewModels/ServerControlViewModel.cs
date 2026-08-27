@@ -32,13 +32,13 @@ public sealed class ServerControlViewModel : ViewModelBase
     private async Task StartAsync()
     {
         try { await _host.StartAsync(); StatusMessage = "로컬 서버를 시작했습니다."; }
-        catch { StatusMessage = "로컬 서버를 시작하지 못했습니다."; }
+        catch (Exception exception) { StatusMessage = $"로컬 서버를 시작하지 못했습니다: {exception.Message}"; }
     }
 
     private async Task StopAsync()
     {
         try { await _host.StopAsync(); StatusMessage = "로컬 서버를 중지했습니다."; }
-        catch { StatusMessage = "로컬 서버를 중지하지 못했습니다."; }
+        catch (Exception exception) { StatusMessage = $"로컬 서버를 중지하지 못했습니다: {exception.Message}"; }
     }
 
     private void CopyToken() => StatusMessage = _platform.TryCopyToClipboard(_host.Token) ? "토큰을 클립보드에 복사했습니다." : "토큰을 복사하지 못했습니다.";

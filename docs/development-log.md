@@ -332,3 +332,24 @@
   - 실제 장시간 SSE 연결과 대규모 동시 에이전트 부하는 별도 수동 부하 시험이 필요하다.
 - 다음 조치:
   - 설치 패키징과 장시간 연결·대용량 이벤트 수용 시험을 수행한다.
+
+## 2026-08-27 - 운영 로그 회전과 서버 오류 안내
+
+- 변경 파일:
+  - `src/SMSR.App/Services/LocalActivityLog.cs`
+  - `src/SMSR.App/ViewModels/ServerControlViewModel.cs`
+  - `src/SMSR.App/Mvp/MvpSelfCheck.cs`
+  - `docs/development-log.md`
+- 변경 사유:
+  - 무제한 활동 로그 증가를 막고, 서버 제어 실패 시 WPF 화면에서 원인을 확인할 수 있게 한다.
+- 실행 명령:
+  - `dotnet build SMSR.slnx --no-restore --verbosity:minimal`
+  - `dotnet run --project src/SMSR.App/SMSR.App.csproj --no-build -- --self-test`
+  - `git diff --check`
+- 검증 결과:
+  - self-check가 1MB 활동 로그의 이전 파일 보관과 새 로그 기록을 확인한다.
+  - `dotnet build`가 경고 0, 오류 0으로 통과했고 전체 self-check도 통과했다.
+- 남은 위험:
+  - 최근 로그 파일 2개만 보관하므로 장기 감사 보관이 필요하면 Windows 이벤트 로그 또는 외부 수집기를 연동해야 한다.
+- 다음 조치:
+  - 설치 패키징과 장시간 연결·대용량 이벤트 수용 시험을 수행한다.
