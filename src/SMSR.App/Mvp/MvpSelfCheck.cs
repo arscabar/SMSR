@@ -55,6 +55,8 @@ public static class MvpSelfCheck
             if (EventValidation.Validate(first with { Status = "INVALID" }) is null) throw new InvalidOperationException("입력 검증이 실패했습니다.");
             if (EventValidation.Validate(first with { Commands = Enumerable.Repeat("command", 101).ToArray() }) is null || EventValidation.ValidateWorkflowIds("", "wf-1") is null)
                 throw new InvalidOperationException("입력 크기 검증이 실패했습니다.");
+            if (PlanValidation.Validate("demo", "wf-1", [new("node-a", "A", 1, ["node-a"])]) is null)
+                throw new InvalidOperationException("계획 의존성 검증이 실패했습니다.");
             var page = DashboardPage.Render(new WorkflowState("demo", "wf-1", [new StateNode("node-1", "agent-1", "SUCCESS", "<script>", null, DateTimeOffset.UtcNow)]), [new RecentEvent("node-1", "agent-1", "SUCCESS", "<script>", null, DateTimeOffset.UtcNow)]);
             if (page.Contains("<script>") || !page.Contains("&lt;script&gt;")) throw new InvalidOperationException("대시보드 이스케이프가 실패했습니다.");
             var request = new DefaultHttpContext().Request;
@@ -82,12 +84,36 @@ public static class MvpSelfCheck
                 recordEvent.Headers.Add("MCP-Name", "record_event");
                 var recordResponse = await client.SendAsync(recordEvent);
                 var recordJson = await recordResponse.Content.ReadAsStringAsync();
+                using var savePlan = new HttpRequestMessage(HttpMethod.Post, $"{server.Address}/mcp")
+                {
+                    Content = new StringContent("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"save_plan\",\"arguments\":{\"projectId\":\"demo\",\"workflowId\":\"wf-1\",\"nodes\":[{\"nodeId\":\"mcp-node\",\"title\":\"MCP 계획 노드\",\"weight\":2},{\"nodeId\":\"mcp-final\",\"title\":\"완료 노드\",\"dependsOn\":[\"mcp-node\"]}]},\"_meta\":{\"io.modelcontextprotocol/protocolVersion\":\"2026-07-28\",\"io.modelcontextprotocol/clientInfo\":{\"name\":\"self-test\",\"version\":\"1.0\"},\"io.modelcontextprotocol/clientCapabilities\":{}}}}", Encoding.UTF8, "application/json")
+                };
+                savePlan.Headers.Authorization = new("Bearer", server.Token);
+                savePlan.Headers.Accept.ParseAdd("application/json, text/event-stream");
+                savePlan.Headers.Add("MCP-Protocol-Version", "2026-07-28");
+                savePlan.Headers.Add("MCP-Method", "tools/call");
+                savePlan.Headers.Add("MCP-Name", "save_plan");
+                var planResponse = await client.SendAsync(savePlan);
+                var planJson = await planResponse.Content.ReadAsStringAsync();
+                using var lifecycle = new HttpRequestMessage(HttpMethod.Post, $"{server.Address}/mcp")
+                {
+                    Content = new StringContent("{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"record_lifecycle\",\"arguments\":{\"sessionId\":\"session-1\",\"cwd\":\"D:/workspace/SMSR\",\"eventName\":\"USER_PROMPT\",\"turnId\":\"turn-1\"},\"_meta\":{\"io.modelcontextprotocol/protocolVersion\":\"2026-07-28\",\"io.modelcontextprotocol/clientInfo\":{\"name\":\"self-test\",\"version\":\"1.0\"},\"io.modelcontextprotocol/clientCapabilities\":{}}}}", Encoding.UTF8, "application/json")
+                };
+                lifecycle.Headers.Authorization = new("Bearer", server.Token);
+                lifecycle.Headers.Accept.ParseAdd("application/json, text/event-stream");
+                lifecycle.Headers.Add("MCP-Protocol-Version", "2026-07-28");
+                lifecycle.Headers.Add("MCP-Method", "tools/call");
+                lifecycle.Headers.Add("MCP-Name", "record_lifecycle");
+                var lifecycleResponse = await client.SendAsync(lifecycle);
+                var lifecycleJson = await lifecycleResponse.Content.ReadAsStringAsync();
                 var recordedState = await client.GetStringAsync($"{server.Address}/api/state?projectId=demo&workflowId=wf-1");
+                var recordedPlan = await client.GetStringAsync($"{server.Address}/api/plan?projectId=demo&workflowId=wf-1");
+                var lifecycleState = await client.GetStringAsync($"{server.Address}/api/state?projectId=SMSR&workflowId=session-1");
                 var recordedDashboard = await client.GetStringAsync($"{server.Address}/dashboard?projectId=demo&workflowId=wf-1");
                 using var sseTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
                 var changedEvent = await streamReader.ReadLineAsync(sseTimeout.Token);
                 if (!recordResponse.IsSuccessStatusCode) throw new InvalidOperationException($"MCP record_event 호출 실패: {recordJson}");
-                if (denied.StatusCode != HttpStatusCode.Unauthorized || !stateResponse.IsSuccessStatusCode || !dashboardResponse.IsSuccessStatusCode || !streamResponse.IsSuccessStatusCode || initialEvent != "event: state" || initialData != "data: changed" || changedEvent != "event: state" || !recordResponse.IsSuccessStatusCode || !recordJson.Contains("evt-mcp-1") || !recordedState.Contains("mcp-node") || !recordedDashboard.Contains("최근 이벤트") || !recordedDashboard.Contains("mcp-node"))
+                if (denied.StatusCode != HttpStatusCode.Unauthorized || !stateResponse.IsSuccessStatusCode || !dashboardResponse.IsSuccessStatusCode || !streamResponse.IsSuccessStatusCode || initialEvent != "event: state" || initialData != "data: changed" || changedEvent != "event: state" || !recordResponse.IsSuccessStatusCode || !planResponse.IsSuccessStatusCode || !lifecycleResponse.IsSuccessStatusCode || !recordJson.Contains("evt-mcp-1") || !planJson.Contains("nodeCount") || !lifecycleJson.Contains("session-1") || !recordedState.Contains("mcp-node") || !recordedPlan.Contains("MCP 계획 노드") || !lifecycleState.Contains("_codex_session") || !recordedDashboard.Contains("계획 그래프") || !recordedDashboard.Contains("MCP 계획 노드"))
                     throw new InvalidOperationException("로컬 서버 검증이 실패했습니다.");
             }
             await using (var host = new LocalServerHost(serverPath))
@@ -96,6 +122,9 @@ public static class MvpSelfCheck
                 var platform = new TestPlatformActions();
                 var viewModel = new MainWindowViewModel(host, platform);
                 await viewModel.LoadAsync();
+                viewModel.Workspace.Selection.ProjectId = "demo";
+                await viewModel.Workspace.Selection.LoadAsync();
+                viewModel.Workspace.Selection.WorkflowId = "wf-1";
                 if (!viewModel.Workspace.OpenDashboardCommand.CanExecute(null)) throw new InvalidOperationException("대시보드 명령 활성화가 실패했습니다.");
                 viewModel.Server.CopyTokenCommand.Execute(null);
                 viewModel.Workspace.OpenDashboardCommand.Execute(null);

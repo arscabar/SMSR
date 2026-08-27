@@ -3,7 +3,7 @@
 ## 연결
 
 1. SMSR 앱을 실행한다.
-2. 창에 표시된 서버 주소에 `/mcp`를 붙인다. 예: `http://127.0.0.1:51234/mcp`
+2. 고정된 로컬 주소 `http://127.0.0.1:49783/mcp`를 사용한다.
 3. `접속 토큰 복사`를 누른다.
 4. MCP 클라이언트에 endpoint와 `Authorization: Bearer <복사한 토큰>` 헤더를 설정한다.
 
@@ -13,8 +13,11 @@
 
 | 도구 | 입력 | 결과 |
 |---|---|---|
+| `save_plan` | 프로젝트·워크플로우 ID, 노드 ID·제목·가중치·의존성 | 계획 그래프 저장 |
+| `get_plan` | 프로젝트 ID, 워크플로우 ID | 계획 노드에 적용된 최신 상태 |
 | `record_event` | 이벤트 식별자, 프로젝트·워크플로우·노드·에이전트 ID, 상태 | 저장 결과와 중복 여부 |
 | `get_state` | 프로젝트 ID, 워크플로우 ID | 각 노드의 최신 상태 |
+| `record_lifecycle` | 세션 ID, 작업 경로, 이벤트 이름 | Codex 훅 전용 최소 활동 기록 |
 
 `eventType`은 `NODE_STATUS_CHANGED`만 가능하며 `status`는 `PENDING`, `IN_PROGRESS`, `VALIDATING`, `SUCCESS`, `FAILED`, `RETRYING`, `BLOCKED` 중 하나여야 한다. 같은 `eventId`는 다시 저장하지 않고 `duplicate: true`를 반환한다.
 
@@ -23,7 +26,7 @@
 MCP 클라이언트는 도구 목록·호출 요청을 자동으로 처리한다. 아래 PowerShell은 연결 문제를 확인할 때만 사용한다. 토큰 문자열 자체를 파일에 저장하지 않는다.
 
 ```powershell
-$smsrEndpoint = 'http://127.0.0.1:51234/mcp'
+$smsrEndpoint = 'http://127.0.0.1:49783/mcp'
 $smsrToken = '<앱에서 복사한 토큰>'
 $smsrHeaders = @{
   Authorization = "Bearer $smsrToken"
@@ -59,3 +62,14 @@ Invoke-WebRequest -Method Post -Uri $smsrEndpoint -Headers $smsrHeaders -Content
 ```
 
 기록 후 앱에서 `sample-project`와 `wf-001`을 입력해 대시보드를 열면 최신 상태를 확인할 수 있다.
+
+## Codex 연결
+
+SMSR 앱을 실행한 뒤 토큰을 현재 PowerShell 세션의 환경 변수에만 넣고 연결한다. 토큰을 저장소나 플러그인 파일에 쓰지 않는다.
+
+```powershell
+$env:SMSR_MCP_TOKEN = '<앱에서 복사한 토큰>'
+codex mcp add smsr --url http://127.0.0.1:49783/mcp --bearer-token-env-var SMSR_MCP_TOKEN
+```
+
+`plugins/smsr-codex`은 Codex용 훅·추적 지침 패키지다. 세션 시작 시 계획 기록에 사용할 `projectId`와 `workflowId`를 알려 주고, 사용자 요청 접수와 턴 종료만 자동 기록한다. 실제 계획 노드의 진행률은 Codex가 `save_plan`과 `record_event`로 갱신한다.

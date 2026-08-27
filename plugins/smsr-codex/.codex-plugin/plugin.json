@@ -1,0 +1,18 @@
+{
+  "name": "smsr-codex",
+  "version": "0.1.0",
+  "description": "Record Codex plans and node status in the local SMSR dashboard.",
+  "author": {
+    "name": "Local developer"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "SMSR Codex Tracker",
+    "shortDescription": "Track Codex plans in the local SMSR dashboard.",
+    "longDescription": "Stores structured Codex plans and node transitions in the local SMSR dashboard.",
+    "developerName": "Local developer",
+    "category": "Productivity",
+    "capabilities": ["Instructions", "Lifecycle hooks"],
+    "defaultPrompt": "Track this Codex task with SMSR."
+  }
+}

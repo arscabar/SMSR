@@ -21,6 +21,10 @@ public sealed partial class EventStore(string databasePath)
               status TEXT NOT NULL, summary TEXT, error TEXT, payload_json TEXT NOT NULL,
               created_at_utc TEXT NOT NULL);
             CREATE INDEX IF NOT EXISTS ix_events_workflow_node ON events(project_id, workflow_id, node_id, created_at_utc);
+            CREATE TABLE IF NOT EXISTS plan_nodes (
+              project_id TEXT NOT NULL, workflow_id TEXT NOT NULL, node_id TEXT NOT NULL,
+              title TEXT NOT NULL, weight INTEGER NOT NULL, depends_on_json TEXT NOT NULL,
+              PRIMARY KEY(project_id, workflow_id, node_id));
             CREATE TABLE IF NOT EXISTS current_state (
               project_id TEXT NOT NULL, workflow_id TEXT NOT NULL, node_id TEXT NOT NULL,
               agent_id TEXT NOT NULL, status TEXT NOT NULL, summary TEXT, error TEXT, updated_at_utc TEXT NOT NULL,

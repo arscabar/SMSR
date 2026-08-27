@@ -25,6 +25,7 @@ internal static class LocalServerEndpoints
             await next();
         });
         app.MapGet("/api/state", (string? projectId, string? workflowId, EventStore events, CancellationToken ct) => GetStateAsync(projectId, workflowId, events, ct));
+        app.MapGet("/api/plan", (string? projectId, string? workflowId, EventStore events, CancellationToken ct) => GetPlanAsync(projectId, workflowId, events, ct));
         app.MapGet("/api/summary", (string? projectId, string? workflowId, EventStore events, CancellationToken ct) => GetSummaryAsync(projectId, workflowId, events, ct));
         app.MapGet("/api/events/stream", async (string? projectId, string? workflowId, HttpResponse response, WorkflowEventNotifier notifier, CancellationToken ct) =>
         {
@@ -40,7 +41,8 @@ internal static class LocalServerEndpoints
             if (string.IsNullOrWhiteSpace(projectId) || string.IsNullOrWhiteSpace(workflowId))
                 return Results.BadRequest(new { error = "projectId와 workflowId가 필요합니다." });
             var state = await events.GetStateAsync(projectId, workflowId, ct);
-            return Results.Content(DashboardPage.Render(state, await events.GetRecentEventsAsync(projectId, workflowId, ct)), "text/html; charset=utf-8");
+            var plan = await events.GetPlanAsync(projectId, workflowId, ct);
+            return Results.Content(DashboardPage.Render(state, plan, await events.GetRecentEventsAsync(projectId, workflowId, ct)), "text/html; charset=utf-8");
         });
         app.MapMcp("/mcp");
     }
@@ -57,6 +59,13 @@ internal static class LocalServerEndpoints
         if (string.IsNullOrWhiteSpace(projectId) || string.IsNullOrWhiteSpace(workflowId))
             return Results.BadRequest(new { error = "projectId와 workflowId가 필요합니다." });
         return Results.Ok(await events.GetStateAsync(projectId, workflowId, ct));
+    }
+
+    private static async Task<IResult> GetPlanAsync(string? projectId, string? workflowId, EventStore events, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(projectId) || string.IsNullOrWhiteSpace(workflowId))
+            return Results.BadRequest(new { error = "projectId와 workflowId가 필요합니다." });
+        return Results.Ok(await events.GetPlanAsync(projectId, workflowId, ct));
     }
 
     private static async Task<IResult> GetSummaryAsync(string? projectId, string? workflowId, EventStore events, CancellationToken ct)

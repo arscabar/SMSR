@@ -10,6 +10,7 @@ namespace SMSR.App.Mvp;
 
 public sealed class LocalServer(WebApplication app, string token, EventStore events, WorkflowSummaryService summaries, WorkflowExportService exports) : IAsyncDisposable
 {
+    public const int Port = 49783;
     public string Token { get; } = token;
     public string Address => app.Urls.Single();
 
@@ -24,14 +25,15 @@ public sealed class LocalServer(WebApplication app, string token, EventStore eve
         var summaries = new WorkflowSummaryService(store);
         var exports = new WorkflowExportService(store, Path.Combine(dataPath, "exports"));
         var builder = WebApplication.CreateSlimBuilder();
-        builder.WebHost.ConfigureKestrel(options => options.Listen(IPAddress.Loopback, 0));
+        builder.WebHost.ConfigureKestrel(options => options.Listen(IPAddress.Loopback, Port));
         builder.Services.AddSingleton(store);
         builder.Services.AddSingleton(notifier);
         builder.Services.AddSingleton(summaries);
         builder.Services.AddSingleton(exports);
         builder.Services.AddMcpServer()
             .WithHttpTransport(options => options.Stateless = true)
-            .WithTools<WorkflowTools>();
+            .WithTools<WorkflowTools>()
+            .WithTools<PlanTools>();
         var app = builder.Build();
         LocalServerEndpoints.Map(app, token);
         await app.StartAsync();

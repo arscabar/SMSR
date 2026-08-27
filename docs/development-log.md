@@ -409,3 +409,38 @@
   - 내보내기 ZIP 생성은 사용자 요청 시 단일 백그라운드 작업을 사용하며, 운영 환경의 실제 데이터량에서 소요 시간 측정이 필요하다.
 - 다음 조치:
   - SQLite 파일·내보내기 보관 기간과 장시간 LLM 이벤트 부하의 측정 기준을 정한다.
+
+## 2026-08-27 - Codex 계획 노드·훅 연동
+
+- 변경 파일:
+  - `src/SMSR.App/Mvp/PlanContracts.cs`
+  - `src/SMSR.App/Mvp/EventStorePlanWrites.cs`
+  - `src/SMSR.App/Mvp/EventStorePlanQueries.cs`
+  - `src/SMSR.App/Mvp/PlanTools.cs`
+  - `src/SMSR.App/Mvp/EventStore.cs`
+  - `src/SMSR.App/Mvp/EventStoreCatalog.cs`
+  - `src/SMSR.App/Mvp/WorkflowTools.cs`
+  - `src/SMSR.App/Mvp/LocalServer.cs`
+  - `src/SMSR.App/Mvp/LocalServerEndpoints.cs`
+  - `src/SMSR.App/Mvp/DashboardPage.cs`
+  - `src/SMSR.App/Mvp/MvpSelfCheck.cs`
+  - `plugins/smsr-codex/`
+  - `docs/mcp-connection.md`
+  - `docs/development-log.md`
+- 변경 사유:
+  - Codex가 구조화한 계획 노드·의존성·가중치를 SQLite에 저장하고, 동일 노드 ID의 상태 이벤트를 웹 그래프와 API에 적용하도록 했다. Codex 플러그인은 세션 ID를 계획 ID로 안내하고 요청 접수·턴 종료만 최소 활동으로 기록한다.
+- 실행 명령:
+  - `dotnet build SMSR.slnx --no-restore --verbosity:minimal`
+  - `dotnet run --project src/SMSR.App/SMSR.App.csproj --no-build -- --self-test`
+  - `node plugins/smsr-codex/hooks/session-context.js`
+  - `py -3 C:\Users\surromind\.codex\skills\.system\plugin-creator\scripts\validate_plugin.py plugins/smsr-codex`
+  - `git diff --check`
+- 검증 결과:
+  - 실제 Streamable HTTP MCP 호출로 `save_plan`, `record_event`, `record_lifecycle`를 수행한 뒤 `/api/plan`, `/api/state`, `/dashboard`에서 계획 제목·적용 상태·세션 활동을 확인했다.
+  - 순환 의존성은 저장 전에 거부하며, 플러그인 훅 컨텍스트와 플러그인 구조 검증이 통과했다.
+  - 고정 로컬 주소 `http://127.0.0.1:49783`에서만 수신하며 빌드 경고·오류가 없다.
+- 남은 위험:
+  - 사용자가 SMSR 토큰을 환경 변수에 설정하고 Codex MCP 서버·플러그인을 설치하기 전에는 실제 Codex 세션 훅이 실행되지 않는다.
+  - 고정 포트가 다른 프로세스에 사용 중이면 앱 시작이 실패한다.
+- 다음 조치:
+  - Codex 설정에 `smsr` MCP 연결을 추가하고 플러그인 훅 신뢰 후 실제 대화 한 건을 점검한다.

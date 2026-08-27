@@ -1,0 +1,15 @@
+{
+  "description": "Keep lightweight Codex lifecycle records in SMSR.",
+  "hooks": {
+    "SessionStart": [{
+      "matcher": "startup|resume|clear|compact",
+      "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-context.js\"", "timeout": 3, "statusMessage": "Preparing SMSR tracking" }]
+    }],
+    "UserPromptSubmit": [{
+      "hooks": [{ "type": "mcp_tool", "server": "smsr", "tool": "record_lifecycle", "input": { "sessionId": "${session_id}", "cwd": "${cwd}", "eventName": "USER_PROMPT", "turnId": "${turn_id}" }, "timeout": 3 }]
+    }],
+    "Stop": [{
+      "hooks": [{ "type": "mcp_tool", "server": "smsr", "tool": "record_lifecycle", "input": { "sessionId": "${session_id}", "cwd": "${cwd}", "eventName": "TURN_STOPPED", "turnId": "${turn_id}" }, "timeout": 3 }]
+    }]
+  }
+}
