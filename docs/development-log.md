@@ -444,3 +444,25 @@
   - 고정 포트가 다른 프로세스에 사용 중이면 앱 시작이 실패한다.
 - 다음 조치:
   - Codex 설정에 `smsr` MCP 연결을 추가하고 플러그인 훅 신뢰 후 실제 대화 한 건을 점검한다.
+
+## 2026-08-27 - Codex 설치·운영 절차 정리
+
+- 변경 파일:
+  - `.agents/plugins/marketplace.json`
+  - `plugins/smsr-codex/.codex-plugin/plugin.json`
+  - `README.md`
+  - `docs/mcp-connection.md`
+  - `docs/development-log.md`
+- 변경 사유:
+  - 저장소의 플러그인을 Codex 로컬 마켓플레이스에서 설치할 수 있게 하고, 보안 토큰 전달·훅 신뢰·포트 충돌·실제 대화 점검 절차를 문서화했다.
+- 실행 명령:
+  - `codex plugin marketplace add D:\Gitsource\개인\SMSR`
+  - `codex plugin add smsr-codex@personal`
+  - `codex plugin list`
+- 검증 결과:
+  - 로컬 마켓플레이스가 `plugins/smsr-codex`을 가리키며 플러그인 구조 검증을 통과했다.
+  - `smsr-codex@personal`을 현재 Codex에 설치·활성화했다.
+- 남은 위험:
+  - DPAPI 토큰은 사용자가 앱에서 복사해 현재 세션에 설정해야 하므로, 실제 MCP 등록·훅 신뢰는 해당 사용자 단계가 필요하다.
+- 다음 조치:
+  - 새 Codex task에서 실제 계획 한 건을 기록해 웹 대시보드 갱신을 점검한다.

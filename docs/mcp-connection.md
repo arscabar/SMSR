@@ -70,6 +70,16 @@ SMSR 앱을 실행한 뒤 토큰을 현재 PowerShell 세션의 환경 변수에
 ```powershell
 $env:SMSR_MCP_TOKEN = '<앱에서 복사한 토큰>'
 codex mcp add smsr --url http://127.0.0.1:49783/mcp --bearer-token-env-var SMSR_MCP_TOKEN
+codex plugin marketplace add D:\Gitsource\개인\SMSR
+codex plugin add smsr-codex@personal
 ```
 
+`.agents/plugins/marketplace.json`은 저장소의 로컬 플러그인 마켓플레이스이며 `plugins/smsr-codex`을 가리킨다. 설치 후 새 Codex task에서 `/hooks`로 훅을 검토·신뢰한다.
+
 `plugins/smsr-codex`은 Codex용 훅·추적 지침 패키지다. 세션 시작 시 계획 기록에 사용할 `projectId`와 `workflowId`를 알려 주고, 사용자 요청 접수와 턴 종료만 자동 기록한다. 실제 계획 노드의 진행률은 Codex가 `save_plan`과 `record_event`로 갱신한다.
+
+## 운영 점검
+
+- 실제 대화에서 `save_plan` 후 `record_event`를 한 번 호출하고, 앱의 대시보드에서 제목·의존성·상태를 확인한다.
+- 포트 충돌은 `Get-NetTCPConnection -LocalPort 49783`으로 확인한다. 충돌 프로세스를 종료한 뒤 앱을 다시 시작한다.
+- 토큰이 설정되지 않았거나 서버가 중지된 경우 훅은 Codex 작업을 막지 않으며, SMSR 기록만 생략된다.
