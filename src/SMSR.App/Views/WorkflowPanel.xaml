@@ -19,6 +19,7 @@
         <Border Margin="0,16,0,0" Padding="18" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10">
             <StackPanel>
                 <TextBlock FontSize="16" FontWeight="SemiBold" Text="현재 상태" />
+                <TextBlock Margin="0,4,0,0" Foreground="{StaticResource MutedTextBrush}" Text="{Binding Monitor.UpdateMode}" />
                 <ItemsControl Margin="0,10,0,0" ItemsSource="{Binding Monitor.Nodes}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>

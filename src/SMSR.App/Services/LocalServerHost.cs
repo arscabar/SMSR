@@ -5,17 +5,32 @@ namespace SMSR.App.Services;
 public sealed class LocalServerHost(string? dataPath = null) : IAsyncDisposable
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly string _dataPath = ResolveDataPath(dataPath);
+    private readonly LocalActivityLog _log = new(System.IO.Path.Combine(ResolveDataPath(dataPath), "logs"));
     private LocalServer? _server;
 
     public event EventHandler? StateChanged;
     public bool IsRunning => _server is not null;
     public string Address => _server?.Address ?? "";
     public string Token => _server?.Token ?? "";
+    public string LogPath => _log.Path;
 
     public async Task StartAsync()
     {
         await _gate.WaitAsync();
-        try { _server ??= await LocalServer.StartAsync(dataPath); }
+        try
+        {
+            if (_server is null)
+            {
+                _server = await LocalServer.StartAsync(_dataPath);
+                await _log.WriteAsync("server started");
+            }
+        }
+        catch
+        {
+            await _log.WriteAsync("server start failed");
+            throw;
+        }
         finally { _gate.Release(); }
         StateChanged?.Invoke(this, EventArgs.Empty);
     }
@@ -25,7 +40,11 @@ public sealed class LocalServerHost(string? dataPath = null) : IAsyncDisposable
         await _gate.WaitAsync();
         try
         {
-            if (_server is not null) await _server.DisposeAsync();
+            if (_server is not null)
+            {
+                await _server.DisposeAsync();
+                await _log.WriteAsync("server stopped");
+            }
             _server = null;
         }
         finally { _gate.Release(); }
@@ -47,4 +66,7 @@ public sealed class LocalServerHost(string? dataPath = null) : IAsyncDisposable
     }
 
     private LocalServer Server => _server ?? throw new InvalidOperationException("로컬 서버가 실행 중이 아닙니다.");
+
+    private static string ResolveDataPath(string? path)
+        => path ?? System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SMSR");
 }

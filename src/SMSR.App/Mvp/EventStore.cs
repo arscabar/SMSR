@@ -5,7 +5,9 @@ namespace SMSR.App.Mvp;
 
 public sealed partial class EventStore(string databasePath)
 {
-    private readonly string _connectionString = new SqliteConnectionStringBuilder { DataSource = databasePath, Pooling = false }.ToString();
+    private readonly string _connectionString = new SqliteConnectionStringBuilder { DataSource = databasePath, Pooling = false, DefaultTimeout = 5 }.ToString();
+    // ponytail: one SQLite writer per local store; replace with bounded retries if measured throughput requires it.
+    private readonly SemaphoreSlim _writeGate = new(1, 1);
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
@@ -30,22 +32,27 @@ public sealed partial class EventStore(string databasePath)
 
     public async Task<bool> RecordAsync(RecordEventRequest request, CancellationToken cancellationToken = default)
     {
-        await using var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
-        var command = connection.CreateCommand();
-        command.CommandText = """
-            INSERT INTO events VALUES ($eventId, $projectId, $workflowId, $nodeId, $agentId, $eventType,
-            $status, $summary, $error, $payload, $createdAt) ON CONFLICT(event_id) DO NOTHING;
-            """;
-        var values = new Dictionary<string, object?>
+        await _writeGate.WaitAsync(cancellationToken);
+        try
         {
-            ["$eventId"] = request.EventId, ["$projectId"] = request.ProjectId, ["$workflowId"] = request.WorkflowId,
-            ["$nodeId"] = request.NodeId, ["$agentId"] = request.AgentId, ["$eventType"] = request.EventType,
-            ["$status"] = request.Status, ["$summary"] = request.Summary, ["$error"] = request.Error,
-            ["$payload"] = JsonSerializer.Serialize(request), ["$createdAt"] = DateTimeOffset.UtcNow.ToString("O")
-        };
-        foreach (var (name, value) in values) command.Parameters.AddWithValue(name, value ?? DBNull.Value);
-        return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
+            await using var connection = new SqliteConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken);
+            var command = connection.CreateCommand();
+            command.CommandText = """
+                INSERT INTO events VALUES ($eventId, $projectId, $workflowId, $nodeId, $agentId, $eventType,
+                $status, $summary, $error, $payload, $createdAt) ON CONFLICT(event_id) DO NOTHING;
+                """;
+            var values = new Dictionary<string, object?>
+            {
+                ["$eventId"] = request.EventId, ["$projectId"] = request.ProjectId, ["$workflowId"] = request.WorkflowId,
+                ["$nodeId"] = request.NodeId, ["$agentId"] = request.AgentId, ["$eventType"] = request.EventType,
+                ["$status"] = request.Status, ["$summary"] = request.Summary, ["$error"] = request.Error,
+                ["$payload"] = JsonSerializer.Serialize(request), ["$createdAt"] = DateTimeOffset.UtcNow.ToString("O")
+            };
+            foreach (var (name, value) in values) command.Parameters.AddWithValue(name, value ?? DBNull.Value);
+            return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
+        }
+        finally { _writeGate.Release(); }
     }
 
 }

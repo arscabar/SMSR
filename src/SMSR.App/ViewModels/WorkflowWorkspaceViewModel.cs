@@ -25,7 +25,7 @@ public sealed class WorkflowWorkspaceViewModel : ViewModelBase
         ExportCommand = new RelayCommand(() => _ = ExportAsync(), HasWorkflowSelection);
         _openDashboardCommand = new RelayCommand(OpenDashboard, HasWorkflowSelection);
         OpenDashboardCommand = _openDashboardCommand;
-        _host.StateChanged += (_, _) => _openDashboardCommand.NotifyCanExecuteChanged();
+        _host.StateChanged += OnHostStateChanged;
     }
 
     public WorkflowSelectionViewModel Selection { get; }
@@ -53,7 +53,12 @@ public sealed class WorkflowWorkspaceViewModel : ViewModelBase
 
     private async Task RefreshMonitorAsync()
     {
-        try { await Monitor.RefreshAsync(Selection.ProjectId, Selection.WorkflowId); StatusMessage = "워크플로우 상태를 새로 고쳤습니다."; }
+        try
+        {
+            await Monitor.RefreshAsync(Selection.ProjectId, Selection.WorkflowId);
+            Monitor.StartLiveUpdates(Selection.ProjectId, Selection.WorkflowId);
+            StatusMessage = "워크플로우 상태를 새로 고쳤습니다.";
+        }
         catch { StatusMessage = "워크플로우 상태를 읽지 못했습니다."; }
     }
 
@@ -82,5 +87,11 @@ public sealed class WorkflowWorkspaceViewModel : ViewModelBase
             foreach (var command in new[] { RefreshMonitorCommand, GenerateSummaryCommand, ExportCommand, OpenDashboardCommand })
                 ((RelayCommand)command).NotifyCanExecuteChanged();
         }
+    }
+
+    private void OnHostStateChanged(object? sender, EventArgs eventArgs)
+    {
+        if (!_host.IsRunning) Monitor.StopLiveUpdates();
+        _openDashboardCommand.NotifyCanExecuteChanged();
     }
 }

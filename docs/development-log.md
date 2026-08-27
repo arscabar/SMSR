@@ -305,3 +305,30 @@
   - 요약은 외부 LLM이 아닌 로컬 상태·이벤트 기반 결정형 문장이다.
 - 다음 조치:
   - WPF에서 SSE를 직접 구독하는 선택적 갱신과 SQLite 동시 쓰기 부하 검증을 추가한다.
+
+## 2026-08-27 - WPF SSE 구독·SQLite 부하·서버 복구 검증
+
+- 변경 파일:
+  - `src/SMSR.App/Services/SseStateClient.cs`
+  - `src/SMSR.App/Services/LocalActivityLog.cs`
+  - `src/SMSR.App/Services/LocalServerHost.cs`
+  - `src/SMSR.App/ViewModels/WorkflowMonitorViewModel.cs`
+  - `src/SMSR.App/ViewModels/WorkflowWorkspaceViewModel.cs`
+  - `src/SMSR.App/Views/WorkflowPanel.xaml`
+  - `src/SMSR.App/Mvp/EventStore.cs`
+  - `src/SMSR.App/Mvp/MvpSelfCheck.cs`
+  - `docs/development-log.md`
+- 변경 사유:
+  - WPF가 SSE 상태 스트림을 직접 구독하고 연결 해제 시 2초 polling으로 전환하게 했으며, SQLite 동시 기록 안정성과 서버 재시작 후 상태·로그 복구를 점검한다.
+- 실행 명령:
+  - `dotnet build SMSR.slnx --no-restore --verbosity:minimal`
+  - `dotnet run --project src/SMSR.App/SMSR.App.csproj --no-build -- --self-test`
+  - `git diff --check`
+- 검증 결과:
+  - 빌드가 경고 0, 오류 0으로 통과했다.
+  - self-check가 동시 16건 SQLite 기록, SSE 초기·변경 이벤트, 서버 재시작·중지, `server started`·`server stopped` 로컬 로그를 확인했다.
+- 남은 위험:
+  - 단일 로컬 쓰기 게이트는 높은 처리량에서는 병목이 될 수 있다.
+  - 실제 장시간 SSE 연결과 대규모 동시 에이전트 부하는 별도 수동 부하 시험이 필요하다.
+- 다음 조치:
+  - 설치 패키징과 장시간 연결·대용량 이벤트 수용 시험을 수행한다.

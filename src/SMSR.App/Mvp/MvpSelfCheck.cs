@@ -27,6 +27,9 @@ public static class MvpSelfCheck
             if (state.Nodes.Count != 1 || state.Nodes[0].Status != "SUCCESS") throw new InvalidOperationException("최신 상태 계산이 실패했습니다.");
             var recent = await store.GetRecentEventsAsync("demo", "wf-1");
             if (recent.Count != 2 || recent[0].Status != "SUCCESS") throw new InvalidOperationException("최근 이벤트 조회가 실패했습니다.");
+            var concurrent = await Task.WhenAll(Enumerable.Range(0, 16).Select(index => store.RecordAsync(first with { EventId = $"evt-load-{index}", NodeId = $"node-load-{index}" })));
+            if (concurrent.Any(inserted => !inserted) || (await store.GetStateAsync("demo", "wf-1")).Nodes.Count != 17)
+                throw new InvalidOperationException("동시 이벤트 기록이 실패했습니다.");
             if (!(await store.GetProjectIdsAsync()).Contains("demo") || !(await store.GetWorkflowIdsAsync("demo")).Contains("wf-1")) throw new InvalidOperationException("프로젝트·워크플로우 목록 조회가 실패했습니다.");
             if (EventValidation.Validate(first with { Status = "INVALID" }) is null) throw new InvalidOperationException("입력 검증이 실패했습니다.");
             var page = DashboardPage.Render(new WorkflowState("demo", "wf-1", [new StateNode("node-1", "agent-1", "SUCCESS", "<script>", null, DateTimeOffset.UtcNow)]), [new RecentEvent("node-1", "agent-1", "SUCCESS", "<script>", null, DateTimeOffset.UtcNow)]);
@@ -79,7 +82,8 @@ public static class MvpSelfCheck
                 if (platform.CopiedToken != host.Token || !platform.OpenedUrl.Contains("projectId=demo") || viewModel.Workspace.Monitor.Nodes.Count == 0 || summary.Content.Length == 0 || !File.Exists(export.ZipPath))
                     throw new InvalidOperationException("WPF 서버 제어·요약·내보내기 검증이 실패했습니다.");
                 await host.StopAsync();
-                if (host.IsRunning) throw new InvalidOperationException("서버 중지 검증이 실패했습니다.");
+                if (host.IsRunning || !File.ReadAllText(host.LogPath).Contains("server started") || !File.ReadAllText(host.LogPath).Contains("server stopped"))
+                    throw new InvalidOperationException("서버 중지·로그 복구 검증이 실패했습니다.");
             }
         }
         finally
