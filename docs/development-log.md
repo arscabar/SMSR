@@ -505,3 +505,27 @@
   - 트레이 메뉴·창 숨김 동작은 실제 Windows 셸에서 한 번 수동 확인이 필요하다.
 - 다음 조치:
   - DPAPI 토큰을 평문 저장 없이 Codex에 자동 연결하려면 별도 로컬 stdio 브리지 설계가 필요하다.
+
+## 2026-08-28 - 커스텀 상단 바와 상태 표기 보완
+
+- 변경 파일:
+  - `src/SMSR.App/Views/MainWindow.xaml`
+  - `src/SMSR.App/Views/MainWindow.xaml.cs`
+  - `src/SMSR.App/Views/WorkflowPanel.xaml`
+  - `src/SMSR.App/Views/WorkflowHistoryPanel.xaml`
+  - `src/SMSR.App/Views/WorkflowHistoryPanel.xaml.cs`
+  - `src/SMSR.App/Views/ServerPanel.xaml`
+  - `src/SMSR.App/ViewModels/ServerControlViewModel.cs`
+  - `src/SMSR.App/Themes/Controls.xaml`
+  - `docs/development-log.md`
+- 변경 사유:
+  - Windows 기본 제목 표시줄을 제거하고 최소화·트레이 닫기·완전 종료를 담은 커스텀 상단 바로 바꿨다. 긴 워크플로우 화면은 이벤트·요약 탭으로 분리하고, 서버 자동 시작 상태를 명확한 실행/중지 문구로 표시한다.
+- 실행 명령:
+  - `dotnet build SMSR.slnx --no-restore --verbosity:minimal -p:OutputPath=<임시 경로>`
+  - `dotnet run --project src/SMSR.App/SMSR.App.csproj --no-build -- --self-test -p:OutputPath=<임시 경로>`
+- 검증 결과:
+  - 임시 출력 빌드 통과(경고 0, 오류 0). 이미 실행 중인 앱이 `49783`을 점유해 self-check의 별도 서버 시작은 실행하지 못했다.
+- 남은 위험:
+  - 현재 실행 중인 이전 버전을 완전 종료한 뒤, 새 상단 바와 탭 분리 화면을 수동 확인해야 한다.
+- 다음 조치:
+  - 앱 종료 후 self-check를 다시 실행한다.

@@ -8,7 +8,7 @@ public sealed class ServerControlViewModel : ViewModelBase
 {
     private readonly LocalServerHost _host;
     private readonly IPlatformActions _platform;
-    private string _statusMessage = "서버를 시작하세요.";
+    private string _statusMessage = "서버 상태를 확인 중입니다.";
 
     public ServerControlViewModel(LocalServerHost host, IPlatformActions platform)
     {
@@ -24,7 +24,7 @@ public sealed class ServerControlViewModel : ViewModelBase
     public ICommand StartCommand { get; }
     public ICommand StopCommand { get; }
     public ICommand CopyTokenCommand { get; }
-    public string ServerStatus => _host.IsRunning ? "SMSR 로컬 서버 실행 중" : "SMSR 로컬 서버 중지됨";
+    public string ServerStatus => _host.IsRunning ? "● 서버 실행 중" : "● 서버 중지됨";
     public string ServerAddress => _host.Address;
     public string McpEndpoint => _host.IsRunning ? $"{ServerAddress}/mcp" : "-";
     public string StatusMessage { get => _statusMessage; private set => SetField(ref _statusMessage, value); }
@@ -45,6 +45,7 @@ public sealed class ServerControlViewModel : ViewModelBase
 
     private void UpdateState()
     {
+        StatusMessage = _host.IsRunning ? "MCP 연결을 받을 준비가 되었습니다." : "서버가 중지되었습니다. 시작 버튼으로 다시 실행할 수 있습니다.";
         OnPropertyChanged(nameof(ServerStatus));
         OnPropertyChanged(nameof(ServerAddress));
         OnPropertyChanged(nameof(McpEndpoint));

@@ -4,7 +4,7 @@
     <Border Padding="18" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10">
         <StackPanel>
             <TextBlock FontSize="16" FontWeight="SemiBold" Text="로컬 서버" />
-            <TextBlock Margin="0,4,0,0" Foreground="{StaticResource MutedTextBrush}" Text="{Binding ServerStatus}" />
+            <TextBlock Margin="0,6,0,0" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" Text="{Binding ServerStatus}" />
             <TextBlock Margin="0,16,0,0" Foreground="{StaticResource MutedTextBrush}" Text="서버 주소" />
             <TextBlock Margin="0,4,0,0" FontFamily="Consolas" Text="{Binding ServerAddress}" />
             <TextBlock Margin="0,12,0,0" Foreground="{StaticResource MutedTextBrush}" Text="MCP endpoint" />
