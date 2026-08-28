@@ -14,6 +14,7 @@ public sealed class LocalServerHost(string? dataPath = null) : IAsyncDisposable
     public string Address => _server?.Address ?? "";
     public string Token => _server?.Token ?? "";
     public string LogPath => _log.Path;
+    public string DataPath => _dataPath;
 
     public async Task StartAsync()
     {

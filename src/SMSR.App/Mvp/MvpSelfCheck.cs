@@ -73,6 +73,10 @@ public static class MvpSelfCheck
                 var initialEvent = await streamReader.ReadLineAsync();
                 var initialData = await streamReader.ReadLineAsync();
                 await streamReader.ReadLineAsync();
+                var forwarded = await new McpHttpGateway(server.Address, server.Token).CallAsync("record_lifecycle", new
+                {
+                    sessionId = "stdio-check", cwd = "D:/workspace/SMSR", eventName = "STDIO_CHECK", turnId = "turn-1"
+                });
                 using var recordEvent = new HttpRequestMessage(HttpMethod.Post, $"{server.Address}/mcp")
                 {
                     Content = new StringContent("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"record_event\",\"arguments\":{\"eventId\":\"evt-mcp-1\",\"projectId\":\"demo\",\"workflowId\":\"wf-1\",\"nodeId\":\"mcp-node\",\"agentId\":\"agent-1\",\"eventType\":\"NODE_STATUS_CHANGED\",\"status\":\"IN_PROGRESS\"},\"_meta\":{\"io.modelcontextprotocol/protocolVersion\":\"2026-07-28\",\"io.modelcontextprotocol/clientInfo\":{\"name\":\"self-test\",\"version\":\"1.0\"},\"io.modelcontextprotocol/clientCapabilities\":{}}}}", Encoding.UTF8, "application/json")
@@ -113,7 +117,7 @@ public static class MvpSelfCheck
                 using var sseTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
                 var changedEvent = await streamReader.ReadLineAsync(sseTimeout.Token);
                 if (!recordResponse.IsSuccessStatusCode) throw new InvalidOperationException($"MCP record_event 호출 실패: {recordJson}");
-                if (denied.StatusCode != HttpStatusCode.Unauthorized || !stateResponse.IsSuccessStatusCode || !dashboardResponse.IsSuccessStatusCode || !streamResponse.IsSuccessStatusCode || initialEvent != "event: state" || initialData != "data: changed" || changedEvent != "event: state" || !recordResponse.IsSuccessStatusCode || !planResponse.IsSuccessStatusCode || !lifecycleResponse.IsSuccessStatusCode || !recordJson.Contains("evt-mcp-1") || !planJson.Contains("nodeCount") || !lifecycleJson.Contains("session-1") || !recordedState.Contains("mcp-node") || !recordedPlan.Contains("MCP 계획 노드") || !lifecycleState.Contains("_codex_session") || !recordedDashboard.Contains("계획 그래프") || !recordedDashboard.Contains("MCP 계획 노드"))
+                if (denied.StatusCode != HttpStatusCode.Unauthorized || !stateResponse.IsSuccessStatusCode || !dashboardResponse.IsSuccessStatusCode || !streamResponse.IsSuccessStatusCode || initialEvent != "event: state" || initialData != "data: changed" || changedEvent != "event: state" || !recordResponse.IsSuccessStatusCode || !planResponse.IsSuccessStatusCode || !lifecycleResponse.IsSuccessStatusCode || !forwarded.Contains("stdio-check") || !recordJson.Contains("evt-mcp-1") || !planJson.Contains("nodeCount") || !lifecycleJson.Contains("session-1") || !recordedState.Contains("mcp-node") || !recordedPlan.Contains("MCP 계획 노드") || !lifecycleState.Contains("_codex_session") || !recordedDashboard.Contains("계획 그래프") || !recordedDashboard.Contains("MCP 계획 노드"))
                     throw new InvalidOperationException("로컬 서버 검증이 실패했습니다.");
             }
             await using (var host = new LocalServerHost(serverPath))
@@ -122,6 +126,12 @@ public static class MvpSelfCheck
                 var platform = new TestPlatformActions();
                 var viewModel = new MainWindowViewModel(host, platform);
                 await viewModel.LoadAsync();
+                await host.StopAsync();
+                await host.StartAsync();
+                viewModel = new MainWindowViewModel(host, platform);
+                await viewModel.LoadAsync();
+                if (viewModel.Workspace.Selection.ProjectId != "demo" || viewModel.Workspace.Selection.WorkflowId != "wf-1" || viewModel.Workspace.Monitor.Nodes.Count == 0)
+                    throw new InvalidOperationException("재시작 후 저장된 작업 진행도 복원이 실패했습니다.");
                 viewModel.Workspace.Selection.ProjectId = "demo";
                 await viewModel.Workspace.Selection.LoadAsync();
                 viewModel.Workspace.Selection.WorkflowId = "wf-1";

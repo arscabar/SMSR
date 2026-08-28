@@ -37,7 +37,15 @@ public sealed class WorkflowWorkspaceViewModel : ViewModelBase
     public ICommand OpenDashboardCommand { get; }
     public string StatusMessage { get => _statusMessage; private set => SetField(ref _statusMessage, value); }
 
-    public Task LoadAsync() => RefreshSelectionAsync();
+    public async Task LoadAsync()
+    {
+        await RefreshSelectionAsync();
+        if (HasWorkflowSelection())
+        {
+            await RefreshMonitorAsync();
+            StatusMessage = "저장된 작업 진행도를 복원했습니다.";
+        }
+    }
 
     private bool HasWorkflowSelection() => _host.IsRunning && !string.IsNullOrWhiteSpace(Selection.ProjectId) && !string.IsNullOrWhiteSpace(Selection.WorkflowId);
 

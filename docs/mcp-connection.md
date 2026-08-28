@@ -65,16 +65,19 @@ Invoke-WebRequest -Method Post -Uri $smsrEndpoint -Headers $smsrHeaders -Content
 
 ## Codex 연결
 
-SMSR 앱을 실행한 뒤 토큰을 현재 PowerShell 세션의 환경 변수에만 넣고 연결한다. 토큰을 저장소나 플러그인 파일에 쓰지 않는다.
+SMSR의 `서버 · 연결` 탭에서 `초기 연결`을 누른다. 앱은 현재 고정 실행 파일 경로로 아래와 같은 stdio MCP 등록을 한 번 수행하고, 배포 폴더에 포함한 로컬 플러그인 마켓플레이스도 등록한다.
 
 ```powershell
-$env:SMSR_MCP_TOKEN = '<앱에서 복사한 토큰>'
-codex mcp add smsr --url http://127.0.0.1:49783/mcp --bearer-token-env-var SMSR_MCP_TOKEN
-codex plugin marketplace add D:\Gitsource\개인\SMSR
-codex plugin add smsr-codex@personal
+codex mcp add smsr -- <SMSR.App.exe의 고정 경로> --mcp-stdio
 ```
 
-`.agents/plugins/marketplace.json`은 저장소의 로컬 플러그인 마켓플레이스이며 `plugins/smsr-codex`을 가리킨다. 설치 후 새 Codex task에서 `/hooks`로 훅을 검토·신뢰한다.
+stdio 브리지는 토큰을 Codex 설정·환경 변수·플러그인 파일에 저장하지 않는다. 실행될 때만 현재 Windows 사용자의 DPAPI 토큰을 읽어 `http://127.0.0.1:49783/mcp`로 전달한다. 따라서 SQLite를 직접 쓰지 않고 기존 서버의 SSE 알림도 유지한다.
+
+등록 뒤 Codex를 재시작하고 새 task에서 `/hooks`로 SMSR 훅을 검토·신뢰한다. 이 승인은 사용자만 할 수 있다. 신뢰 후 앱에서 `확인했고 계속`을 누르면 MCP·플러그인 등록 상태를 다시 확인한다. 실제 첫 이벤트가 수신되면 작업 현황과 웹 대시보드가 갱신된다.
+
+앱을 완전 종료했다가 다시 열어도 SQLite 데이터와 마지막으로 선택한 프로젝트·워크플로우 ID는 `%LocalAppData%\SMSR`에 유지된다. 시작 후 서버를 다시 열고 저장된 진행도·최근 이벤트를 자동 복원한다.
+
+이미 이름이 `smsr`인 MCP가 존재하면 앱은 덮어쓰지 않는다. 기존 설정을 사용자가 검토하거나 제거한 뒤 다시 초기 연결을 실행한다.
 
 `plugins/smsr-codex`은 Codex용 훅·추적 지침 패키지다. 세션 시작 시 계획 기록에 사용할 `projectId`와 `workflowId`를 알려 주고, 사용자 요청 접수와 턴 종료만 자동 기록한다. 실제 계획 노드의 진행률은 Codex가 `save_plan`과 `record_event`로 갱신한다.
 
@@ -82,4 +85,4 @@ codex plugin add smsr-codex@personal
 
 - 실제 대화에서 `save_plan` 후 `record_event`를 한 번 호출하고, 앱의 대시보드에서 제목·의존성·상태를 확인한다.
 - 포트 충돌은 `Get-NetTCPConnection -LocalPort 49783`으로 확인한다. 충돌 프로세스를 종료한 뒤 앱을 다시 시작한다.
-- 토큰이 설정되지 않았거나 서버가 중지된 경우 훅은 Codex 작업을 막지 않으며, SMSR 기록만 생략된다.
+- 서버가 중지된 경우 stdio 브리지는 `SMSR 로컬 서버가 실행 중이 아닙니다.`를 반환하며 Codex 설정은 바꾸지 않는다.

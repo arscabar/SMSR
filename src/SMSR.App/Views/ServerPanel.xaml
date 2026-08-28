@@ -15,6 +15,14 @@
                 <Button Margin="8,0,0,0" Style="{StaticResource IconButton}" Command="{Binding CopyTokenCommand}" Content="⧉" ToolTip="접속 토큰 복사" />
             </StackPanel>
             <TextBlock Margin="0,12,0,0" Foreground="{StaticResource MutedTextBrush}" Text="{Binding StatusMessage}" TextWrapping="Wrap" />
+            <Separator Margin="0,18,0,14" />
+            <TextBlock FontSize="16" FontWeight="SemiBold" Text="Codex 초기 연결" />
+            <TextBlock Margin="0,6,0,0" Foreground="{StaticResource MutedTextBrush}" Text="초기 1회 등록 후 Codex를 재시작하고 /hooks에서 SMSR 훅을 직접 신뢰하세요." TextWrapping="Wrap" />
+            <StackPanel Margin="0,12,0,0" Orientation="Horizontal">
+                <Button Command="{Binding SetupConnectionCommand}" Content="초기 연결" />
+                <Button Margin="8,0,0,0" Style="{StaticResource QuietButton}" Command="{Binding ConfirmConnectionCommand}" Content="확인했고 계속" />
+            </StackPanel>
+            <TextBlock Margin="0,12,0,0" Foreground="{StaticResource MutedTextBrush}" Text="{Binding CodexStatus}" TextWrapping="Wrap" />
         </StackPanel>
     </Border>
 </UserControl>

@@ -23,6 +23,12 @@ public partial class App : WpfApplication
             Shutdown();
             return;
         }
+        if (e.Args.Contains("--mcp-stdio"))
+        {
+            await StdioMcpHost.RunAsync();
+            Shutdown();
+            return;
+        }
 
         try
         {

@@ -5,7 +5,7 @@ namespace SMSR.App.Infrastructure;
 
 public sealed class TrayStatusIcon : IDisposable
 {
-    private readonly NotifyIcon _icon = new() { Icon = SystemIcons.Information, Text = "Show Me Status Report", Visible = true };
+    private readonly NotifyIcon _icon = new() { Icon = AppIcon(), Text = "Show Me Status Report", Visible = true };
 
     public TrayStatusIcon(Action showWindow, Action exitApplication)
     {
@@ -17,4 +17,10 @@ public sealed class TrayStatusIcon : IDisposable
     }
 
     public void Dispose() => _icon.Dispose();
+
+    private static Icon AppIcon()
+    {
+        try { return Icon.ExtractAssociatedIcon(Environment.ProcessPath ?? "") ?? SystemIcons.Information; }
+        catch { return SystemIcons.Information; }
+    }
 }

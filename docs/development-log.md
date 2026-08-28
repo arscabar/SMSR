@@ -548,3 +548,58 @@
   - 아이콘 글리프의 Windows 글꼴 표시를 새 빌드 실행 화면에서 확인해야 한다.
 - 다음 조치:
   - 새 빌드로 화면과 툴팁을 확인한다.
+
+## 2026-08-28 - Codex 초기 연결과 DPAPI stdio 브리지
+
+- 변경 파일:
+  - `src/SMSR.App/Mvp/McpHttpGateway.cs`
+  - `src/SMSR.App/Mvp/StdioMcpHost.cs`
+  - `src/SMSR.App/Mvp/StdioWorkflowTools.cs`
+  - `src/SMSR.App/Mvp/StdioPlanTools.cs`
+  - `src/SMSR.App/Services/CodexConnectionService.cs`
+  - `src/SMSR.App/ViewModels/ServerControlViewModel.cs`
+  - `src/SMSR.App/Views/ServerPanel.xaml`
+  - `src/SMSR.App/App.xaml.cs`
+  - `src/SMSR.App/SMSR.App.csproj`
+  - `src/SMSR.App/Mvp/MvpSelfCheck.cs`
+  - `README.md`, `docs/mcp-connection.md`, `docs/development-log.md`
+- 변경 사유:
+  - 토큰 평문 저장 없이 앱의 초기 연결 버튼으로 Codex stdio MCP와 플러그인을 1회 등록하고, 기존 HTTP 서버를 통해 SSE 갱신을 유지한다.
+- 실행 명령:
+  - `dotnet build SMSR.slnx --no-restore --verbosity:minimal -p:OutputPath=<임시 경로>`
+  - `<임시 경로>\\SMSR.App.exe --self-test`
+  - `<임시 경로>\\SMSR.App.exe --mcp-stdio` JSON-RPC initialize·tools/list 점검
+  - `git diff --check`
+- 검증 결과:
+  - 임시 출력 빌드가 경고 0, 오류 0으로 통과했다.
+  - self-check가 stdio 브리지의 HTTP 전달, SQLite 기록, SSE 변경 알림을 확인했다.
+  - stdio MCP가 `record_event`, `save_plan`, `record_lifecycle`을 포함한 8개 도구를 노출했다.
+- 남은 위험:
+  - 훅 신뢰는 Codex 보안 정책상 사용자가 `/hooks`에서 직접 승인해야 한다.
+  - 이미 다른 `smsr` MCP가 등록된 환경에서는 사용자 검토 후 교체해야 한다.
+- 다음 조치:
+  - 앱에서 초기 연결을 실행하고 Codex 재시작·훅 신뢰 후 실제 task 이벤트 수신을 수동 확인한다.
+
+## 2026-08-28 - 재진입 진행도 복원과 앱 아이콘
+
+- 변경 파일:
+  - `src/SMSR.App/Services/LocalServerHost.cs`
+  - `src/SMSR.App/ViewModels/WorkflowSelectionViewModel.cs`
+  - `src/SMSR.App/ViewModels/WorkflowWorkspaceViewModel.cs`
+  - `src/SMSR.App/Mvp/MvpSelfCheck.cs`
+  - `src/SMSR.App/Assets/SMSR.png`, `src/SMSR.App/Assets/SMSR.ico`
+  - `src/SMSR.App/SMSR.App.csproj`
+  - `src/SMSR.App/Views/MainWindow.xaml`
+  - `src/SMSR.App/Infrastructure/TrayStatusIcon.cs`
+  - `README.md`, `docs/mcp-connection.md`, `docs/development-log.md`
+- 변경 사유:
+  - 작업 도중 앱을 닫고 다시 열어도 마지막 선택과 SQLite 진행도를 복원하며, 창·트레이·실행 파일에 통일된 SMSR 아이콘을 적용한다.
+- 실행 명령:
+  - `dotnet build SMSR.slnx --no-restore --verbosity:minimal -p:OutputPath=<임시 경로>`
+  - `<임시 경로>\\SMSR.App.exe --self-test`
+- 검증 결과:
+  - self-check가 서버 재시작 뒤 `demo/wf-1` 선택과 저장된 노드 상태 복원을 확인했다.
+- 남은 위험:
+  - 새 아이콘의 작업 표시줄·탐색기 표시 캐시는 Windows 셸이 갱신되기 전까지 이전 아이콘을 보일 수 있다.
+- 다음 조치:
+  - 새 빌드 실행 후 창·트레이·작업 표시줄 아이콘을 수동 확인한다.

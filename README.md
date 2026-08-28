@@ -12,19 +12,14 @@ dotnet run --project src/SMSR.App/SMSR.App.csproj
 
 ## Codex 연결
 
-1. SMSR 앱을 실행하고 `접속 토큰 복사`를 누른다.
-2. 토큰을 현재 PowerShell 세션에만 설정한 뒤 MCP 서버를 등록한다.
-3. 저장소의 로컬 마켓플레이스에서 `smsr-codex` 플러그인을 설치한다.
-4. 새 Codex task에서 훅을 신뢰하고, 계획 생성·노드 상태 변경을 실행한다.
+1. 앱의 `서버 · 연결` 탭에서 `초기 연결`을 누른다.
+2. 앱이 고정 실행 파일 경로의 stdio MCP와 `smsr-codex` 플러그인을 한 번 등록한다.
+3. Codex를 재시작하고 `/hooks`에서 SMSR 훅을 검토·신뢰한다.
+4. 앱에서 `확인했고 계속`을 누르고 새 Codex task를 시작한다.
 
-```powershell
-$env:SMSR_MCP_TOKEN = '<앱에서 복사한 토큰>'
-codex mcp add smsr --url http://127.0.0.1:49783/mcp --bearer-token-env-var SMSR_MCP_TOKEN
-codex plugin marketplace add D:\Gitsource\개인\SMSR
-codex plugin add smsr-codex@personal
-```
+MCP 등록에는 토큰이 저장되지 않습니다. Codex가 stdio 브리지를 실행하면 브리지는 현재 Windows 사용자의 DPAPI 토큰으로 `127.0.0.1` 서버에만 전달합니다. 플러그인 훅은 사용자 요청과 턴 종료만 기록하며, 계획 진행률은 Codex가 `save_plan`과 `record_event`를 호출할 때만 바뀝니다.
 
-토큰은 DPAPI로 보관되며, 저장소·플러그인·로그에는 기록하지 않습니다. 플러그인 훅은 사용자 요청과 턴 종료만 기록합니다. 계획 진행률은 Codex가 `save_plan`과 `record_event`를 호출할 때만 바뀝니다.
+앱을 완전 종료했다가 다시 열어도 SQLite의 계획·이벤트는 유지됩니다. 마지막으로 보던 프로젝트·워크플로우를 복원하고 저장된 진행도와 최근 이벤트를 자동으로 표시합니다.
 
 포트 `49783`을 이미 사용하는지 확인하려면 `Get-NetTCPConnection -LocalPort 49783`을 실행합니다. 충돌한 프로세스를 종료한 뒤 SMSR을 다시 시작해야 하며, MCP 등록 주소와 같은 포트로 변경해야 합니다.
 
