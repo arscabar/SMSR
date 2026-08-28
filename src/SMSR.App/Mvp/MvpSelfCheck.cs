@@ -2,7 +2,6 @@ using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Text;
-using Microsoft.AspNetCore.Http;
 using SMSR.App.Infrastructure;
 using SMSR.App.Services;
 using SMSR.App.ViewModels;
@@ -18,6 +17,7 @@ public static class MvpSelfCheck
         var logPath = Path.Combine(Path.GetTempPath(), $"smsr-log-{Guid.NewGuid():N}");
         try
         {
+            CodexMcpConfigSelfCheck.Run();
             var activityLog = new LocalActivityLog(logPath);
             Directory.CreateDirectory(logPath);
             await File.WriteAllTextAsync(activityLog.Path, new string('x', 1_000_000));
@@ -33,12 +33,13 @@ public static class MvpSelfCheck
             await otherWorkflowChanged;
             var store = new EventStore(path);
             await store.InitializeAsync();
-            var first = new RecordEventRequest("evt-1", "demo", "wf-1", "node-1", "agent-1", "NODE_STATUS_CHANGED", "IN_PROGRESS", "시작", null, null, null);
+            var first = new RecordEventRequest("evt-1", "demo", "wf-1", "node-1", "agent-1", "NODE_STATUS_CHANGED", "IN_PROGRESS", "시작", null, null, ["result.txt"], "implementer", 25, 1, "검증");
             if (!await store.RecordAsync(first) || await store.RecordAsync(first)) throw new InvalidOperationException("event_id 중복 처리가 실패했습니다.");
             var done = first with { EventId = "evt-2", Status = "SUCCESS", Summary = "완료" };
             if (!await store.RecordAsync(done)) throw new InvalidOperationException("상태 기록이 실패했습니다.");
             var state = await store.GetStateAsync("demo", "wf-1");
-            if (state.Nodes.Count != 1 || state.Nodes[0].Status != "SUCCESS") throw new InvalidOperationException("최신 상태 계산이 실패했습니다.");
+            if (state.Nodes.Count != 1 || state.Nodes[0].Status != "SUCCESS" || state.Nodes[0].AgentRole != "implementer" || state.Nodes[0].RetryCount != 1 || state.Agents?.Count != 1)
+                throw new InvalidOperationException("확장 상태와 에이전트 계산이 실패했습니다.");
             var recent = await store.GetRecentEventsAsync("demo", "wf-1");
             if (recent.Count != 2 || recent[0].Status != "SUCCESS") throw new InvalidOperationException("최근 이벤트 조회가 실패했습니다.");
             if ((await store.GetLatestEventAsync("demo", "wf-1"))?.EventId != "evt-2") throw new InvalidOperationException("최신 이벤트 조회가 실패했습니다.");
@@ -57,15 +58,17 @@ public static class MvpSelfCheck
                 throw new InvalidOperationException("입력 크기 검증이 실패했습니다.");
             if (PlanValidation.Validate("demo", "wf-1", [new("node-a", "A", 1, ["node-a"])]) is null)
                 throw new InvalidOperationException("계획 의존성 검증이 실패했습니다.");
-            var page = DashboardPage.Render(new WorkflowState("demo", "wf-1", [new StateNode("node-1", "agent-1", "SUCCESS", "<script>", null, DateTimeOffset.UtcNow)]), [new RecentEvent("node-1", "agent-1", "SUCCESS", "<script>", null, DateTimeOffset.UtcNow)]);
-            if (page.Contains("<script>") || !page.Contains("&lt;script&gt;")) throw new InvalidOperationException("대시보드 이스케이프가 실패했습니다.");
-            var request = new DefaultHttpContext().Request;
-            request.Headers.Authorization = "Bearer token";
-            if (!LocalServer.IsAuthorized(request, "token") || LocalServer.IsAuthorized(request, "other")) throw new InvalidOperationException("토큰 검증이 실패했습니다.");
-            await using (var server = await LocalServer.StartAsync(serverPath))
+            await store.SavePlanAsync("demo", "wf-1", [new("group", "구현", 1, null, null, "agent-1", "coordinator", "하위 작업 완료"), new("node-1", "코드 변경", 1, null, "group", "agent-1", "implementer", "검증 통과")]);
+            var hierarchicalPlan = await store.GetPlanAsync("demo", "wf-1");
+            if (hierarchicalPlan.Nodes.Single(node => node.NodeId == "node-1").ParentNodeId != "group") throw new InvalidOperationException("계층 계획 저장이 실패했습니다.");
+            var page = DashboardPage.Render(state with { Nodes = [state.Nodes[0] with { Summary = "<script>" }] }, hierarchicalPlan, [new RecentEvent("node-1", "agent-1", "SUCCESS", "<script>", null, DateTimeOffset.UtcNow)], null, "group", "node-1");
+            if (page.Contains("<script>") || !page.Contains("&lt;script&gt;") || !page.Contains("breadcrumb") || !page.Contains("검증 통과"))
+                throw new InvalidOperationException("계층 대시보드와 이스케이프 검증이 실패했습니다.");
+            await using (var server = await LocalServer.StartAsync(serverPath, 0))
             using (var client = new HttpClient())
             {
                 var denied = await client.GetAsync($"{server.Address}/mcp");
+                var oauthToken = await OAuthSelfCheck.RunAsync(server.Address);
                 var stateResponse = await client.GetAsync($"{server.Address}/api/state?projectId=demo&workflowId=wf-1");
                 var dashboardResponse = await client.GetAsync($"{server.Address}/dashboard?projectId=demo&workflowId=wf-1");
                 using var streamResponse = await client.GetAsync($"{server.Address}/api/events/stream?projectId=demo&workflowId=wf-1", HttpCompletionOption.ResponseHeadersRead);
@@ -73,15 +76,11 @@ public static class MvpSelfCheck
                 var initialEvent = await streamReader.ReadLineAsync();
                 var initialData = await streamReader.ReadLineAsync();
                 await streamReader.ReadLineAsync();
-                var forwarded = await new McpHttpGateway(server.Address, server.Token).CallAsync("record_lifecycle", new
-                {
-                    sessionId = "stdio-check", cwd = "D:/workspace/SMSR", eventName = "STDIO_CHECK", turnId = "turn-1"
-                });
                 using var recordEvent = new HttpRequestMessage(HttpMethod.Post, $"{server.Address}/mcp")
                 {
-                    Content = new StringContent("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"record_event\",\"arguments\":{\"eventId\":\"evt-mcp-1\",\"projectId\":\"demo\",\"workflowId\":\"wf-1\",\"nodeId\":\"mcp-node\",\"agentId\":\"agent-1\",\"eventType\":\"NODE_STATUS_CHANGED\",\"status\":\"IN_PROGRESS\"},\"_meta\":{\"io.modelcontextprotocol/protocolVersion\":\"2026-07-28\",\"io.modelcontextprotocol/clientInfo\":{\"name\":\"self-test\",\"version\":\"1.0\"},\"io.modelcontextprotocol/clientCapabilities\":{}}}}", Encoding.UTF8, "application/json")
+                    Content = new StringContent("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"record_event\",\"arguments\":{\"eventId\":\"evt-mcp-1\",\"projectId\":\"demo\",\"workflowId\":\"wf-1\",\"nodeId\":\"mcp-node\",\"agentId\":\"agent-1\",\"agentRole\":\"implementer\",\"eventType\":\"NODE_STATUS_CHANGED\",\"status\":\"IN_PROGRESS\",\"progressPercentage\":40,\"retryCount\":2,\"artifacts\":[\"build.log\"]},\"_meta\":{\"io.modelcontextprotocol/protocolVersion\":\"2026-07-28\",\"io.modelcontextprotocol/clientInfo\":{\"name\":\"self-test\",\"version\":\"1.0\"},\"io.modelcontextprotocol/clientCapabilities\":{}}}}", Encoding.UTF8, "application/json")
                 };
-                recordEvent.Headers.Authorization = new("Bearer", server.Token);
+                recordEvent.Headers.Authorization = new("Bearer", oauthToken);
                 recordEvent.Headers.Accept.ParseAdd("application/json, text/event-stream");
                 recordEvent.Headers.Add("MCP-Protocol-Version", "2026-07-28");
                 recordEvent.Headers.Add("MCP-Method", "tools/call");
@@ -90,9 +89,9 @@ public static class MvpSelfCheck
                 var recordJson = await recordResponse.Content.ReadAsStringAsync();
                 using var savePlan = new HttpRequestMessage(HttpMethod.Post, $"{server.Address}/mcp")
                 {
-                    Content = new StringContent("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"save_plan\",\"arguments\":{\"projectId\":\"demo\",\"workflowId\":\"wf-1\",\"nodes\":[{\"nodeId\":\"mcp-node\",\"title\":\"MCP 계획 노드\",\"weight\":2},{\"nodeId\":\"mcp-final\",\"title\":\"완료 노드\",\"dependsOn\":[\"mcp-node\"]}]},\"_meta\":{\"io.modelcontextprotocol/protocolVersion\":\"2026-07-28\",\"io.modelcontextprotocol/clientInfo\":{\"name\":\"self-test\",\"version\":\"1.0\"},\"io.modelcontextprotocol/clientCapabilities\":{}}}}", Encoding.UTF8, "application/json")
+                    Content = new StringContent("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"save_plan\",\"arguments\":{\"projectId\":\"demo\",\"workflowId\":\"wf-1\",\"nodes\":[{\"nodeId\":\"mcp-node\",\"title\":\"MCP 계획 노드\",\"weight\":2,\"assignedAgentId\":\"agent-1\",\"agentRole\":\"coordinator\"},{\"nodeId\":\"mcp-final\",\"title\":\"완료 노드\",\"parentNodeId\":\"mcp-node\",\"completionCriteria\":\"테스트 통과\"}]},\"_meta\":{\"io.modelcontextprotocol/protocolVersion\":\"2026-07-28\",\"io.modelcontextprotocol/clientInfo\":{\"name\":\"self-test\",\"version\":\"1.0\"},\"io.modelcontextprotocol/clientCapabilities\":{}}}}", Encoding.UTF8, "application/json")
                 };
-                savePlan.Headers.Authorization = new("Bearer", server.Token);
+                savePlan.Headers.Authorization = new("Bearer", oauthToken);
                 savePlan.Headers.Accept.ParseAdd("application/json, text/event-stream");
                 savePlan.Headers.Add("MCP-Protocol-Version", "2026-07-28");
                 savePlan.Headers.Add("MCP-Method", "tools/call");
@@ -103,7 +102,7 @@ public static class MvpSelfCheck
                 {
                     Content = new StringContent("{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"record_lifecycle\",\"arguments\":{\"sessionId\":\"session-1\",\"cwd\":\"D:/workspace/SMSR\",\"eventName\":\"USER_PROMPT\",\"turnId\":\"turn-1\"},\"_meta\":{\"io.modelcontextprotocol/protocolVersion\":\"2026-07-28\",\"io.modelcontextprotocol/clientInfo\":{\"name\":\"self-test\",\"version\":\"1.0\"},\"io.modelcontextprotocol/clientCapabilities\":{}}}}", Encoding.UTF8, "application/json")
                 };
-                lifecycle.Headers.Authorization = new("Bearer", server.Token);
+                lifecycle.Headers.Authorization = new("Bearer", oauthToken);
                 lifecycle.Headers.Accept.ParseAdd("application/json, text/event-stream");
                 lifecycle.Headers.Add("MCP-Protocol-Version", "2026-07-28");
                 lifecycle.Headers.Add("MCP-Method", "tools/call");
@@ -117,18 +116,30 @@ public static class MvpSelfCheck
                 using var sseTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
                 var changedEvent = await streamReader.ReadLineAsync(sseTimeout.Token);
                 if (!recordResponse.IsSuccessStatusCode) throw new InvalidOperationException($"MCP record_event 호출 실패: {recordJson}");
-                if (denied.StatusCode != HttpStatusCode.Unauthorized || !stateResponse.IsSuccessStatusCode || !dashboardResponse.IsSuccessStatusCode || !streamResponse.IsSuccessStatusCode || initialEvent != "event: state" || initialData != "data: changed" || changedEvent != "event: state" || !recordResponse.IsSuccessStatusCode || !planResponse.IsSuccessStatusCode || !lifecycleResponse.IsSuccessStatusCode || !forwarded.Contains("stdio-check") || !recordJson.Contains("evt-mcp-1") || !planJson.Contains("nodeCount") || !lifecycleJson.Contains("session-1") || !recordedState.Contains("mcp-node") || !recordedPlan.Contains("MCP 계획 노드") || !lifecycleState.Contains("_codex_session") || !recordedDashboard.Contains("계획 그래프") || !recordedDashboard.Contains("MCP 계획 노드"))
+                if (denied.StatusCode != HttpStatusCode.Unauthorized || !stateResponse.IsSuccessStatusCode || !dashboardResponse.IsSuccessStatusCode || !streamResponse.IsSuccessStatusCode || initialEvent != "event: state" || initialData != "data: changed" || changedEvent != "event: state" || !recordResponse.IsSuccessStatusCode || !planResponse.IsSuccessStatusCode || !lifecycleResponse.IsSuccessStatusCode || !recordJson.Contains("evt-mcp-1") || !planJson.Contains("nodeCount") || !lifecycleJson.Contains("session-1") || !recordedState.Contains("mcp-node") || !recordedState.Contains("implementer") || !recordedPlan.Contains("MCP 계획 노드") || !recordedPlan.Contains("parentNodeId") || !lifecycleState.Contains("codex-main") || !recordedDashboard.Contains("계층형 작업 흐름") || !recordedDashboard.Contains("id=\"agents\"") || !recordedDashboard.Contains("flow-svg") || !recordedDashboard.Contains("MCP 계획 노드"))
                     throw new InvalidOperationException("로컬 서버 검증이 실패했습니다.");
             }
-            await using (var host = new LocalServerHost(serverPath))
+            var settings = new AppSettingsService(serverPath);
+            await using (var host = new LocalServerHost(serverPath, 0, () => settings.Current.DashboardTheme))
             {
                 await host.StartAsync();
                 var platform = new TestPlatformActions();
-                var viewModel = new MainWindowViewModel(host, platform);
+                var viewModel = new MainWindowViewModel(host, platform, settings);
                 await viewModel.LoadAsync();
+                if (!host.IsCodexAuthorized || !viewModel.Server.IsCodexConnected || viewModel.Server.NeedsCodexSetup)
+                    throw new InvalidOperationException("Codex 연결 완료 UI 상태 복원이 실패했습니다.");
+                viewModel.Settings.StartServerAutomatically = false;
+                viewModel.Settings.MinimizeToTray = false;
+                viewModel.Settings.DashboardTheme = DashboardThemes.Light;
+                var savedSettings = new AppSettingsService(serverPath).Current;
+                if (savedSettings.StartServerAutomatically || savedSettings.MinimizeToTray || savedSettings.DashboardTheme != DashboardThemes.Light)
+                    throw new InvalidOperationException("사용자 설정 저장 검증이 실패했습니다.");
+                viewModel.Workspace.Selection.ProjectId = "demo";
+                await viewModel.Workspace.Selection.LoadAsync();
+                viewModel.Workspace.Selection.WorkflowId = "wf-1";
                 await host.StopAsync();
                 await host.StartAsync();
-                viewModel = new MainWindowViewModel(host, platform);
+                viewModel = new MainWindowViewModel(host, platform, settings);
                 await viewModel.LoadAsync();
                 if (viewModel.Workspace.Selection.ProjectId != "demo" || viewModel.Workspace.Selection.WorkflowId != "wf-1" || viewModel.Workspace.Monitor.Nodes.Count == 0)
                     throw new InvalidOperationException("재시작 후 저장된 작업 진행도 복원이 실패했습니다.");
@@ -136,12 +147,14 @@ public static class MvpSelfCheck
                 await viewModel.Workspace.Selection.LoadAsync();
                 viewModel.Workspace.Selection.WorkflowId = "wf-1";
                 if (!viewModel.Workspace.OpenDashboardCommand.CanExecute(null)) throw new InvalidOperationException("대시보드 명령 활성화가 실패했습니다.");
-                viewModel.Server.CopyTokenCommand.Execute(null);
                 viewModel.Workspace.OpenDashboardCommand.Execute(null);
                 await viewModel.Workspace.Monitor.RefreshAsync("demo", "wf-1");
                 var summary = await host.GenerateSummaryAsync("demo", "wf-1");
                 var export = await host.ExportAsync("demo", "wf-1");
-                if (platform.CopiedToken != host.Token || !platform.OpenedUrl.Contains("projectId=demo") || viewModel.Workspace.Monitor.Nodes.Count == 0 || summary.Content.Length == 0 || !File.Exists(export.ZipPath) || !File.ReadAllText(Path.Combine(export.DirectoryPath, "events.jsonl")).Contains("evt-mcp-1"))
+                using var dashboardClient = new HttpClient();
+                var themedDashboard = await dashboardClient.GetStringAsync($"{host.Address}/dashboard?projectId=demo&workflowId=wf-1");
+                var exportedDashboard = File.ReadAllText(Path.Combine(export.DirectoryPath, "dashboard.html"));
+                if (!platform.OpenedUrl.Contains("projectId=demo") || viewModel.Workspace.Monitor.Nodes.Count == 0 || summary.Content.Length == 0 || !File.Exists(export.ZipPath) || !File.ReadAllText(Path.Combine(export.DirectoryPath, "events.jsonl")).Contains("evt-mcp-1") || !themedDashboard.Contains("color-scheme:light") || !exportedDashboard.Contains("color-scheme:light") || !exportedDashboard.Contains("flow-svg"))
                     throw new InvalidOperationException("WPF 서버 제어·요약·내보내기 검증이 실패했습니다.");
                 await host.StopAsync();
                 if (host.IsRunning || viewModel.Workspace.ExportCommand.CanExecute(null) || !File.ReadAllText(host.LogPath).Contains("server started") || !File.ReadAllText(host.LogPath).Contains("server stopped"))
@@ -159,9 +172,9 @@ public static class MvpSelfCheck
 
     private sealed class TestPlatformActions : IPlatformActions
     {
-        public string CopiedToken { get; private set; } = "";
         public string OpenedUrl { get; private set; } = "";
-        public bool TryCopyToClipboard(string value) { CopiedToken = value; return true; }
+        public bool TryCopyToClipboard(string value) => true;
         public bool TryOpenBrowser(string url) { OpenedUrl = url; return true; }
+        public bool TryOpenPath(string path) => Directory.Exists(path);
     }
 }

@@ -1,18 +1,23 @@
 {
   "name": "smsr-codex",
-  "version": "0.1.0",
-  "description": "Record Codex plans and node status in the local SMSR dashboard.",
+  "version": "0.1.0+codex.20260828084822",
+  "description": "Send hierarchical Codex plans, agent heartbeats, retries, and artifacts to a local SMSR dashboard.",
   "author": {
     "name": "Local developer"
   },
   "skills": "./skills/",
   "interface": {
     "displayName": "SMSR Codex Tracker",
-    "shortDescription": "Track Codex plans in the local SMSR dashboard.",
-    "longDescription": "Stores structured Codex plans and node transitions in the local SMSR dashboard.",
+    "shortDescription": "Push agent plans and heartbeat data to SMSR.",
+    "longDescription": "Each Codex agent pushes its own hierarchical plan status, role, heartbeat, retries, next action, and artifacts to the local SMSR dashboard.",
     "developerName": "Local developer",
     "category": "Productivity",
-    "capabilities": ["Instructions", "Lifecycle hooks"],
-    "defaultPrompt": "Track this Codex task with SMSR."
+    "capabilities": [
+      "Instructions",
+      "MCP tool hooks"
+    ],
+    "defaultPrompt": [
+      "Track this Codex task with SMSR."
+    ]
   }
 }

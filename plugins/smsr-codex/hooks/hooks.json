@@ -3,13 +3,19 @@
   "hooks": {
     "SessionStart": [{
       "matcher": "startup|resume|clear|compact",
-      "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-context.js\"", "timeout": 3, "statusMessage": "Preparing SMSR tracking" }]
+      "hooks": [{ "type": "mcp_tool", "server": "smsr", "tool": "record_lifecycle", "input": { "sessionId": "${session_id}", "cwd": "${cwd}", "eventName": "SESSION_STARTED", "agentId": "codex-main", "agentRole": "coordinator" }, "timeout": 3, "statusMessage": "Sending SMSR heartbeat" }]
     }],
     "UserPromptSubmit": [{
       "hooks": [{ "type": "mcp_tool", "server": "smsr", "tool": "record_lifecycle", "input": { "sessionId": "${session_id}", "cwd": "${cwd}", "eventName": "USER_PROMPT", "turnId": "${turn_id}" }, "timeout": 3 }]
     }],
     "Stop": [{
-      "hooks": [{ "type": "mcp_tool", "server": "smsr", "tool": "record_lifecycle", "input": { "sessionId": "${session_id}", "cwd": "${cwd}", "eventName": "TURN_STOPPED", "turnId": "${turn_id}" }, "timeout": 3 }]
+      "hooks": [{ "type": "mcp_tool", "server": "smsr", "tool": "record_lifecycle", "input": { "sessionId": "${session_id}", "cwd": "${cwd}", "eventName": "TURN_STOPPED", "turnId": "${turn_id}", "agentId": "codex-main", "agentRole": "coordinator" }, "timeout": 3 }]
+    }],
+    "SubagentStart": [{
+      "hooks": [{ "type": "mcp_tool", "server": "smsr", "tool": "record_lifecycle", "input": { "sessionId": "${session_id}", "cwd": "${cwd}", "eventName": "SUBAGENT_STARTED", "turnId": "${turn_id}", "agentId": "${agent_id}", "agentRole": "${agent_type}" }, "timeout": 3 }]
+    }],
+    "SubagentStop": [{
+      "hooks": [{ "type": "mcp_tool", "server": "smsr", "tool": "record_lifecycle", "input": { "sessionId": "${session_id}", "cwd": "${cwd}", "eventName": "SUBAGENT_STOPPED", "turnId": "${turn_id}", "agentId": "${agent_id}", "agentRole": "${agent_type}" }, "timeout": 3 }]
     }]
   }
 }

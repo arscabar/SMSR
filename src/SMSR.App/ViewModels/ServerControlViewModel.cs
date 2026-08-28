@@ -7,19 +7,17 @@ namespace SMSR.App.ViewModels;
 public sealed class ServerControlViewModel : ViewModelBase
 {
     private readonly LocalServerHost _host;
-    private readonly IPlatformActions _platform;
     private readonly CodexConnectionService _codex = new();
     private string _statusMessage = "서버 상태를 확인 중입니다.";
     private string _codexStatus = "Codex 연결을 확인 중입니다.";
 
-    public ServerControlViewModel(LocalServerHost host, IPlatformActions platform)
+    public ServerControlViewModel(LocalServerHost host)
     {
         _host = host;
-        _platform = platform;
-        _host.StateChanged += (_, _) => UpdateState();
+        _host.StateChanged += OnHostStateChanged;
+        _host.AuthorizationChanged += OnHostStateChanged;
         StartCommand = new RelayCommand(() => _ = StartAsync(), () => !_host.IsRunning);
         StopCommand = new RelayCommand(() => _ = StopAsync(), () => _host.IsRunning);
-        CopyTokenCommand = new RelayCommand(CopyToken, () => _host.IsRunning);
         SetupConnectionCommand = new RelayCommand(() => _ = SetupConnectionAsync());
         ConfirmConnectionCommand = new RelayCommand(() => _ = ConfirmConnectionAsync());
         UpdateState();
@@ -28,7 +26,6 @@ public sealed class ServerControlViewModel : ViewModelBase
 
     public ICommand StartCommand { get; }
     public ICommand StopCommand { get; }
-    public ICommand CopyTokenCommand { get; }
     public ICommand SetupConnectionCommand { get; }
     public ICommand ConfirmConnectionCommand { get; }
     public string ServerStatus => _host.IsRunning ? "● 서버 실행 중" : "● 서버 중지됨";
@@ -36,6 +33,8 @@ public sealed class ServerControlViewModel : ViewModelBase
     public string McpEndpoint => _host.IsRunning ? $"{ServerAddress}/mcp" : "-";
     public string StatusMessage { get => _statusMessage; private set => SetField(ref _statusMessage, value); }
     public string CodexStatus { get => _codexStatus; private set => SetField(ref _codexStatus, value); }
+    public bool IsCodexConnected => _host.IsCodexAuthorized;
+    public bool NeedsCodexSetup => !IsCodexConnected;
 
     private async Task StartAsync()
     {
@@ -49,17 +48,17 @@ public sealed class ServerControlViewModel : ViewModelBase
         catch (Exception exception) { StatusMessage = $"로컬 서버를 중지하지 못했습니다: {exception.Message}"; }
     }
 
-    private void CopyToken() => StatusMessage = _platform.TryCopyToClipboard(_host.Token) ? "토큰을 클립보드에 복사했습니다." : "토큰을 복사하지 못했습니다.";
-
     private async Task SetupConnectionAsync()
     {
-        CodexStatus = "Codex 연결을 등록하는 중입니다.";
+        CodexStatus = "설치된 Codex와 공유 MCP 설정을 확인하는 중입니다.";
         CodexStatus = (await _codex.SetupAsync()).Message;
     }
 
     private async Task ConfirmConnectionAsync()
     {
-        CodexStatus = (await _codex.CheckAsync()).Message;
+        CodexStatus = IsCodexConnected
+            ? "OAuth 인증과 MCP 연결이 완료되었습니다."
+            : (await _codex.CheckAsync()).Message;
     }
 
     private void UpdateState()
@@ -68,8 +67,17 @@ public sealed class ServerControlViewModel : ViewModelBase
         OnPropertyChanged(nameof(ServerStatus));
         OnPropertyChanged(nameof(ServerAddress));
         OnPropertyChanged(nameof(McpEndpoint));
+        OnPropertyChanged(nameof(IsCodexConnected));
+        OnPropertyChanged(nameof(NeedsCodexSetup));
+        if (IsCodexConnected) CodexStatus = "OAuth 인증과 MCP 연결이 완료되었습니다.";
         ((RelayCommand)StartCommand).NotifyCanExecuteChanged();
         ((RelayCommand)StopCommand).NotifyCanExecuteChanged();
-        ((RelayCommand)CopyTokenCommand).NotifyCanExecuteChanged();
+    }
+
+    private void OnHostStateChanged(object? sender, EventArgs eventArgs)
+    {
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+        if (dispatcher is null || dispatcher.CheckAccess()) UpdateState();
+        else _ = dispatcher.BeginInvoke(UpdateState);
     }
 }

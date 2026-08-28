@@ -11,7 +11,7 @@ public sealed partial class EventStore
         await connection.OpenAsync(cancellationToken);
         var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT p.node_id, p.title, p.weight, p.depends_on_json, s.status, s.summary, s.error, s.updated_at_utc FROM plan_nodes p
+            SELECT p.node_id, p.title, p.weight, p.depends_on_json, s.status, s.summary, s.error, s.updated_at_utc, p.metadata_json FROM plan_nodes p
             LEFT JOIN current_state s ON s.project_id = p.project_id AND s.workflow_id = p.workflow_id AND s.node_id = p.node_id
             WHERE p.project_id = $projectId AND p.workflow_id = $workflowId ORDER BY p.rowid;
             """;
@@ -20,7 +20,10 @@ public sealed partial class EventStore
         var nodes = new List<PlanNodeState>();
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
-            nodes.Add(new(reader.GetString(0), reader.GetString(1), reader.GetInt32(2), JsonSerializer.Deserialize<string[]>(reader.GetString(3)) ?? [], reader.IsDBNull(4) ? "PENDING" : reader.GetString(4), reader.IsDBNull(5) ? null : reader.GetString(5), reader.IsDBNull(6) ? null : reader.GetString(6), reader.IsDBNull(7) ? null : DateTimeOffset.Parse(reader.GetString(7))));
+        {
+            var metadata = PlanNodeMetadata.Parse(reader.GetString(8));
+            nodes.Add(new(reader.GetString(0), reader.GetString(1), reader.GetInt32(2), JsonSerializer.Deserialize<string[]>(reader.GetString(3)) ?? [], reader.IsDBNull(4) ? "PENDING" : reader.GetString(4), reader.IsDBNull(5) ? null : reader.GetString(5), reader.IsDBNull(6) ? null : reader.GetString(6), reader.IsDBNull(7) ? null : DateTimeOffset.Parse(reader.GetString(7)), metadata.ParentNodeId, metadata.AssignedAgentId, metadata.AgentRole, metadata.CompletionCriteria));
+        }
         return new(projectId, workflowId, nodes);
     }
 }

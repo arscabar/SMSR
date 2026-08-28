@@ -640,3 +640,253 @@
   - 없음.
 - 다음 조치:
   - 새 빌드에서 텍스트 버튼의 좌우 여백을 확인한다.
+
+## 2026-08-28 - Codex CLI PATH 탐색 보완
+
+- 변경 파일:
+  - `src/SMSR.App/Services/CodexConnectionService.cs`
+  - `src/SMSR.App/Services/CodexCliLocator.cs`
+  - `README.md`
+  - `docs/mcp-connection.md`
+- 변경 사유:
+  - Visual Studio나 데스크톱 앱에서 실행할 때 앱 프로세스가 Codex CLI의 PATH를 상속하지 않아 초기 MCP 등록이 실패하는 문제를 보완했다.
+- 실행 명령:
+  - `dotnet build SMSR.slnx --no-restore --verbosity:minimal`
+  - `dotnet run --project src/SMSR.App/SMSR.App.csproj --no-build -- --self-test`
+  - `git diff --check`
+- 검증 결과:
+  - 현재 Windows 사용자의 PATH와 시스템 PATH를 앱 실행 시 합쳐 Codex CLI 탐색에 사용하도록 했다.
+  - Codex 데스크톱 패키지의 `WindowsApps` 내부 실행 파일을 외부 CLI 후보에서 제외했다.
+  - Windows npm 설치에서 생성되는 `codex.cmd` 실행 래퍼도 처리하도록 했다.
+  - standalone CLI 미설치·권한 오류를 사용자에게 구분해 안내하도록 했다.
+  - self-check 예외를 앱에서 처리해 CLR 충돌창 대신 상세 오류를 표시하도록 했다.
+- 남은 위험:
+  - standalone Codex CLI 설치와 PATH 등록은 사용자 환경에서 별도로 필요하다.
+- 다음 조치:
+  - 새 빌드에서 `초기 연결`을 눌러 실제 Codex MCP 등록과 플러그인 설치를 확인한다.
+
+## 2026-08-28 - Codex 데스크톱 탐지와 CLI 의존성 제거
+
+- 변경 파일:
+  - `src/SMSR.App/Services/CodexConnectionService.cs`
+  - `src/SMSR.App/Services/CodexDesktopLocator.cs`
+  - `src/SMSR.App/Services/CodexMcpConfig.cs`
+  - `src/SMSR.App/Services/CodexMcpConfigSelfCheck.cs`
+  - `src/SMSR.App/Mvp/MvpSelfCheck.cs`
+  - `src/SMSR.App/Mvp/SmsrMcpInstructions.cs`
+  - `src/SMSR.App/Mvp/StdioMcpHost.cs`
+  - `src/SMSR.App/Mvp/LocalServer.cs`
+  - `src/SMSR.App/ViewModels/ServerControlViewModel.cs`
+  - `src/SMSR.App/Views/ServerPanel.xaml`
+  - `src/SMSR.App/SMSR.App.csproj`
+  - `README.md`, `docs/mcp-connection.md`, `docs/development-log.md`
+- 변경 사유:
+  - 같은 초기 연결 실패가 반복되어 CLI 탐색 재시도를 중단했다. 원인은 설치된 Codex 데스크톱 앱과 PowerShell에서 호출 가능한 standalone CLI를 동일하게 취급한 설계였다.
+  - 기존 시도는 `codex` 직접 실행, 사용자·시스템 PATH 병합, 실행 경로 환경 변수, standalone CLI 설치 안내였다. 데스크톱 패키지의 비공개 실행 파일에는 적용할 수 없었다.
+  - 새 계획으로 현재 사용자의 `OpenAI.Codex` 패키지를 탐지하고, 공식 공유 설정 `~/.codex/config.toml`에 stdio MCP 항목을 직접 등록하도록 교체했다.
+  - CLI로 설치하던 플러그인의 핵심 추적 규칙은 MCP 초기화 `instructions`로 옮겼다.
+- 실행 명령:
+  - `Get-AppxPackage`와 사용자 AppModel 패키지 레지스트리로 설치 상태 확인
+  - `dotnet build SMSR.slnx --no-restore --verbosity:minimal -p:OutputPath=<임시 경로>`
+  - `<임시 경로>\SMSR.App.exe --codex-config-self-test`
+  - `rg`로 소스·사용자 문서의 CLI 참조 확인
+  - `git diff --check`
+- 검증 결과:
+  - 이 PC에서 `OpenAI.Codex_26.818.8289.0_x64__2p2nqsd0c76g0` 패키지와 공유 설정을 탐지했다.
+  - 임시 출력 빌드가 경고 0, 오류 0으로 통과했다.
+  - 분리 self-check가 다른 MCP 항목 보존, `smsr` 항목 등록·갱신, 중복 방지와 `config.toml.smsr.bak` 생성을 확인했다.
+  - 실행 코드와 사용자 연결 문서에서 `codex` CLI, npm, `SMSR_CODEX_PATH` 의존 참조가 제거됐다.
+  - stdio·HTTP MCP 서버가 같은 계획·상태 기록 지침을 초기화 응답으로 제공한다.
+- 남은 위험:
+  - Codex가 설정을 다시 읽도록 초기 등록 뒤 데스크톱 앱을 완전히 재시작해야 한다.
+  - Codex 패키지 식별자가 `OpenAI.Codex`에서 바뀌면 탐지 규칙을 갱신해야 한다.
+  - 전체 `--self-test`는 숨김 실행에서 기존 오류 대화상자 대기 상태가 되어, 이번 변경은 `--codex-config-self-test`로 분리 검증했다.
+- 다음 조치:
+  - 새 빌드의 `초기 연결`을 누른 뒤 Codex `/mcp`에서 `smsr` 연결을 수동 확인한다.
+
+## 2026-08-28 - STDIO 인증 미지원 표시 확인
+
+- 변경 파일:
+  - `src/SMSR.App/Services/CodexConnectionService.cs`
+  - `README.md`, `docs/mcp-connection.md`, `docs/development-log.md`
+- 변경 사유:
+  - Codex 설정의 `인증 미지원` 문구가 MCP 서버 비활성화처럼 보이는 혼동을 해소한다.
+- 실행 명령:
+  - `~/.codex/config.toml`의 `smsr` 섹션과 실행 파일 존재 확인
+  - `~/.codex/logs_2.sqlite`에서 `smsr` MCP 초기화 로그 조회
+  - 현재 Codex 세션에서 `mcp__smsr__get_state` 호출
+  - 현재 Codex 세션에서 `save_plan`, `record_event`, `get_plan` 진단 호출
+  - `dotnet build SMSR.slnx --no-restore --verbosity:minimal -p:OutputPath=<임시 경로>`
+  - `<임시 경로>\SMSR.App.exe --codex-config-self-test`
+- 검증 결과:
+  - `smsr`는 인증 설정이 없는 STDIO 서버로 등록되어 있으며 `enabled = false`도 없다.
+  - Codex 런타임은 `smsr`를 프로토콜 `2025-06-18`로 초기화했고 전체 MCP 서버를 `available_server_count=4`, `unavailable_server_count=0`으로 기록했다.
+  - 현재 세션의 `get_state` 호출이 성공해 SMSR 서버까지 왕복 연결됨을 확인했다.
+  - `SMSR / connection-test-20260828` 진단 워크플로우의 두 노드가 모두 `SUCCESS`로 저장·조회됐다.
+  - 임시 출력 빌드가 경고 0, 오류 0으로 통과했고 분리 self-check가 종료 코드 0을 반환했다.
+- 남은 위험:
+  - Codex 설정 UI의 인증 문구와 버튼 표현은 SMSR에서 변경할 수 없다.
+  - 기본 출력 파일은 실행 중인 SMSR 본체와 Codex STDIO 브리지가 사용 중이어서 종료 전까지 새 안내 문구로 덮어쓸 수 없다.
+- 다음 조치:
+  - 연결 여부는 인증 표시가 아니라 `/mcp`의 `smsr` 도구 노출로 판단한다.
+
+## 2026-08-28 - Codex 직접 HTTP MCP OAuth 인증
+
+- 변경 파일:
+  - `src/SMSR.App/Mvp/OAuth*.cs`, `LocalOAuthStore.cs`, `LocalServer.cs`, `LocalServerEndpoints.cs`
+  - `src/SMSR.App/Services/CodexMcpConfig.cs`, `CodexConnectionService.cs`, `CodexMcpConfigSelfCheck.cs`
+  - `src/SMSR.App/App.xaml.cs`, `LocalServerHost.cs`, 관련 view model·화면·self-check
+  - `README.md`, `docs/mcp-connection.md`, `docs/development-log.md`
+  - 삭제: STDIO 호스트·도구·HTTP gateway·고정 토큰 저장소
+- 변경 사유:
+  - Codex의 `인증 미지원` 상태를 없애고, 실행 파일을 STDIO로 시작하는 브리지 대신 `http://127.0.0.1:49783/mcp`에 직접 연결하는 OAuth 인증 MCP를 제공한다.
+  - 공식 Codex MCP 규격의 Streamable HTTP OAuth, DCR, PKCE 및 MCP authorization 규격의 protected resource metadata와 resource audience 검증을 적용한다.
+- 실행 명령:
+  - 공식 Codex MCP 문서와 MCP 2025-06-18 authorization 규격 확인
+  - `dotnet build SMSR.slnx --no-restore --verbosity:minimal -p:OutputPath=<임시 경로>`
+  - `<임시 경로>\SMSR.App.exe --oauth-self-test`
+  - `<임시 경로>\SMSR.App.exe --codex-config-self-test`
+  - 기존 SMSR GUI·STDIO 프로세스의 실행 경로 확인 후 종료, 기본 출력 재빌드와 SMSR 재실행
+  - 실서버의 `/.well-known/oauth-authorization-server`와 인증 없는 `/mcp` 응답 확인
+- 검증 결과:
+  - 임시 출력 빌드가 경고 0, 오류 0으로 통과했다.
+  - OAuth self-check가 `401 WWW-Authenticate` 챌린지, protected resource·authorization server metadata, DCR, loopback callback 포트 허용, PKCE S256 승인, authorization code 교환, OAuth 액세스 토큰을 사용한 MCP 초기화를 순서대로 통과했다.
+  - Codex 설정 self-check가 다른 MCP 항목 보존, 기존 `smsr` 블록의 HTTP OAuth 전환, 백업과 중복 방지를 통과했다.
+  - 액세스 토큰은 15분, 갱신 토큰은 30일로 제한하고 갱신 시 회전한다. 서버에는 토큰 원문 대신 해시를 DPAPI 암호화 상태 파일에 저장한다.
+  - 기본 출력 빌드가 경고 0, 오류 0으로 통과했고 새 SMSR PID 70720이 포트 49783을 사용한다.
+  - 실서버가 DCR·authorization·token endpoint 메타데이터와 `resource_metadata`·`smsr:mcp` scope가 포함된 `401 WWW-Authenticate`를 반환했다.
+- 남은 위험:
+  - 실행 중인 Codex는 설정을 다시 읽지 않으므로 완전 재시작 뒤 사용자가 `인증`과 SMSR의 `연결 승인`을 한 번 눌러야 한다.
+  - 전체 레거시 `--self-test`는 WPF 실시간 모니터의 종료 대기 문제로 분리 검증보다 늦게 종료될 수 있다.
+- 다음 조치:
+  - 새 SMSR 서버를 실행한 상태에서 Codex를 재시작하고 `smsr` OAuth 인증을 승인한 뒤 `/mcp` 도구 목록을 확인한다.
+
+## 2026-08-28 - OAuth 승인 반복 실패 재계획
+
+- 변경 파일:
+  - `src/SMSR.App/Mvp/OAuthAuditLog.cs`
+  - `src/SMSR.App/Mvp/LocalServer.cs`, `LocalServerEndpoints.cs`
+  - `src/SMSR.App/Mvp/OAuthRegistrationEndpoints.cs`, `OAuthAuthorizationEndpoints.cs`, `OAuthTokenEndpoints.cs`, `OAuthEndpoints.cs`
+  - `src/SMSR.App/Mvp/OAuthSelfCheck.cs`
+  - `docs/development-log.md`
+- 변경 사유:
+  - Codex의 `인증`과 SMSR의 `연결 승인` 이후 같은 실패가 3회 반복되어 추가 수동 재시도를 중단했다.
+  - DPAPI OAuth 상태에는 Codex DCR 클라이언트 2개가 등록됐지만 액세스·갱신 토큰은 각각 0개였다. Codex 로그도 metadata GET과 DCR POST까지만 기록해 승인 요청, callback, token 교환 중 어느 단계에서 멈췄는지 기존 로그만으로 구분할 수 없다.
+  - 통제 재현에서 승인 페이지의 `form-action 'self'` CSP가 SMSR 포트에서 Codex의 다른 loopback callback 포트로 이동하는 브라우저 리디렉션을 차단하는 원인을 확인했다.
+- 실행 명령:
+  - `~/.codex/logs_2.sqlite`의 `mcpServer/oauth/login` 요청 조회
+  - `%LocalAppData%\SMSR\oauth-state.bin`을 현재 사용자 DPAPI로 복호화해 클라이언트·토큰 개수만 점검
+  - `dotnet build SMSR.slnx --no-restore --verbosity:minimal`
+  - `SMSR.App.exe --oauth-self-test`
+  - 실서버 재실행 후 authorization server metadata와 인증 없는 `/mcp` 응답 확인
+  - CSP callback origin 수정본을 임시 출력으로 빌드하고 `--oauth-self-test` 실행
+  - 기존 SMSR PID 34900·66044 종료, 기본 출력 재빌드 및 SMSR 재실행
+- 검증 결과:
+  - 등록 callback은 `http://127.0.0.1:57894/callback`과 `http://127.0.0.1:61904/callback`으로 Codex의 loopback 형식과 일치한다.
+  - 서버와 DCR까지는 정상이며 실패 범위는 authorization 요청 이후로 좁혀졌다.
+  - query, authorization code, state, access/refresh token을 기록하지 않고 `register`, `authorize`, `consent`, `token`의 성공·거절 단계만 `%LocalAppData%\SMSR\logs\oauth.log`에 남기도록 했다.
+  - Codex가 `scope` 또는 `resource`를 생략하면 로컬 MCP의 `smsr:mcp` scope와 resource audience를 적용하되, 명시된 잘못된 값은 계속 거부한다.
+  - 기본 출력 빌드가 경고 0, 오류 0으로 통과했고 OAuth self-check가 종료 코드 0을 반환했다.
+  - SMSR를 PID 34900으로 다시 실행했다. authorization server metadata가 정상이고 `/mcp`는 `resource_metadata`와 `smsr:mcp` scope가 포함된 401 challenge를 반환한다.
+  - 통제 재현 로그는 `register accepted` → `authorize consent_shown` → `consent approved_redirected`까지 진행했지만 `token` 요청이 없었고, Codex callback listener 60832는 계속 대기했다. Edge 창도 `SMSR MCP 인증`에 머물러 브라우저 리디렉션 차단과 일치했다.
+  - 검증된 callback URI의 origin을 승인 페이지 CSP `form-action`에 추가하고 self-check가 이를 검사하도록 했다.
+  - 수정본 임시 빌드와 기본 빌드가 모두 경고 0, 오류 0으로 통과했고 OAuth self-check는 종료 코드 0을 반환했다.
+  - 수정본 SMSR 하나만 PID 48320으로 실행했으며 포트 49783과 issuer-bound OAuth metadata를 확인했다.
+  - 수정 후 실제 인증에서 `register accepted` → `authorize consent_shown` → `consent approved_redirected` → `token access_issued`가 순서대로 기록됐다.
+  - DPAPI 상태에 액세스 토큰 1개와 갱신 토큰 1개가 생성됐고, Edge callback 화면에 `Authentication complete`가 표시됐다.
+  - Codex 로그에서 `smsr`가 MCP 프로토콜 `2025-06-18`과 tools capability를 가진 `SMSR.App 1.0.0.0` 서버로 초기화된 것을 확인했다.
+- 남은 위험:
+  - Codex는 tools-only 서버에도 `resources/list`와 `resources/templates/list`를 조회해 미지원 경고를 남기지만 도구 연결과 인증에는 영향이 없다.
+- 다음 조치:
+  - 완료. 이후 SMSR가 종료된 경우 앱을 다시 실행하면 Codex가 저장된 OAuth 자격 증명으로 재연결한다.
+
+## 2026-08-28 - 연결 완료 UI와 사용자 설정
+
+- 변경 파일:
+  - `src/SMSR.App/Mvp/LocalOAuthStore.cs`, `LocalServer.cs`, 관련 self-check
+  - `src/SMSR.App/Services/LocalServerHost.cs`, `AppSettingsService.cs`
+  - `src/SMSR.App/ViewModels/ServerControlViewModel.cs`, `SettingsViewModel.cs`, `MainWindowViewModel.cs`
+  - `src/SMSR.App/Views/ServerPanel.xaml`, `SettingsPanel.xaml`, `MainWindow.xaml`과 code-behind
+  - `src/SMSR.App/App.xaml.cs`, 플랫폼 동작 인터페이스·구현
+  - `README.md`, `docs/mcp-connection.md`, `docs/development-log.md`
+- 변경 사유:
+  - OAuth 연결 완료 후에도 초기 연결과 연결 확인 버튼이 계속 보이는 혼동을 제거한다.
+  - 서버 자동 시작, 닫기 버튼 동작, 데이터·로그 위치를 사용자가 앱에서 관리할 설정 화면을 제공한다.
+- 실행 명령:
+  - 임시 출력 경로로 `dotnet build SMSR.slnx --no-restore --verbosity:minimal`
+  - 임시 빌드의 `SMSR.App.exe --oauth-self-test`
+  - 임시 빌드의 `SMSR.App.exe --self-test`와 생성된 설정·OAuth·SQLite 상태 확인
+- 검증 결과:
+  - 임시 출력 빌드가 경고 0, 오류 0으로 통과했다.
+  - OAuth self-check가 종료 코드 0을 반환했고 유효한 갱신 토큰 기반 연결 상태를 확인했다.
+  - 전체 self-check가 OAuth, 설정 저장, 작업 복원, 내보내기까지 진행해 `StartServerAutomatically=false`, `MinimizeToTray=false` 설정 파일과 결과물을 생성했다.
+- 남은 위험:
+  - 전체 self-check 프로세스는 기존 실시간 모니터 종료 대기로 자동 종료되지 않아 결과 생성 확인 후 해당 임시 프로세스만 종료했다.
+  - 설정의 서버 자동 시작 변경은 다음 앱 실행부터 적용된다.
+- 다음 조치:
+  - 기본 출력 빌드로 실제 앱을 재시작해 연결 완료 화면과 설정 탭을 육안 확인한다.
+
+## 2026-08-28 - 순서도 대시보드, 탭 레이아웃, 테마 완성
+
+- 변경 파일:
+  - `src/SMSR.App/Mvp/Dashboard*.cs`, `WorkflowExportService.cs`, 서버 endpoint
+  - `src/SMSR.App/Services/AppSettingsService.cs`, `AppThemeService.cs`, `LocalServerHost.cs`
+  - `src/SMSR.App/Themes/*.xaml`, 설정·워크플로우·메인 창 XAML
+  - `README.md`, `docs/mcp-connection.md`, `docs/development-log.md`
+- 변경 사유:
+  - 기존 `DashboardPage`가 참조 샘플을 연결하지 않고 `dependsOn`을 글자로만 표시하는 MVP 카드 그리드여서, 사용자가 제공한 3단 순서도 형식과 달랐다.
+  - 넓힌 탭 헤더가 기본 `TabPanel`에서 잘리고 선택 강조가 약했으며, 초기 어두운 테마는 웹에만 적용되어 WPF 기본 컨트롤이 부분적으로 흰색·검정 텍스트를 유지했다.
+- 실행 명령:
+  - 기본 출력 `dotnet build src/SMSR.App/SMSR.App.csproj --nologo`
+  - `SMSR.App.exe --oauth-self-test`, `SMSR.App.exe --codex-config-self-test`
+  - 실제 앱 재시작 후 UI Automation으로 탭 경계·본문·테마 선택·설정 저장 확인
+  - `/dashboard` HTML에서 3단 grid, SVG 노드·의존 간선, 밝은·어두운 팔레트 확인
+  - 실행 창 캡처로 상단바, 편집형 ComboBox, CheckBox, 상태 행, 설정 카드 확인
+- 검증 결과:
+  - 기본 빌드가 경고 0, 오류 0으로 통과했고 OAuth·Codex 설정 self-check가 각각 종료 코드 0을 반환했다. OAuth self-check는 인증 뒤 `tools/list`에서 8개 SMSR 도구를 모두 확인한다.
+  - 대시보드는 좌측 에이전트, 중앙 SVG 의존성 순서도, 우측 상세·최근 기록으로 렌더링하며 진단 계획 2개 노드와 간선 1개를 확인했다.
+  - 앱과 웹 대시보드가 설정의 밝은·어두운 테마를 즉시 공유하고 `%LocalAppData%\SMSR\settings.json`에 저장한다. 내보낸 HTML에도 계획 그래프와 선택 테마가 포함된다.
+  - 네 개 탭이 모두 창 경계 안에 표시되고 선택 탭의 강조·본문이 유지된다. 프로젝트·워크플로우 선택값과 설정의 체크박스·콤보·스크롤바도 테마 팔레트를 사용한다.
+- 남은 위험:
+  - 참조 샘플의 계층형 드릴다운, 에이전트 역할·heartbeat, 진행률 %, 재시도 횟수, 산출물·다음 조치는 현재 MCP 데이터 계약에 필드가 없어 아직 제공하지 않는다.
+  - `plugins/smsr-codex` 선택형 스킬·라이프사이클 훅은 현재 사용자 Codex에 설치되어 있지 않고 기존 훅의 패키징 재검증이 필요하다. 기본 MCP 서버 지침과 도구에는 영향이 없다.
+  - 전체 `--self-test`의 기존 실시간 모니터 종료 대기 문제는 별도 수정이 필요하다.
+- 다음 조치:
+  - 계층형 그래프 데이터 계약과 선택형 Codex 플러그인을 별도 작업으로 정리한 뒤 배포 패키지와 깨끗한 사용자 환경 설치 시험을 진행한다.
+
+## 2026-08-28 - 에이전트 직접 전송 계약과 계층형 추적 완성
+
+- 변경 파일:
+  - `src/SMSR.App/Mvp/Contracts.cs`, `PlanContracts.cs`, `EventValidation.cs`, `AgentTools.cs`
+  - `src/SMSR.App/Mvp/EventStore*.cs`, `EventMetadata.cs`, `EventPayload.cs`
+  - `src/SMSR.App/Mvp/Dashboard*.cs`, `LocalServer*.cs`, `SmsrMcpInstructions.cs`
+  - `src/SMSR.App/Mvp/TrackingContractSelfCheck.cs`, `OAuthSelfCheck.cs`, `MvpSelfCheck.cs`
+  - `plugins/smsr-codex/**`, `.agents/plugins/marketplace.json`
+  - `.gitignore`, `README.md`, `docs/mcp-connection.md`, `docs/smsr-codex-plugin.md`
+  - Git 추적 제거: `src/SMSR.App/obj/**`
+- 변경 사유:
+  - SMSR이 에이전트를 호출하는 방향이 아니라 메인·하위 에이전트가 각자의 상태를 SMSR MCP로 직접 전송하도록 계약과 지침을 명확히 했다.
+  - `parentNodeId`, 에이전트 역할, heartbeat, 진행률, 재시도 횟수, 다음 작업, 완료 조건, 산출물을 저장·조회·표시하고 계층형 SVG 그래프를 클릭해 드릴다운하도록 확장했다.
+  - 기존 Node 기반 SessionStart 훅을 제거하고 연결된 `smsr` 서버의 `mcp_tool` 훅만 사용하는 선택형 플러그인으로 재작성했다.
+  - Visual Studio·.NET 생성물을 추적하지 않도록 하고 이미 추적 중인 `obj` 파일을 인덱스에서 정리했다.
+- 실행 명령:
+  - 공식 OpenAI 플러그인·Codex Hooks 문서 확인
+  - `dotnet build src/SMSR.App/SMSR.App.csproj -o <임시 경로> --no-restore --verbosity:minimal`
+  - 임시 빌드의 `SMSR.App.exe --tracking-self-test`, `--oauth-self-test`, `--codex-config-self-test`
+  - plugin-creator의 `read_marketplace_name.py`, `update_plugin_cachebuster.py`, `validate_plugin.py`
+  - skill-creator의 `quick_validate.py`
+  - `git rm -r --cached -- src/SMSR.App/obj`
+  - 인앱 브라우저에서 로컬 대시보드 루트 노드 클릭 및 하위 그래프 DOM·화면 확인
+- 검증 결과:
+  - 프로젝트 빌드가 경고 0, 오류 0으로 통과했다.
+  - 추적 계약, OAuth MCP 도구 9개, Codex 설정 self-check가 모두 종료 코드 0을 반환했다.
+  - 기존 DB를 유지하면서 계획·현재 상태에 메타데이터 컬럼을 추가하고 `agent_heartbeats` 테이블을 만드는 마이그레이션을 추가했다.
+  - 실제 화면에서 루트 `구현` 노드를 클릭하면 `데이터 계약` 하위 그래프, 역할, 60% 진행률, 재시도 2회, 다음 작업, 완료 조건, 산출물이 표시됨을 확인했다.
+  - 플러그인과 스킬 validator가 통과했고 manifest 버전을 `0.1.0+codex.20260828084822`로 갱신했다. 훅 JSON에는 Node/npm/컴퓨터별 절대 경로가 없다.
+  - 기본 `python` 명령으로 실행한 세 검증이 Microsoft Store 실행 별칭 때문에 같은 원인으로 실패해 즉시 재시도를 중단했다. Codex 번들 Python과 임시 `PyYAML` 폴더를 사용하는 새 계획으로 전환해 검증을 완료했다.
+- 남은 위험:
+  - 선택형 플러그인은 각 환경에서 로컬 마켓플레이스 위치를 선택하고 변경된 훅 해시를 `/hooks`에서 신뢰해야 한다. 기본 MCP 추적은 플러그인 없이도 서버 지침으로 동작한다.
+  - 수정 후 브라우저 재로딩은 로컬 URL 보안 정책이 차단해 우회하지 않았다. 열 너비 수정본은 최종 빌드와 HTML 계약 self-check로 확인했다.
+  - 기존 전체 `--self-test`의 SSE 모니터 종료 대기 문제는 이번 범위 밖이며, 독립된 세 self-check로 변경 범위를 검증했다.
+- 다음 조치:
+  - 다른 컴퓨터에서 저장소를 받은 뒤 SMSR OAuth 연결, 로컬 마켓플레이스 설치, 훅 신뢰, 새 task의 하위 에이전트 heartbeat까지 한 번 통합 확인한다.

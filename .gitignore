@@ -1,0 +1,23 @@
+# Visual Studio and user state
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# .NET generated output
+**/bin/
+**/obj/
+artifacts/
+TestResults/
+
+# Local runtime and diagnostic files
+*.db
+*.db-shm
+*.db-wal
+*.log
+*.zip
+
+# OS metadata
+.DS_Store
+Thumbs.db

@@ -2,19 +2,22 @@ using SMSR.App.Mvp;
 
 namespace SMSR.App.Services;
 
-public sealed class LocalServerHost(string? dataPath = null) : IAsyncDisposable
+public sealed class LocalServerHost(string? dataPath = null, int port = LocalServer.Port,
+    Func<string>? dashboardTheme = null) : IAsyncDisposable
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly string _dataPath = ResolveDataPath(dataPath);
     private readonly LocalActivityLog _log = new(System.IO.Path.Combine(ResolveDataPath(dataPath), "logs"));
     private LocalServer? _server;
+    private bool _isCodexAuthorized;
 
     public event EventHandler? StateChanged;
+    public event EventHandler? AuthorizationChanged;
     public bool IsRunning => _server is not null;
     public string Address => _server?.Address ?? "";
-    public string Token => _server?.Token ?? "";
     public string LogPath => _log.Path;
     public string DataPath => _dataPath;
+    public bool IsCodexAuthorized => _isCodexAuthorized;
 
     public async Task StartAsync()
     {
@@ -23,7 +26,9 @@ public sealed class LocalServerHost(string? dataPath = null) : IAsyncDisposable
         {
             if (_server is null)
             {
-                _server = await LocalServer.StartAsync(_dataPath);
+                _server = await LocalServer.StartAsync(_dataPath, port, dashboardTheme);
+                _server.AuthorizationChanged += OnAuthorizationChanged;
+                _isCodexAuthorized = _server.HasAuthorizedCodex;
                 await WriteLogAsync("server started");
             }
         }
@@ -43,6 +48,7 @@ public sealed class LocalServerHost(string? dataPath = null) : IAsyncDisposable
         {
             if (_server is not null)
             {
+                _server.AuthorizationChanged -= OnAuthorizationChanged;
                 await _server.DisposeAsync();
                 await WriteLogAsync("server stopped");
             }
@@ -67,6 +73,7 @@ public sealed class LocalServerHost(string? dataPath = null) : IAsyncDisposable
         {
             if (_server is not null)
             {
+                _server.AuthorizationChanged -= OnAuthorizationChanged;
                 await _server.DisposeAsync().ConfigureAwait(false);
                 _server = null;
                 await WriteLogAsync("server stopped").ConfigureAwait(false);
@@ -82,6 +89,12 @@ public sealed class LocalServerHost(string? dataPath = null) : IAsyncDisposable
     {
         try { await _log.WriteAsync(message); }
         catch { }
+    }
+
+    private void OnAuthorizationChanged(object? sender, EventArgs eventArgs)
+    {
+        _isCodexAuthorized = _server?.HasAuthorizedCodex ?? _isCodexAuthorized;
+        AuthorizationChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private static string ResolveDataPath(string? path)

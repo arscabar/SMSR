@@ -13,7 +13,7 @@ public sealed partial class EventStore
         await connection.OpenAsync(cancellationToken);
         var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT event_id, node_id, agent_id, event_type, status, summary, error, created_at_utc FROM events
+            SELECT event_id, node_id, agent_id, event_type, status, summary, error, created_at_utc, payload_json FROM events
             WHERE project_id = $projectId AND workflow_id = $workflowId ORDER BY created_at_utc DESC, rowid DESC LIMIT 1;
             """;
         command.Parameters.AddWithValue("$projectId", projectId);
@@ -27,7 +27,7 @@ public sealed partial class EventStore
         await using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync(cancellationToken);
         var command = connection.CreateCommand();
-        command.CommandText = "SELECT event_id, node_id, agent_id, event_type, status, summary, error, created_at_utc FROM events WHERE project_id = $projectId AND workflow_id = $workflowId ORDER BY created_at_utc, rowid;";
+        command.CommandText = "SELECT event_id, node_id, agent_id, event_type, status, summary, error, created_at_utc, payload_json FROM events WHERE project_id = $projectId AND workflow_id = $workflowId ORDER BY created_at_utc, rowid;";
         command.Parameters.AddWithValue("$projectId", projectId);
         command.Parameters.AddWithValue("$workflowId", workflowId);
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
@@ -37,5 +37,8 @@ public sealed partial class EventStore
     }
 
     private static WorkflowEvent ReadEvent(SqliteDataReader reader)
-        => new(reader.GetString(0), reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4), reader.IsDBNull(5) ? null : reader.GetString(5), reader.IsDBNull(6) ? null : reader.GetString(6), DateTimeOffset.Parse(reader.GetString(7)));
+    {
+        var request = EventPayload.Parse(reader.GetString(8));
+        return new(reader.GetString(0), reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4), reader.IsDBNull(5) ? null : reader.GetString(5), reader.IsDBNull(6) ? null : reader.GetString(6), DateTimeOffset.Parse(reader.GetString(7)), request?.AgentRole, request?.ProgressPercentage, request?.RetryCount ?? 0, request?.Artifacts);
+    }
 }

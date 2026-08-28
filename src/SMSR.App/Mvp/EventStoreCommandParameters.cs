@@ -27,5 +27,6 @@ public sealed partial class EventStore
         command.Parameters.AddWithValue("$summary", request.Summary ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("$error", request.Error ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("$createdAt", createdAt);
+        command.Parameters.AddWithValue("$metadata", JsonSerializer.Serialize(EventMetadata.From(request, DateTimeOffset.Parse(createdAt))));
     }
 }

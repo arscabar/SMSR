@@ -16,27 +16,63 @@ public partial class App : WpfApplication
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
-        ShutdownMode = ShutdownMode.OnExplicitShutdown;
+        ShutdownMode = ShutdownMode.OnMainWindowClose;
+        if (e.Args.Contains("--codex-config-self-test"))
+        {
+            try
+            {
+                if (CodexDesktopLocator.Find() is null) throw new InvalidOperationException("Codex 데스크톱 앱 탐지 실패");
+                CodexMcpConfigSelfCheck.Run();
+                Shutdown();
+            }
+            catch { Shutdown(-1); }
+            return;
+        }
+        if (e.Args.Contains("--oauth-self-test"))
+        {
+            try { await OAuthStandaloneSelfCheck.RunAsync(); Shutdown(); }
+            catch (Exception exception)
+            {
+                var errorPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "smsr-oauth-self-test-error.txt");
+                System.IO.File.WriteAllText(errorPath, exception.ToString());
+                Shutdown(-1);
+            }
+            return;
+        }
+        if (e.Args.Contains("--tracking-self-test"))
+        {
+            try { await TrackingContractSelfCheck.RunAsync(); Shutdown(); }
+            catch (Exception exception)
+            {
+                var errorPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "smsr-tracking-self-test-error.txt");
+                System.IO.File.WriteAllText(errorPath, exception.ToString());
+                Shutdown(-1);
+            }
+            return;
+        }
         if (e.Args.Contains("--self-test"))
         {
-            await MvpSelfCheck.RunAsync();
+            try { await MvpSelfCheck.RunAsync(); }
+            catch (Exception exception)
+            {
+                var errorPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "smsr-self-test-error.txt");
+                System.IO.File.WriteAllText(errorPath, exception.ToString());
+                Shutdown(-1);
+                return;
+            }
             Shutdown();
             return;
         }
-        if (e.Args.Contains("--mcp-stdio"))
-        {
-            await StdioMcpHost.RunAsync();
-            Shutdown();
-            return;
-        }
-
         try
         {
-            _server = new LocalServerHost();
-            await _server.StartAsync();
-            var viewModel = new MainWindowViewModel(_server, new WindowsPlatformActions(), ExitApplication);
+            var settings = new AppSettingsService();
+            AppThemeService.Apply(settings.Current.DashboardTheme);
+            settings.Changed += (_, _) => Dispatcher.Invoke(() => AppThemeService.Apply(settings.Current.DashboardTheme));
+            _server = new LocalServerHost(dashboardTheme: () => settings.Current.DashboardTheme);
+            if (settings.Current.StartServerAutomatically) await _server.StartAsync();
+            var viewModel = new MainWindowViewModel(_server, new WindowsPlatformActions(), settings, ExitApplication);
             await viewModel.LoadAsync();
-            MainWindow = new MainWindow(viewModel);
+            MainWindow = new MainWindow(viewModel, () => settings.Current.MinimizeToTray);
             _tray = new TrayStatusIcon(((MainWindow)MainWindow).ShowFromTray, ExitApplication);
             MainWindow.Show();
         }

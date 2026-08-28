@@ -8,36 +8,46 @@ using ModelContextProtocol.Server;
 
 namespace SMSR.App.Mvp;
 
-public sealed class LocalServer(WebApplication app, string token, EventStore events, WorkflowSummaryService summaries, WorkflowExportService exports) : IAsyncDisposable
+public sealed class LocalServer(WebApplication app, EventStore events, WorkflowSummaryService summaries,
+    WorkflowExportService exports, LocalOAuthStore oauth) : IAsyncDisposable
 {
     public const int Port = 49783;
-    public string Token { get; } = token;
     public string Address => app.Urls.Single();
+    public bool HasAuthorizedCodex => oauth.HasActiveAuthorization;
+    public event EventHandler? AuthorizationChanged
+    {
+        add => oauth.AuthorizationChanged += value;
+        remove => oauth.AuthorizationChanged -= value;
+    }
 
-    public static async Task<LocalServer> StartAsync(string? dataPath = null)
+    public static async Task<LocalServer> StartAsync(string? dataPath = null, int port = Port,
+        Func<string>? dashboardTheme = null)
     {
         dataPath ??= Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SMSR");
         Directory.CreateDirectory(dataPath);
         var store = new EventStore(Path.Combine(dataPath, "smsr.db"));
         await store.InitializeAsync();
-        var token = new LocalTokenStore(Path.Combine(dataPath, "mcp-token.bin")).GetOrCreate();
+        var oauth = new LocalOAuthStore(Path.Combine(dataPath, "oauth-state.bin"));
+        var flows = new OAuthFlowStore();
+        var oauthAudit = new OAuthAuditLog(Path.Combine(dataPath, "logs"));
         var notifier = new WorkflowEventNotifier();
         var summaries = new WorkflowSummaryService(store);
-        var exports = new WorkflowExportService(store, Path.Combine(dataPath, "exports"));
+        var exports = new WorkflowExportService(store, Path.Combine(dataPath, "exports"), dashboardTheme);
         var builder = WebApplication.CreateSlimBuilder();
-        builder.WebHost.ConfigureKestrel(options => options.Listen(IPAddress.Loopback, Port));
+        builder.WebHost.ConfigureKestrel(options => options.Listen(IPAddress.Loopback, port));
         builder.Services.AddSingleton(store);
         builder.Services.AddSingleton(notifier);
         builder.Services.AddSingleton(summaries);
         builder.Services.AddSingleton(exports);
-        builder.Services.AddMcpServer()
+        builder.Services.AddMcpServer(options => options.ServerInstructions = SmsrMcpInstructions.Text)
             .WithHttpTransport(options => options.Stateless = true)
             .WithTools<WorkflowTools>()
-            .WithTools<PlanTools>();
+            .WithTools<PlanTools>()
+            .WithTools<AgentTools>();
         var app = builder.Build();
-        LocalServerEndpoints.Map(app, token);
+        LocalServerEndpoints.Map(app, oauth, flows, oauthAudit, dashboardTheme);
         await app.StartAsync();
-        return new(app, token, store, summaries, exports);
+        return new(app, store, summaries, exports, oauth);
     }
 
     public Task<IReadOnlyList<string>> GetProjectIdsAsync(CancellationToken cancellationToken = default)
@@ -67,6 +77,4 @@ public sealed class LocalServer(WebApplication app, string token, EventStore eve
         await app.DisposeAsync().ConfigureAwait(false);
     }
 
-    internal static bool IsAuthorized(HttpRequest request, string token)
-        => LocalServerEndpoints.IsAuthorized(request, token);
 }

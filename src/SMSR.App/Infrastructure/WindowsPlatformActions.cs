@@ -16,4 +16,10 @@ public sealed class WindowsPlatformActions : IPlatformActions
         try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); return true; }
         catch { return false; }
     }
+
+    public bool TryOpenPath(string path)
+    {
+        try { Process.Start(new ProcessStartInfo(path) { UseShellExecute = true }); return true; }
+        catch { return false; }
+    }
 }

@@ -3,11 +3,12 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:views="clr-namespace:SMSR.App.Views"
-        Title="Show Me Status Report" Icon="/Assets/SMSR.png" Height="640" Width="840" MinHeight="520" MinWidth="720" WindowStartupLocation="CenterScreen" WindowStyle="None">
+        Title="Show Me Status Report" Icon="/Assets/SMSR.png" Height="640" Width="840" MinHeight="520" MinWidth="720" WindowStartupLocation="CenterScreen" WindowStyle="None"
+        Background="{DynamicResource CanvasBrush}" Foreground="{DynamicResource TextBrush}">
     <shell:WindowChrome.WindowChrome><shell:WindowChrome CaptionHeight="0" ResizeBorderThickness="6" /></shell:WindowChrome.WindowChrome>
     <Grid>
         <Grid.RowDefinitions><RowDefinition Height="40" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-        <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+        <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
             <Grid>
                 <Grid.ColumnDefinitions><ColumnDefinition Width="40" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="40" /><ColumnDefinition Width="40" /></Grid.ColumnDefinitions>
                 <Image Width="22" Height="22" Margin="8" Source="/Assets/SMSR.png" />
@@ -29,6 +30,10 @@
             <TabItem>
                 <TabItem.Header><StackPanel Orientation="Horizontal"><TextBlock Margin="0,0,6,0" Text="⚙" /><TextBlock Text="서버 · 연결" /></StackPanel></TabItem.Header>
                 <views:ServerPanel Margin="0,18,0,0" DataContext="{Binding Server}" />
+            </TabItem>
+            <TabItem>
+                <TabItem.Header><StackPanel Orientation="Horizontal"><TextBlock Margin="0,0,6,0" Text="⚙" /><TextBlock Text="설정" /></StackPanel></TabItem.Header>
+                <views:SettingsPanel Margin="0,18,0,0" DataContext="{Binding Settings}" />
             </TabItem>
         </TabControl>
     </Grid>

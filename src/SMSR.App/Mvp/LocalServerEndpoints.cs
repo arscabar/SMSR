@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using ModelContextProtocol.Server;
@@ -8,7 +6,8 @@ namespace SMSR.App.Mvp;
 
 internal static class LocalServerEndpoints
 {
-    public static void Map(WebApplication app, string token)
+    public static void Map(WebApplication app, LocalOAuthStore oauth, OAuthFlowStore flows,
+        OAuthAuditLog audit, Func<string>? dashboardTheme)
     {
         app.Use(async (context, next) =>
         {
@@ -17,13 +16,15 @@ internal static class LocalServerEndpoints
                 context.Response.StatusCode = StatusCodes.Status400BadRequest;
                 return;
             }
-            if (context.Request.Path.StartsWithSegments("/mcp") && !IsAuthorized(context.Request, token))
+            if (context.Request.Path.StartsWithSegments("/mcp") && !IsAuthorized(context.Request, oauth))
             {
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                context.Response.Headers.WWWAuthenticate = $"Bearer resource_metadata=\"{OAuthUris.Metadata(context.Request)}\", scope=\"{OAuthUris.Scope}\"";
                 return;
             }
             await next();
         });
+        OAuthEndpoints.Map(app, oauth, flows, audit);
         app.MapGet("/api/state", (string? projectId, string? workflowId, EventStore events, CancellationToken ct) => GetStateAsync(projectId, workflowId, events, ct));
         app.MapGet("/api/plan", (string? projectId, string? workflowId, EventStore events, CancellationToken ct) => GetPlanAsync(projectId, workflowId, events, ct));
         app.MapGet("/api/summary", (string? projectId, string? workflowId, EventStore events, CancellationToken ct) => GetSummaryAsync(projectId, workflowId, events, ct));
@@ -36,22 +37,23 @@ internal static class LocalServerEndpoints
             }
             await StreamAsync(projectId, workflowId, response, notifier, ct);
         });
-        app.MapGet("/dashboard", async (string? projectId, string? workflowId, EventStore events, CancellationToken ct) =>
+        app.MapGet("/dashboard", async (string? projectId, string? workflowId, string? parentNodeId, string? selectedNodeId, EventStore events, CancellationToken ct) =>
         {
             if (string.IsNullOrWhiteSpace(projectId) || string.IsNullOrWhiteSpace(workflowId))
                 return Results.BadRequest(new { error = "projectId와 workflowId가 필요합니다." });
             var state = await events.GetStateAsync(projectId, workflowId, ct);
             var plan = await events.GetPlanAsync(projectId, workflowId, ct);
-            return Results.Content(DashboardPage.Render(state, plan, await events.GetRecentEventsAsync(projectId, workflowId, ct)), "text/html; charset=utf-8");
+            var recent = await events.GetRecentEventsAsync(projectId, workflowId, ct);
+            return Results.Content(DashboardPage.Render(state, plan, recent, dashboardTheme?.Invoke(), parentNodeId, selectedNodeId), "text/html; charset=utf-8");
         });
         app.MapMcp("/mcp");
     }
 
-    internal static bool IsAuthorized(HttpRequest request, string token)
+    private static bool IsAuthorized(HttpRequest request, LocalOAuthStore oauth)
     {
         var value = request.Headers.Authorization.ToString();
-        return value.StartsWith("Bearer ", StringComparison.Ordinal) &&
-            CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(value[7..]), Encoding.UTF8.GetBytes(token));
+        if (!value.StartsWith("Bearer ", StringComparison.Ordinal)) return false;
+        return oauth.ValidateAccess(value[7..], OAuthUris.Resource(request));
     }
 
     private static async Task<IResult> GetStateAsync(string? projectId, string? workflowId, EventStore events, CancellationToken ct)

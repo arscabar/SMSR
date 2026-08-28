@@ -22,13 +22,14 @@ public sealed partial class EventStore
             foreach (var node in nodes)
             {
                 command.Parameters.Clear();
-                command.CommandText = "INSERT INTO plan_nodes VALUES ($projectId, $workflowId, $nodeId, $title, $weight, $dependsOn);";
+                command.CommandText = "INSERT INTO plan_nodes(project_id, workflow_id, node_id, title, weight, depends_on_json, metadata_json) VALUES ($projectId, $workflowId, $nodeId, $title, $weight, $dependsOn, $metadata);";
                 command.Parameters.AddWithValue("$projectId", projectId);
                 command.Parameters.AddWithValue("$workflowId", workflowId);
                 command.Parameters.AddWithValue("$nodeId", node.NodeId);
                 command.Parameters.AddWithValue("$title", node.Title);
                 command.Parameters.AddWithValue("$weight", node.Weight);
                 command.Parameters.AddWithValue("$dependsOn", JsonSerializer.Serialize(node.DependsOn ?? []));
+                command.Parameters.AddWithValue("$metadata", JsonSerializer.Serialize(PlanNodeMetadata.From(node)));
                 await command.ExecuteNonQueryAsync(cancellationToken);
             }
             await transaction.CommitAsync(cancellationToken);

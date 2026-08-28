@@ -6,6 +6,11 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="Themes/FlatTheme.xaml" />
                 <ResourceDictionary Source="Themes/Controls.xaml" />
+                <ResourceDictionary Source="Themes/ComboBoxParts.xaml" />
+                <ResourceDictionary Source="Themes/ComboBoxTheme.xaml" />
+                <ResourceDictionary Source="Themes/CheckBoxTheme.xaml" />
+                <ResourceDictionary Source="Themes/ListTheme.xaml" />
+                <ResourceDictionary Source="Themes/ScrollBarTheme.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

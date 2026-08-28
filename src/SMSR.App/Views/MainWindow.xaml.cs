@@ -7,10 +7,12 @@ namespace SMSR.App.Views;
 public partial class MainWindow : Window
 {
     private bool _allowClose;
-    public MainWindow(MainWindowViewModel viewModel)
+    private readonly Func<bool> _minimizeToTray;
+    public MainWindow(MainWindowViewModel viewModel, Func<bool> minimizeToTray)
     {
         InitializeComponent();
         DataContext = viewModel;
+        _minimizeToTray = minimizeToTray;
     }
 
     public void ShowFromTray()
@@ -32,7 +34,7 @@ public partial class MainWindow : Window
 
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
     {
-        if (!_allowClose)
+        if (!_allowClose && _minimizeToTray())
         {
             e.Cancel = true;
             Hide();

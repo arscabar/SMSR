@@ -20,9 +20,4 @@
     <PackageReference Include="WPF-UI" Version="4.3.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Content Include="..\..\.agents\plugins\marketplace.json" Link=".agents\plugins\marketplace.json" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\plugins\smsr-codex\**\*" Link="plugins\smsr-codex\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
-
 </Project>

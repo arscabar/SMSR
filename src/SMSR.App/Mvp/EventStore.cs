@@ -23,11 +23,11 @@ public sealed partial class EventStore(string databasePath)
             CREATE INDEX IF NOT EXISTS ix_events_workflow_node ON events(project_id, workflow_id, node_id, created_at_utc);
             CREATE TABLE IF NOT EXISTS plan_nodes (
               project_id TEXT NOT NULL, workflow_id TEXT NOT NULL, node_id TEXT NOT NULL,
-              title TEXT NOT NULL, weight INTEGER NOT NULL, depends_on_json TEXT NOT NULL,
+              title TEXT NOT NULL, weight INTEGER NOT NULL, depends_on_json TEXT NOT NULL, metadata_json TEXT NOT NULL DEFAULT '{}',
               PRIMARY KEY(project_id, workflow_id, node_id));
             CREATE TABLE IF NOT EXISTS current_state (
               project_id TEXT NOT NULL, workflow_id TEXT NOT NULL, node_id TEXT NOT NULL,
-              agent_id TEXT NOT NULL, status TEXT NOT NULL, summary TEXT, error TEXT, updated_at_utc TEXT NOT NULL,
+              agent_id TEXT NOT NULL, status TEXT NOT NULL, summary TEXT, error TEXT, updated_at_utc TEXT NOT NULL, metadata_json TEXT NOT NULL DEFAULT '{}',
               PRIMARY KEY(project_id, workflow_id, node_id));
             INSERT INTO current_state(project_id, workflow_id, node_id, agent_id, status, summary, error, updated_at_utc)
             SELECT project_id, workflow_id, node_id, agent_id, status, summary, error, created_at_utc FROM (
@@ -37,7 +37,13 @@ public sealed partial class EventStore(string databasePath)
               id INTEGER PRIMARY KEY, project_id TEXT NOT NULL, workflow_id TEXT NOT NULL,
               source_last_event_id TEXT, content TEXT NOT NULL, created_at_utc TEXT NOT NULL);
             CREATE INDEX IF NOT EXISTS ix_summaries_workflow ON summaries(project_id, workflow_id, created_at_utc);
+            CREATE TABLE IF NOT EXISTS agent_heartbeats (
+              project_id TEXT NOT NULL, workflow_id TEXT NOT NULL, agent_id TEXT NOT NULL,
+              agent_role TEXT NOT NULL, status TEXT NOT NULL, node_id TEXT, summary TEXT,
+              retry_count INTEGER NOT NULL, heartbeat_at_utc TEXT NOT NULL,
+              PRIMARY KEY(project_id, workflow_id, agent_id));
             """;
         await command.ExecuteNonQueryAsync(cancellationToken);
+        await EventStoreMigrations.EnsureMetadataColumnsAsync(connection, cancellationToken);
     }
 }

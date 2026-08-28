@@ -14,10 +14,13 @@
     <SolidColorBrush x:Key="MutedTextBrush" Color="{StaticResource MutedTextColor}" />
     <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}" />
     <SolidColorBrush x:Key="AccentHoverBrush" Color="{StaticResource AccentHoverColor}" />
+    <SolidColorBrush x:Key="AccentSoftBrush" Color="#ECECFF" />
+    <SolidColorBrush x:Key="QuietBrush" Color="#ECEEF6" />
+    <SolidColorBrush x:Key="QuietHoverBrush" Color="#DEE2EE" />
 
     <Style TargetType="{x:Type Window}">
-        <Setter Property="Background" Value="{StaticResource CanvasBrush}" />
-        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        <Setter Property="Background" Value="{DynamicResource CanvasBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         <Setter Property="FontFamily" Value="Segoe UI" />
     </Style>
 </ResourceDictionary>

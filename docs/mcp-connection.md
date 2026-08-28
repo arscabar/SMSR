@@ -1,88 +1,58 @@
 # MCP 연결 및 이벤트 기록
 
-## 연결
+## Codex 직접 연결
 
-1. SMSR 앱을 실행한다.
-2. 고정된 로컬 주소 `http://127.0.0.1:49783/mcp`를 사용한다.
-3. `접속 토큰 복사`를 누른다.
-4. MCP 클라이언트에 endpoint와 `Authorization: Bearer <복사한 토큰>` 헤더를 설정한다.
+1. SMSR 앱을 실행해 `http://127.0.0.1:49783` 서버가 실행 중인지 확인한다.
+2. `서버 · 연결` 탭에서 `초기 연결`을 누른다.
+3. Codex를 완전히 종료한 뒤 다시 실행한다.
+4. Codex 설정의 MCP 서버 목록에서 `smsr`의 `인증`을 누른다.
+5. 브라우저의 `SMSR MCP 연결 승인` 화면에서 `연결 승인`을 누른다.
+6. 새 task에서 `/mcp`를 열어 `smsr` 도구가 표시되는지 확인한다.
 
-토큰은 현재 Windows 사용자만 복호화할 수 있도록 DPAPI로 저장된다. 클라이언트의 보안 저장소 또는 환경 변수로 전달하고, 저장소·프롬프트·로그에는 넣지 않는다.
+SMSR은 별도 Codex CLI, Node.js, npm을 사용하지 않는다. 현재 사용자의 Codex 공유 설정 `~/.codex/config.toml`에는 다음 Streamable HTTP 항목만 등록한다.
+
+```toml
+[mcp_servers.smsr]
+url = "http://127.0.0.1:49783/mcp"
+auth = "oauth"
+```
+
+Codex는 인증되지 않은 `/mcp` 요청의 `401 WWW-Authenticate` 응답에서 OAuth 메타데이터를 찾는다. SMSR은 OAuth protected resource metadata, authorization server metadata, DCR, authorization code, PKCE S256, refresh token rotation을 제공한다. 승인 후 발급된 액세스 토큰으로만 MCP 요청을 처리한다.
+
+서버는 `127.0.0.1`에만 bind한다. OAuth 상태 파일은 `%LocalAppData%\SMSR\oauth-state.bin`에 DPAPI로 암호화하며, 액세스·갱신 토큰 원문은 서버 저장소에 남기지 않고 SHA-256 해시만 보관한다. Codex가 받은 자격 증명은 Codex의 OAuth 저장소에서 관리한다.
 
 ## 제공 도구
 
 | 도구 | 입력 | 결과 |
 |---|---|---|
-| `save_plan` | 프로젝트·워크플로우 ID, 노드 ID·제목·가중치·의존성 | 계획 그래프 저장 |
+| `save_plan` | ID·제목·가중치·의존성, 부모 노드, 담당 에이전트·역할, 완료 조건 | 계층형 계획 그래프 저장 |
 | `get_plan` | 프로젝트 ID, 워크플로우 ID | 계획 노드에 적용된 최신 상태 |
-| `record_event` | 이벤트 식별자, 프로젝트·워크플로우·노드·에이전트 ID, 상태 | 저장 결과와 중복 여부 |
-| `get_state` | 프로젝트 ID, 워크플로우 ID | 각 노드의 최신 상태 |
-| `record_lifecycle` | 세션 ID, 작업 경로, 이벤트 이름 | Codex 훅 전용 최소 활동 기록 |
+| `record_event` | 이벤트·노드·에이전트 ID, 상태, 진행률, 재시도, 다음 작업, 산출물 | 저장 결과와 중복 여부 |
+| `record_heartbeat` | 프로젝트·워크플로우·에이전트 ID, 역할, 상태, 현재 노드 | 에이전트 최신 생존 상태 |
+| `get_state` | 프로젝트 ID, 워크플로우 ID | 노드 및 에이전트 최신 상태 |
+| `record_lifecycle` | 세션·경로·이벤트, 선택 에이전트 ID·역할 | 훅용 heartbeat 기록 |
+| `generate_summary` | 프로젝트 ID, 워크플로우 ID | 로컬 상태 기반 요약 생성·저장 |
+| `save_summary` | 프로젝트 ID, 워크플로우 ID, 요약 내용 | 외부 생성 요약 저장 |
+| `export_workflow` | 프로젝트 ID, 워크플로우 ID | HTML·Markdown·JSON·ZIP 내보내기 |
 
 `eventType`은 `NODE_STATUS_CHANGED`만 가능하며 `status`는 `PENDING`, `IN_PROGRESS`, `VALIDATING`, `SUCCESS`, `FAILED`, `RETRYING`, `BLOCKED` 중 하나여야 한다. 같은 `eventId`는 다시 저장하지 않고 `duplicate: true`를 반환한다.
 
-## 호출 예제
-
-MCP 클라이언트는 도구 목록·호출 요청을 자동으로 처리한다. 아래 PowerShell은 연결 문제를 확인할 때만 사용한다. 토큰 문자열 자체를 파일에 저장하지 않는다.
-
-```powershell
-$smsrEndpoint = 'http://127.0.0.1:49783/mcp'
-$smsrToken = '<앱에서 복사한 토큰>'
-$smsrHeaders = @{
-  Authorization = "Bearer $smsrToken"
-  Accept = 'application/json, text/event-stream'
-  'MCP-Protocol-Version' = '2026-07-28'
-  'MCP-Method' = 'tools/call'
-  'MCP-Name' = 'record_event'
-}
-$smsrBody = @{
-  jsonrpc = '2.0'
-  id = 1
-  method = 'tools/call'
-  params = @{
-    name = 'record_event'
-    arguments = @{
-      eventId = 'evt-example-001'
-      projectId = 'sample-project'
-      workflowId = 'wf-001'
-      nodeId = 'STEP_01'
-      agentId = 'WORKER_01'
-      eventType = 'NODE_STATUS_CHANGED'
-      status = 'IN_PROGRESS'
-      summary = '작업을 시작했습니다.'
-    }
-    _meta = @{
-      'io.modelcontextprotocol/protocolVersion' = '2026-07-28'
-      'io.modelcontextprotocol/clientInfo' = @{ name = 'smsr-manual-check'; version = '1.0' }
-      'io.modelcontextprotocol/clientCapabilities' = @{}
-    }
-  }
-} | ConvertTo-Json -Depth 8
-Invoke-WebRequest -Method Post -Uri $smsrEndpoint -Headers $smsrHeaders -ContentType 'application/json' -Body $smsrBody
-```
-
-기록 후 앱에서 `sample-project`와 `wf-001`을 입력해 대시보드를 열면 최신 상태를 확인할 수 있다.
-
-## Codex 연결
-
-SMSR의 `서버 · 연결` 탭에서 `초기 연결`을 누른다. 앱은 현재 고정 실행 파일 경로로 아래와 같은 stdio MCP 등록을 한 번 수행하고, 배포 폴더에 포함한 로컬 플러그인 마켓플레이스도 등록한다.
-
-```powershell
-codex mcp add smsr -- <SMSR.App.exe의 고정 경로> --mcp-stdio
-```
-
-stdio 브리지는 토큰을 Codex 설정·환경 변수·플러그인 파일에 저장하지 않는다. 실행될 때만 현재 Windows 사용자의 DPAPI 토큰을 읽어 `http://127.0.0.1:49783/mcp`로 전달한다. 따라서 SQLite를 직접 쓰지 않고 기존 서버의 SSE 알림도 유지한다.
-
-등록 뒤 Codex를 재시작하고 새 task에서 `/hooks`로 SMSR 훅을 검토·신뢰한다. 이 승인은 사용자만 할 수 있다. 신뢰 후 앱에서 `확인했고 계속`을 누르면 MCP·플러그인 등록 상태를 다시 확인한다. 실제 첫 이벤트가 수신되면 작업 현황과 웹 대시보드가 갱신된다.
-
-앱을 완전 종료했다가 다시 열어도 SQLite 데이터와 마지막으로 선택한 프로젝트·워크플로우 ID는 `%LocalAppData%\SMSR`에 유지된다. 시작 후 서버를 다시 열고 저장된 진행도·최근 이벤트를 자동 복원한다.
-
-이미 이름이 `smsr`인 MCP가 존재하면 앱은 덮어쓰지 않는다. 기존 설정을 사용자가 검토하거나 제거한 뒤 다시 초기 연결을 실행한다.
-
-`plugins/smsr-codex`은 Codex용 훅·추적 지침 패키지다. 세션 시작 시 계획 기록에 사용할 `projectId`와 `workflowId`를 알려 주고, 사용자 요청 접수와 턴 종료만 자동 기록한다. 실제 계획 노드의 진행률은 Codex가 `save_plan`과 `record_event`로 갱신한다.
+SMSR은 에이전트를 능동 호출하거나 polling하지 않는다. 각 에이전트가 시작 시, 약 30초 이상 이어지는 작업 중, 종료 전에 `record_heartbeat`를 호출하고 의미 있는 상태 변화는 `record_event`로 전송한다. 활성 heartbeat가 90초 넘게 갱신되지 않으면 대시보드에서 `STALE`로 표시한다. WPF 화면은 이벤트 발생 시 SSE로 즉시 갱신하고 연결이 끊기면 2초 polling으로 전환하며, 웹 대시보드는 현재 URL을 2초마다 다시 읽는다.
 
 ## 운영 점검
 
-- 실제 대화에서 `save_plan` 후 `record_event`를 한 번 호출하고, 앱의 대시보드에서 제목·의존성·상태를 확인한다.
-- 포트 충돌은 `Get-NetTCPConnection -LocalPort 49783`으로 확인한다. 충돌 프로세스를 종료한 뒤 앱을 다시 시작한다.
-- 서버가 중지된 경우 stdio 브리지는 `SMSR 로컬 서버가 실행 중이 아닙니다.`를 반환하며 Codex 설정은 바꾸지 않는다.
+- OAuth 검색 확인: `Invoke-RestMethod http://127.0.0.1:49783/.well-known/oauth-authorization-server`
+- 보호 상태 확인: 인증 없이 `/mcp`를 요청하면 `401`과 `resource_metadata`가 포함된 `WWW-Authenticate` 헤더가 반환되어야 한다.
+- 인증 버튼이 없다면 SMSR 서버 실행 상태와 `~/.codex/config.toml`의 `url`, `auth = "oauth"`를 확인한 뒤 Codex를 완전히 재시작한다.
+- 실제 대화에서 `save_plan`과 `record_event`를 호출하고 SMSR 대시보드에서 계획·상태가 반영되는지 확인한다.
+- 포트 충돌은 `Get-NetTCPConnection -LocalPort 49783`으로 확인한다.
+
+SQLite 데이터와 마지막 선택 항목은 앱을 재시작해도 `%LocalAppData%\SMSR`에 유지된다. 기존 설정 파일은 등록 시 `config.toml.smsr.bak`으로 백업한다.
+
+OAuth 토큰 발급이 완료되면 SMSR의 초기 연결·연결 확인 버튼은 숨겨지고 `Codex 연결됨` 상태로 전환된다. 갱신 토큰이 만료되거나 새 사용자 환경에서는 초기 연결 영역이 다시 표시된다.
+
+## MCP 지침과 선택형 스킬
+
+SMSR MCP는 초기화 응답의 서버 지침으로 `save_plan`, `record_event`, `get_plan`, `get_state` 사용 규칙을 항상 제공한다. 따라서 기본 계획·상태 추적에는 별도 스킬이나 플러그인 설치가 필요하지 않다.
+
+저장소의 `plugins/smsr-codex`는 MCP 도구 기반 라이프사이클 훅과 `smsr-tracking` 스킬을 묶은 선택형 개발 자산이다. Node.js·npm·CLI 실행 훅은 없다. 설치되지 않은 환경에서도 서버 `instructions`에 따라 기본 MCP 추적은 동작하지만, 세션·하위 에이전트 시작/종료 자동 heartbeat는 실행되지 않는다. 설치 절차는 [smsr-codex 플러그인](smsr-codex-plugin.md)을 따른다.
