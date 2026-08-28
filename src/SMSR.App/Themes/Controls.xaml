@@ -27,7 +27,7 @@
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type Button}">
                     <Border x:Name="ButtonBorder" Background="{TemplateBinding Background}" CornerRadius="8">
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -54,7 +54,7 @@
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Template">
-            <Setter.Value><ControlTemplate TargetType="{x:Type Button}"><Border x:Name="ButtonBorder" Background="{TemplateBinding Background}" CornerRadius="7"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" /></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ButtonBorder" Property="Background" Value="#DEE2EE" /></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value>
+            <Setter.Value><ControlTemplate TargetType="{x:Type Button}"><Border x:Name="ButtonBorder" Background="{TemplateBinding Background}" CornerRadius="7"><ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ButtonBorder" Property="Background" Value="#DEE2EE" /></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value>
         </Setter>
     </Style>
     <Style x:Key="ChromeButton" TargetType="{x:Type Button}">

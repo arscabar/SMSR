@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <Resource Include="Assets\SMSR.png" />
+    <Content Include="Assets\SMSR.ico" CopyToOutputDirectory="PreserveNewest" />
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.11" />
     <PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.2.0" />

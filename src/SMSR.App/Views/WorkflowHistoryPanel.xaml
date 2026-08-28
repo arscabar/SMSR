@@ -10,7 +10,7 @@
             <TextBlock Margin="0,16,0,0" FontSize="16" FontWeight="SemiBold" Text="요약" />
             <TextBlock Margin="0,8,0,0" Foreground="{StaticResource MutedTextBrush}" Text="{Binding Monitor.Summary}" TextWrapping="Wrap" />
             <StackPanel Margin="0,16,0,0" Orientation="Horizontal">
-                <Button Width="120" Command="{Binding GenerateSummaryCommand}" Content="요약 생성" />
+                <Button Command="{Binding GenerateSummaryCommand}" Content="요약 생성" />
                 <Button Margin="8,0,0,0" Style="{StaticResource IconButton}" Command="{Binding ExportCommand}" Content="⇩" ToolTip="내보내기" />
             </StackPanel>
             <TextBlock Margin="0,12,0,0" Foreground="{StaticResource MutedTextBrush}" Text="{Binding StatusMessage}" TextWrapping="Wrap" />

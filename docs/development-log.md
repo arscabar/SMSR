@@ -603,3 +603,40 @@
   - 새 아이콘의 작업 표시줄·탐색기 표시 캐시는 Windows 셸이 갱신되기 전까지 이전 아이콘을 보일 수 있다.
 - 다음 조치:
   - 새 빌드 실행 후 창·트레이·작업 표시줄 아이콘을 수동 확인한다.
+
+## 2026-08-28 - 창 밀도와 트레이 아이콘 보완
+
+- 변경 파일:
+  - `src/SMSR.App/Views/MainWindow.xaml`
+  - `src/SMSR.App/Views/WorkflowPanel.xaml`
+  - `src/SMSR.App/Views/WorkflowHistoryPanel.xaml`
+  - `src/SMSR.App/Infrastructure/TrayStatusIcon.cs`
+  - `src/SMSR.App/SMSR.App.csproj`
+  - `docs/development-log.md`
+- 변경 사유:
+  - 기본 창의 불필요한 높이와 고정 폭 텍스트 버튼을 줄이고, 상단 로고가 열 폭을 넘지 않게 했다. 트레이는 실행 파일 캐시 대신 배포 아이콘 파일을 직접 사용한다.
+- 실행 명령:
+  - `dotnet build SMSR.slnx --no-restore --verbosity:minimal -p:OutputPath=<임시 경로>`
+  - `<임시 경로>\\SMSR.App.exe` 실행 화면 확인
+- 검증 결과:
+  - 새 창에서 640px 높이, 내용 폭 버튼, 상단 아이콘의 잘림 없음이 확인됐다.
+- 남은 위험:
+  - 기존에 실행 중인 앱은 완전 종료 후 새 빌드로 다시 실행해야 새 트레이 아이콘을 사용한다.
+- 다음 조치:
+  - 트레이 이동 뒤 Windows 알림 영역의 아이콘을 수동 확인한다.
+
+## 2026-08-28 - 텍스트 버튼 내부 여백 수정
+
+- 변경 파일:
+  - `src/SMSR.App/Themes/Controls.xaml`
+  - `docs/development-log.md`
+- 변경 사유:
+  - 공통 Button 템플릿의 `ContentPresenter`가 `Padding`을 사용하지 않아 텍스트가 버튼 가장자리에 붙던 문제를 해결한다.
+- 실행 명령:
+  - `dotnet build SMSR.slnx --no-restore --verbosity:minimal -p:OutputPath=<임시 경로>`
+- 검증 결과:
+  - 기본·보조 텍스트 버튼 템플릿이 각각 설정된 내부 여백을 콘텐츠에 적용한다.
+- 남은 위험:
+  - 없음.
+- 다음 조치:
+  - 새 빌드에서 텍스트 버튼의 좌우 여백을 확인한다.

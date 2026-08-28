@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.IO;
 using System.Windows.Forms;
 
 namespace SMSR.App.Infrastructure;
@@ -20,7 +21,11 @@ public sealed class TrayStatusIcon : IDisposable
 
     private static Icon AppIcon()
     {
-        try { return Icon.ExtractAssociatedIcon(Environment.ProcessPath ?? "") ?? SystemIcons.Information; }
+        try
+        {
+            var path = Path.Combine(AppContext.BaseDirectory, "Assets", "SMSR.ico");
+            return File.Exists(path) ? new Icon(path) : Icon.ExtractAssociatedIcon(Environment.ProcessPath ?? "") ?? SystemIcons.Information;
+        }
         catch { return SystemIcons.Information; }
     }
 }

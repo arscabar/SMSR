@@ -10,8 +10,8 @@
                 <TextBlock Margin="0,12,0,6" Text="워크플로우 ID" />
                 <ComboBox IsEditable="True" ItemsSource="{Binding Selection.WorkflowIds}" Text="{Binding Selection.WorkflowId, UpdateSourceTrigger=PropertyChanged}" />
                 <StackPanel Margin="0,16,0,0" Orientation="Horizontal">
-                    <Button Width="120" Command="{Binding RefreshSelectionCommand}" Content="목록 새로 고침" />
-                    <Button Margin="8,0,0,0" Width="120" Command="{Binding RefreshMonitorCommand}" Content="상태 새로 고침" />
+                    <Button Command="{Binding RefreshSelectionCommand}" Content="목록 새로 고침" />
+                    <Button Margin="8,0,0,0" Command="{Binding RefreshMonitorCommand}" Content="상태 새로 고침" />
                     <Button Margin="8,0,0,0" Style="{StaticResource IconButton}" Command="{Binding OpenDashboardCommand}" Content="↗" ToolTip="대시보드 열기" />
                 </StackPanel>
             </StackPanel>
