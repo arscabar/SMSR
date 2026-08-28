@@ -529,3 +529,22 @@
   - 현재 실행 중인 이전 버전을 완전 종료한 뒤, 새 상단 바와 탭 분리 화면을 수동 확인해야 한다.
 - 다음 조치:
   - 앱 종료 후 self-check를 다시 실행한다.
+
+## 2026-08-28 - 명확한 동작 아이콘 적용
+
+- 변경 파일:
+  - `src/SMSR.App/Themes/Controls.xaml`
+  - `src/SMSR.App/Views/ServerPanel.xaml`
+  - `src/SMSR.App/Views/WorkflowPanel.xaml`
+  - `src/SMSR.App/Views/WorkflowHistoryPanel.xaml`
+  - `docs/development-log.md`
+- 변경 사유:
+  - 시작·중지·토큰 복사·대시보드 열기·내보내기처럼 의미가 보편적인 동작을 아이콘 버튼과 툴팁으로 간결하게 표시했다.
+- 실행 명령:
+  - `dotnet build SMSR.slnx --no-restore --verbosity:minimal -p:OutputPath=<임시 경로>`
+- 검증 결과:
+  - 임시 출력 빌드 통과(경고 0, 오류 0).
+- 남은 위험:
+  - 아이콘 글리프의 Windows 글꼴 표시를 새 빌드 실행 화면에서 확인해야 한다.
+- 다음 조치:
+  - 새 빌드로 화면과 툴팁을 확인한다.

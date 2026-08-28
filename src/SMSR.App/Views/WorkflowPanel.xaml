@@ -12,7 +12,7 @@
                 <StackPanel Margin="0,16,0,0" Orientation="Horizontal">
                     <Button Width="120" Command="{Binding RefreshSelectionCommand}" Content="목록 새로 고침" />
                     <Button Margin="8,0,0,0" Width="120" Command="{Binding RefreshMonitorCommand}" Content="상태 새로 고침" />
-                    <Button Margin="8,0,0,0" Width="120" Command="{Binding OpenDashboardCommand}" Content="대시보드 열기" />
+                    <Button Margin="8,0,0,0" Style="{StaticResource IconButton}" Command="{Binding OpenDashboardCommand}" Content="↗" ToolTip="대시보드 열기" />
                 </StackPanel>
             </StackPanel>
         </Border>

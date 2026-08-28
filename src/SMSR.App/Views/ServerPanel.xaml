@@ -10,9 +10,9 @@
             <TextBlock Margin="0,12,0,0" Foreground="{StaticResource MutedTextBrush}" Text="MCP endpoint" />
             <TextBlock Margin="0,4,0,0" FontFamily="Consolas" Text="{Binding McpEndpoint}" />
             <StackPanel Margin="0,16,0,0" Orientation="Horizontal">
-                <Button Width="100" Command="{Binding StartCommand}" Content="서버 시작" />
-                <Button Margin="8,0,0,0" Width="100" Command="{Binding StopCommand}" Content="서버 중지" />
-                <Button Margin="8,0,0,0" Width="130" Command="{Binding CopyTokenCommand}" Content="접속 토큰 복사" />
+                <Button Style="{StaticResource IconButton}" Command="{Binding StartCommand}" Content="▶" ToolTip="서버 시작" />
+                <Button Margin="8,0,0,0" Style="{StaticResource IconButton}" Command="{Binding StopCommand}" Content="■" ToolTip="서버 중지" />
+                <Button Margin="8,0,0,0" Style="{StaticResource IconButton}" Command="{Binding CopyTokenCommand}" Content="⧉" ToolTip="접속 토큰 복사" />
             </StackPanel>
             <TextBlock Margin="0,12,0,0" Foreground="{StaticResource MutedTextBrush}" Text="{Binding StatusMessage}" TextWrapping="Wrap" />
         </StackPanel>
