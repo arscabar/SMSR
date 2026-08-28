@@ -5,13 +5,15 @@ namespace SMSR.App.ViewModels;
 
 public sealed class MainWindowViewModel
 {
-    public MainWindowViewModel(LocalServerHost host, IPlatformActions platform)
+    public MainWindowViewModel(LocalServerHost host, IPlatformActions platform, Action? exitApplication = null)
     {
         Server = new ServerControlViewModel(host, platform);
         Workspace = new WorkflowWorkspaceViewModel(host, platform);
+        ExitCommand = new RelayCommand(exitApplication ?? (() => { }));
     }
 
     public ServerControlViewModel Server { get; }
     public WorkflowWorkspaceViewModel Workspace { get; }
+    public RelayCommand ExitCommand { get; }
     public Task LoadAsync() => Workspace.LoadAsync();
 }

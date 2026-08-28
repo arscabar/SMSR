@@ -7,7 +7,7 @@ public sealed class WindowsPlatformActions : IPlatformActions
 {
     public bool TryCopyToClipboard(string value)
     {
-        try { Clipboard.SetText(value); return true; }
+        try { System.Windows.Clipboard.SetText(value); return true; }
         catch { return false; }
     }
 

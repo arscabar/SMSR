@@ -466,3 +466,42 @@
   - DPAPI 토큰은 사용자가 앱에서 복사해 현재 세션에 설정해야 하므로, 실제 MCP 등록·훅 신뢰는 해당 사용자 단계가 필요하다.
 - 다음 조치:
   - 새 Codex task에서 실제 계획 한 건을 기록해 웹 대시보드 갱신을 점검한다.
+## 2026-08-28 - 앱 보조 제목 변경
+
+- 변경 파일:
+  - `src/SMSR.App/Views/MainWindow.xaml`
+  - `docs/development-log.md`
+- 변경 사유:
+  - 앱의 기존 보조 제목을 사용자가 지정한 `Show Me Status Report`로 바꿨다.
+- 실행 명령:
+  - `dotnet build SMSR.slnx --no-restore --verbosity:minimal`
+- 검증 결과:
+  - `dotnet build SMSR.slnx --no-restore --verbosity:minimal` 통과(경고 0, 오류 0).
+- 남은 위험:
+  - 없음.
+- 다음 조치:
+  - 탭 기반 화면 및 초기 설정 흐름은 별도 변경으로 진행한다.
+
+## 2026-08-28 - 탭 UI와 트레이 종료 동작 개선
+
+- 변경 파일:
+  - `src/SMSR.App/Views/MainWindow.xaml`
+  - `src/SMSR.App/Views/MainWindow.xaml.cs`
+  - `src/SMSR.App/ViewModels/MainWindowViewModel.cs`
+  - `src/SMSR.App/Infrastructure/TrayStatusIcon.cs`
+  - `src/SMSR.App/App.xaml.cs`
+  - `src/SMSR.App/SMSR.App.csproj`
+  - `src/SMSR.App/Themes/FlatTheme.xaml`
+  - `src/SMSR.App/Themes/Controls.xaml`
+  - `docs/development-log.md`
+- 변경 사유:
+  - 긴 단일 화면을 작업 현황·서버 연결 탭으로 나누고, 벡터 상태 로고와 평면 테마를 적용했다. 일반 닫기는 트레이 이동, 완전 종료는 명시 명령으로 처리한다.
+- 실행 명령:
+  - `dotnet build SMSR.slnx --no-restore --verbosity:minimal`
+  - `dotnet run --project src/SMSR.App/SMSR.App.csproj --no-build -- --self-test`
+- 검증 결과:
+  - 빌드 통과(경고 0, 오류 0). 기존 MCP·저장소·WPF ViewModel self-check도 통과했다. 실제 WPF 첫 탭의 로고·탭·완전 종료 버튼 배치를 확인했다.
+- 남은 위험:
+  - 트레이 메뉴·창 숨김 동작은 실제 Windows 셸에서 한 번 수동 확인이 필요하다.
+- 다음 조치:
+  - DPAPI 토큰을 평문 저장 없이 Codex에 자동 연결하려면 별도 로컬 stdio 브리지 설계가 필요하다.
