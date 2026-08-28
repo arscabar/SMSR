@@ -57,7 +57,7 @@ Self-check는 MCP `save_plan`·`record_event`·`record_heartbeat`·`record_lifec
 ## Documents
 
 - [MCP 연결 및 이벤트 기록](docs/mcp-connection.md)
-- [선택형 smsr-codex 플러그인](docs/smsr-codex-plugin.md)
+- [선택형 SMSR Codex 로컬 추적](docs/smsr-codex-local.md)
 - [개발 이력](docs/development-log.md)
 - [WPF MCP 작업 관제 앱 계획서](docs/wpf-mcp-dashboard-project-plan.md)
 - [WPF MCP 작업 관제 앱 HTML 계획서](docs/wpf-mcp-dashboard-project-plan.html)

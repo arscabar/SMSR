@@ -51,8 +51,8 @@ SQLite 데이터와 마지막 선택 항목은 앱을 재시작해도 `%LocalApp
 
 OAuth 토큰 발급이 완료되면 SMSR의 초기 연결·연결 확인 버튼은 숨겨지고 `Codex 연결됨` 상태로 전환된다. 갱신 토큰이 만료되거나 새 사용자 환경에서는 초기 연결 영역이 다시 표시된다.
 
-## MCP 지침과 선택형 스킬
+## MCP 지침과 선택형 로컬 추적
 
 SMSR MCP는 초기화 응답의 서버 지침으로 `save_plan`, `record_event`, `get_plan`, `get_state` 사용 규칙을 항상 제공한다. 따라서 기본 계획·상태 추적에는 별도 스킬이나 플러그인 설치가 필요하지 않다.
 
-저장소의 `plugins/smsr-codex`는 MCP 도구 기반 라이프사이클 훅과 `smsr-tracking` 스킬을 묶은 선택형 개발 자산이다. Node.js·npm·CLI 실행 훅은 없다. 설치되지 않은 환경에서도 서버 `instructions`에 따라 기본 MCP 추적은 동작하지만, 세션·하위 에이전트 시작/종료 자동 heartbeat는 실행되지 않는다. 설치 절차는 [smsr-codex 플러그인](smsr-codex-plugin.md)을 따른다.
+저장소의 `.codex/hooks.json`과 `.agents/skills/smsr-tracking`은 MCP 도구 기반의 선택형 저장소 로컬 기능이다. Node.js·npm·CLI 실행 훅이나 마켓플레이스 설치 과정은 없다. Codex에서 저장소를 신뢰하고 `/hooks`에서 정의를 검토·신뢰하면 세션·하위 에이전트 lifecycle 기록이 활성화된다. 상세 절차는 [SMSR Codex 로컬 추적](smsr-codex-local.md)을 따른다.

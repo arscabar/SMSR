@@ -890,3 +890,28 @@
   - 기존 전체 `--self-test`의 SSE 모니터 종료 대기 문제는 이번 범위 밖이며, 독립된 세 self-check로 변경 범위를 검증했다.
 - 다음 조치:
   - 다른 컴퓨터에서 저장소를 받은 뒤 SMSR OAuth 연결, 로컬 마켓플레이스 설치, 훅 신뢰, 새 task의 하위 에이전트 heartbeat까지 한 번 통합 확인한다.
+
+## 2026-08-28 - 비공개 저장소와 마켓플레이스 없는 로컬 추적 전환
+
+- 변경 파일:
+  - 삭제: `.agents/plugins/marketplace.json`, `plugins/smsr-codex/**`, `docs/smsr-codex-plugin.md`
+  - 추가: `.codex/hooks.json`, `.agents/skills/smsr-tracking/SKILL.md`, `docs/smsr-codex-local.md`
+  - 수정: `README.md`, `docs/mcp-connection.md`, `docs/development-log.md`
+- 변경 사유:
+  - 공개 배포 목적이 없는 로컬 앱에 플러그인·마켓플레이스 패키징이 불필요하고 설치 의미를 혼동시켰다.
+  - 공식 Codex 저장소 로컬 훅·스킬 위치를 사용해 절대경로나 별도 CLI 없이 동일한 MCP 직접 전송 기능을 유지한다.
+- 실행 명령:
+  - GitHub API로 `arscabar/SMSR` 저장소를 private으로 전환하고 결과를 재조회했다.
+  - 공식 OpenAI Hooks·Skills 문서에서 `.codex/hooks.json`, `.agents/skills` 로딩 규칙을 확인했다.
+  - JSON 구문·절대경로 검사와 `skill-creator`의 `quick_validate.py`를 실행했다.
+  - 임시 출력 경로에서 .NET 빌드 후 `--tracking-self-test`, `--oauth-self-test`, `--codex-config-self-test`를 실행했다.
+- 검증 결과:
+  - GitHub 응답에서 `visibility=private`, `private=true`를 확인했다.
+  - 사용자 Codex 설정에는 SMSR 로컬 마켓플레이스 등록이 없고 저장소 신뢰 설정만 존재한다.
+  - 저장소 로컬 훅은 유효한 JSON이며 컴퓨터별 절대경로가 없고, `smsr-tracking` 스킬 검증을 통과했다.
+  - 앱 빌드가 경고 0, 오류 0으로 통과했고 세 self-check가 모두 종료 코드 0을 반환했다.
+- 남은 위험:
+  - 저장소는 이전에 public이었으므로 제3자가 이미 복제한 사본까지 회수할 수는 없다.
+  - 변경된 저장소 로컬 훅은 새 작업에서 `/hooks`를 열어 다시 신뢰해야 한다.
+- 다음 조치:
+  - 수정본을 커밋·푸시하고 다른 환경에서는 SMSR OAuth 연결과 훅 신뢰만 수행한다.
