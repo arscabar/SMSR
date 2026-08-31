@@ -20,15 +20,17 @@ dotnet run --project src/SMSR.App/SMSR.App.csproj
 
 별도 Codex CLI, Node.js, npm은 필요하지 않습니다. SMSR은 `WindowsApps` 내부 실행 파일을 호출하지 않고 Codex가 공유하는 설정 파일을 직접 갱신합니다. 기존 설정 파일은 변경 전에 `config.toml.smsr.bak`으로 백업합니다.
 
-## 다른 Windows 환경에 배포
+## 다른 Windows PC에 설치
 
-개발 PC 경로에 의존하지 않는 자체 포함형 ZIP은 다음 명령으로 만듭니다.
+다른 PC에는 자체 포함형 단일 설치 프로그램을 전달합니다.
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\publish-portable.ps1 -Runtime win-x64
+powershell -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1
 ```
 
-결과는 `artifacts\SMSR-win-x64-날짜.zip`에 생성됩니다. 다른 Windows PC나 폴더에 전체 압축을 풀고 `SMSR.App.exe`를 실행하면 현재 위치와 현재 Windows 사용자를 기준으로 Codex 공유 MCP 설정, 전역 자동 추적 훅, Windows 자동 시작을 생성합니다. 대상 PC에는 .NET SDK가 필요하지 않습니다. 자세한 최초 승인·폴더 이동·ARM64·Windows 전용 범위는 [휴대용 배포 빠른 시작](docs/portable-quickstart.md)을 참고하세요.
+결과는 `artifacts\installer\SMSR-Setup-버전-win-x64.exe`에 생성됩니다. 설치 프로그램은 관리자 권한 없이 현재 사용자에게 설치하며 시작 메뉴, Windows 자동 시작과 제거 프로그램을 등록합니다. 설치된 SMSR을 처음 실행하면 해당 PC의 Codex 공유 MCP 설정과 전역 자동 추적 훅을 구성합니다. 대상 PC에는 .NET SDK가 필요하지 않습니다. 자세한 설치·업데이트·제거·무인 설치 방법은 [Windows 설치 프로그램 안내](docs/installer-quickstart.md)를 참고하세요.
+
+ZIP 휴대용 배포가 필요한 개발자는 [휴대용 배포 빠른 시작](docs/portable-quickstart.md)을 참고할 수 있지만, 일반 사용자 배포 기준은 설치 프로그램입니다.
 
 등록되는 설정은 다음과 같습니다.
 
@@ -67,6 +69,7 @@ Self-check는 MCP `save_plan`·`record_event`·`record_heartbeat`·`record_lifec
 
 ## Documents
 
+- [Windows 설치 프로그램](docs/installer-quickstart.md)
 - [MCP 연결 및 이벤트 기록](docs/mcp-connection.md)
 - [선택형 SMSR Codex 로컬 추적](docs/smsr-codex-local.md)
 - [개발 이력](docs/development-log.md)

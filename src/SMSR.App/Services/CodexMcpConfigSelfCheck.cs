@@ -44,6 +44,17 @@ internal static class CodexMcpConfigSelfCheck
             if (WindowsStartupRegistration.BuildCommand(@"C:\Program Files\SMSR\SMSR.App.exe")
                 != "\"C:\\Program Files\\SMSR\\SMSR.App.exe\" --background")
                 throw new InvalidOperationException("Windows 자동 시작 명령 검증이 실패했습니다.");
+
+            CodexAutoTrackingHook.Unregister(path);
+            var cleanedHooks = File.ReadAllText(hooksPath);
+            if (cleanedHooks.Contains("SMSR automatic tracking", StringComparison.Ordinal)
+                || !cleanedHooks.Contains("other.exe", StringComparison.Ordinal))
+                throw new InvalidOperationException("Codex 자동 추적 훅 제거 검증이 실패했습니다.");
+            CodexMcpConfig.Unregister(path);
+            var cleanedConfig = File.ReadAllText(path);
+            if (cleanedConfig.Contains("[mcp_servers.smsr]", StringComparison.Ordinal)
+                || !cleanedConfig.Contains("[mcp_servers.other]", StringComparison.Ordinal))
+                throw new InvalidOperationException("Codex MCP 설정 제거 검증이 실패했습니다.");
         }
         finally
         {

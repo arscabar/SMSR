@@ -1056,3 +1056,34 @@
   - 배포본은 코드 서명되지 않아 새 PC에서 SmartScreen 경고가 나타날 수 있다. ARM64 생성 경로는 제공하지만 실제 장치 실행 검증은 하지 않았다.
 - 다음 조치:
   - 정식 배포가 필요해지면 코드 서명과 설치 관리자 또는 릴리스 자동화를 추가하고, 깨끗한 Windows x64 PC에서 최초 OAuth·훅 승인까지 수동 수용 시험한다.
+
+## 2026-08-31 - 다른 PC용 Windows 설치 프로그램
+
+- 변경 파일:
+  - `installer/SMSR.iss`, `installer/SMSR-Setup.ico`
+  - `scripts/build-installer.ps1`, `docs/installer-quickstart.md`, `README.md`
+  - `src/SMSR.App/App.xaml.cs`, `SMSR.App.csproj`, `Assets/SMSR.ico`
+  - `src/SMSR.App/Services/CodexIntegrationCleanup.cs`, `CodexMcpConfig.Unregister.cs`, `CodexAutoTrackingHook.Unregister.cs`, `CodexMcpConfigSelfCheck.cs`
+- 변경 사유:
+  - 다른 Windows PC에는 ZIP이나 개발 환경이 아니라 단일 설치 프로그램만 전달하고, 안정된 설치 경로에서 설치·업그레이드·제거가 가능해야 했다.
+  - 제거 후 삭제된 EXE를 가리키는 Windows 자동 시작과 Codex MCP·전역 훅이 남지 않도록 SMSR 소유 설정만 정리할 필요가 있었다.
+- 실행 명령:
+  - 공식 Inno Setup 문서에서 비관리 설치, 단일 Setup EXE, 아키텍처, 앱 종료, 설치·제거 순서 확인
+  - `winget install --id JRSoftware.InnoSetup -e --source winget --scope user`
+  - `dotnet build SMSR.slnx --configuration Release --no-restore --nologo`
+  - `powershell -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1`
+  - 생성된 Setup의 `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART` 설치·제거·재설치 및 `/FORCECLOSEAPPLICATIONS` 업그레이드 검사
+- 검증 결과:
+  - Release 빌드가 경고 0, 오류 0이며 config 제거 self-check와 설치된 앱의 config, tracking, OAuth, 전체 self-check가 모두 종료 코드 0을 반환했다.
+  - Inno Setup 6.7.3에서 `SMSR-Setup-1.0.0.0-win-x64.exe` 단일 파일을 생성했다. 최종 SHA-256은 `3E3A0B1EED10106DD9BAB502C762485809A15DF3B3D333D5E3ED4F396C999DA1`이다.
+  - 실제 현재 사용자 설치에서 `%LOCALAPPDATA%\Programs\SMSR`, 시작 메뉴, HKCU 자동 시작, 앱 및 기능 제거 항목 생성을 확인했다.
+  - 제거 시 설치 폴더·자동 시작·제거 항목·SMSR Codex MCP·훅이 사라지고 다른 Codex 설정과 `%LOCALAPPDATA%\SMSR` 데이터는 유지됐다.
+  - 최종 재설치와 실행 중 업그레이드에서 설치 EXE가 publish EXE와 같은 해시로 교체됐고 설치 경로 앱이 port 49783을 유지하며 MCP가 재연결됐다.
+  - 기존 230px 단일 ICO를 Windows 표준 16·32·48·64·256px 다중 해상도 ICO로 교체해 앱·트레이·설치 프로그램 아이콘을 검증했다.
+  - 첫 컴파일의 Inno 7 전용 옵션과 두 번째 컴파일의 비표준 ICO 실패는 원인이 달라 각각 6.7 호환 명령과 표준 ICO로 전환했다. 일반 종료가 트레이 숨김으로 처리되는 업그레이드 문제는 설치 시 강제 종료로 해결했다.
+- 남은 위험:
+  - 설치 파일은 Authenticode 코드 서명되지 않아 다른 PC에서 Windows SmartScreen의 알 수 없는 게시자 경고가 나타날 수 있다.
+  - 최초 OAuth 승인과 변경된 설치 경로의 전역 훅 신뢰는 대상 Windows 사용자마다 한 번 필요하다.
+  - 현재 설치 프로그램은 win-x64용이며 깨끗한 별도 PC에서의 최종 사용자 수용 시험은 남아 있다.
+- 다음 조치:
+  - 코드 서명 인증서가 준비되면 앱과 Setup EXE 서명을 빌드 단계에 연결하고, 필요하면 GitHub Release에 설치 파일과 SHA-256을 게시한다.
