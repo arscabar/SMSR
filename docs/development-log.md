@@ -1109,3 +1109,24 @@
   - Setup은 여전히 Authenticode 미서명이라 다른 PC에서 SmartScreen 경고가 나타날 수 있다.
 - 다음 조치:
   - 별도 PC 수용 시험에서 라이트·다크 화면과 최초 OAuth·훅 승인 흐름을 확인하고, 코드 서명 인증서가 준비되면 배포 파일에 서명한다.
+
+## 2026-08-31 - 그래프 더블클릭 흐림과 중복 이동 수정
+
+- 변경 파일:
+  - `src/SMSR.App/Mvp/DashboardPage.cs`, `DashboardLiveUpdates.cs`, `DashboardGraphStyles.cs`
+  - `src/SMSR.App/Mvp/MvpSelfCheck.cs`
+- 변경 사유:
+  - 웹 대시보드의 2초 `meta refresh`가 전체 화면을 반복해서 다시 그렸고, SVG 링크 더블클릭의 두 번째 클릭이 재렌더링된 다른 노드에 전달될 수 있었다.
+- 실행 명령:
+  - Release 빌드와 config·tracking·OAuth·전체 self-check 실행
+  - 설치 프로그램 재빌드와 현재 설치본 무인 업그레이드
+- 검증 결과:
+  - 2초 전체 새로고침을 제거하고 기존 `/api/events/stream`의 상태 이벤트로 헤더·그래프·상세 영역만 교체하도록 변경했다.
+  - 그래프 텍스트 선택을 막고 `sessionStorage` 기반 600ms 중복 이동 잠금과 더블클릭 기본 동작 차단을 추가했다.
+  - self-check에서 `meta refresh` 부재, `EventSource`와 중복 클릭 잠금 포함을 회귀 검사한다.
+  - Release 빌드 경고 0·오류 0, 소스 및 설치 앱 self-check 4종이 모두 종료 코드 0을 반환했다.
+  - 최종 Setup SHA-256은 `84BAE90E55E7AAAD11AF777E8C0A675F49E911BA20125A77D2842AF345D657ED`이다.
+- 남은 위험:
+  - 설치본 교체 후 로컬 URL 재방문이 브라우저 안전 정책에 차단되어 새 설치본의 실제 더블클릭 자동화 재현은 수행하지 못했다. 기존 화면에서 원인과 잘못된 이동을 재현했고 변경된 HTML 계약은 설치 앱 self-check로 검증했다.
+- 다음 조치:
+  - 현재 열린 대시보드를 한 번 새로고침하고 동일 노드를 더블클릭해 화면이 유지되는지 수동 확인한다.
