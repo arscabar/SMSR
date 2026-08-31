@@ -24,7 +24,7 @@ public static class DashboardPage
             <header><div><h1>작업 그래프 대시보드</h1><span class="muted">{{DashboardPanels.Encode(state.ProjectId)}} / {{DashboardPanels.Encode(state.WorkflowId)}}</span></div>
             <div class="summary"><span class="chip">완료 {{completed}} / {{progressNodes.Length}}</span><span class="chip">전체 진행률 {{progress}}%</span></div></header>
             {{alert}}<main><aside id="agents"><h2>에이전트</h2>{{DashboardPanels.RenderAgents(state, plan)}}</aside>
-            <section id="flow"><div class="flow-heading"><div><h2>계층형 작업 흐름</h2>{{DashboardNavigation.Breadcrumb(state.ProjectId, state.WorkflowId, plan, parentNodeId)}}<span class="muted">화살표는 선행 관계, ↳ 표시는 드릴다운 가능한 하위 작업입니다.</span></div></div><div id="graph">{{DashboardGraph.Render(plan, state, parentNodeId)}}</div></section>
+            <section id="flow"><div class="flow-heading"><div><h2>계층형 작업 흐름</h2>{{DashboardNavigation.Breadcrumb(state.ProjectId, state.WorkflowId, plan, parentNodeId)}}</div></div><div id="graph">{{DashboardGraph.Render(plan, state, parentNodeId)}}</div></section>
             <aside id="details"><h2>작업 상세</h2>{{DashboardPanels.RenderDetails(state, plan, selectedNodeId, parentNodeId)}}<h2 class="history-title">최근 기록</h2>{{DashboardPanels.RenderHistory(events)}}</aside></main>
             {{DashboardLiveUpdates.Render(state.ProjectId, state.WorkflowId)}}
             </body></html>
