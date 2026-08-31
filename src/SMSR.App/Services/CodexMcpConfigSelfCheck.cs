@@ -42,7 +42,9 @@ internal static class CodexMcpConfigSelfCheck
             if (!context.Contains("session-1", StringComparison.Ordinal) || !context.Contains("SMSR", StringComparison.Ordinal)
                 || !context.Contains("graph tracking is opt-in", StringComparison.Ordinal)
                 || !context.Contains("Ignore source_thread_id", StringComparison.Ordinal)
-                || !context.Contains("exact current task/session ID", StringComparison.Ordinal)
+                || !context.Contains("current Codex task/session ID", StringComparison.Ordinal)
+                || !context.Contains("omit workflowId in the first save_plan", StringComparison.Ordinal)
+                || !context.Contains("projectName__yyyyMMdd-HHmmssfff", StringComparison.Ordinal)
                 || !context.Contains("SUCCESS, FAILED, or BLOCKED", StringComparison.Ordinal)
                 || context.Contains("SECRET", StringComparison.Ordinal))
                 throw new InvalidOperationException("Codex 자동 추적 컨텍스트 검증이 실패했습니다.");

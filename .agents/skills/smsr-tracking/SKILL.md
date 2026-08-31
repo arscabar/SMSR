@@ -5,7 +5,7 @@ description: Push a Codex task's hierarchical plan, per-agent heartbeat, retries
 
 SMSR is a passive receiver. It never starts or polls agents. Graph tracking is opt-in: use this skill only when the user explicitly asks to track or visualize work as a graph, flow, dashboard, or SMSR workflow, or asks to resume a previous graph. Ordinary work creates no SMSR records.
 
-Use the repository folder name as `projectId` and the Codex task/session ID as the base `workflowId`. Keep one workflow stable for the explicitly requested graph scope.
+Use the repository folder name as `projectId`. For a new graph, omit `workflowId` in the first `save_plan`; SMSR returns a `projectName__yyyyMMdd-HHmmssfff` ID. Reuse that returned ID unchanged for every heartbeat and event until the explicitly requested graph scope ends. Use the current Codex task/session ID as `agentId`, not as the generated workflow ID.
 
 - The coordinator calls `save_plan` when the concrete plan changes. Use `parentNodeId` for drilldown groups, `dependsOn` for execution order, and include `assignedAgentId`, `agentRole`, and `completionCriteria` when known.
 - To resume a previous graph, call `list_workflows`, then load the selected workflow with `get_plan` and `get_state`. Keep that workflow ID. If several candidates exist and the user's choice is unclear, ask instead of creating a new graph.

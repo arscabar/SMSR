@@ -8,6 +8,8 @@ internal static class TrackingContractSelfCheck
     {
         if (!SmsrMcpInstructions.Text.Contains("명시적으로 요청", StringComparison.Ordinal)
             || !SmsrMcpInstructions.Text.Contains("일반 작업은 어떤 SMSR 기록도", StringComparison.Ordinal)
+            || !SmsrMcpInstructions.Text.Contains("workflowId를 생략", StringComparison.Ordinal)
+            || !SmsrMcpInstructions.Text.Contains("yyyyMMdd-HHmmssfff", StringComparison.Ordinal)
             || !SmsrMcpInstructions.Text.Contains("list_workflows", StringComparison.Ordinal)
             || !SmsrMcpInstructions.Text.Contains("최종 record_event", StringComparison.Ordinal))
             Fail("요청형 그래프 지침");
@@ -17,6 +19,8 @@ internal static class TrackingContractSelfCheck
         {
             var store = new EventStore(path);
             await store.InitializeAsync();
+            var generatedId = WorkflowIdGenerator.Create("Apple Game", new DateTimeOffset(2026, 8, 31, 15, 42, 7, TimeSpan.FromHours(9)).AddMilliseconds(123));
+            if (generatedId != "Apple Game__20260831-154207123") Fail("workflow ID 자동 생성");
             await store.SavePlanAsync("SMSR", "task-1",
             [
                 new("implementation", "구현", 1, null, null, "lead", "coordinator", "모든 하위 작업 완료"),

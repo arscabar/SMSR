@@ -1311,3 +1311,31 @@
   - 수정 전 잘못된 원본 task ID로 저장된 기존 그래프는 복구 가능성을 위해 자동 삭제하지 않는다.
 - 다음 조치:
   - 없음.
+
+## 2026-08-31 - 날짜 기반 workflow ID와 사과게임 대시보드 수정
+
+- 변경 파일:
+  - `src/SMSR.App/Mvp/SmsrMcpInstructions.cs`, `TrackingContractSelfCheck.cs`
+  - `src/SMSR.App/Mvp/WorkflowIdGenerator.cs`, `WorkflowProgress.cs`, 대시보드 그래프·진행률 파일
+  - `src/SMSR.App/Services/CodexAutoTrackingContext.cs`, `CodexMcpConfigSelfCheck.cs`
+  - `.agents/skills/smsr-tracking/SKILL.md`, `README.md`, `docs/graph-tracking-guide.md`
+- 변경 사유:
+  - 새 그래프 ID를 프로젝트명과 생성 날짜시간으로 읽기 쉽게 만들 필요가 있었다.
+  - 사과게임 수용 시험에서 긴 agent ID의 SVG 넘침, 계층 아래 의존선 누락, SUCCESS와 55~88% 진행률의 불일치가 발견됐다.
+- 실행 명령:
+  - 별도 projectless Codex 작업에서 사과게임 구현·테스트·브라우저 QA·Git 커밋 및 SMSR 추적
+  - Release 빌드와 self-check, 설치 프로그램 갱신, 날짜 기반 workflow ID 재기록과 자동 선택 확인
+- 검증 결과:
+  - 사과게임의 합계 10 제거, 정답·오답 피드백, 점수, 60초 타이머, 재시작, 모바일 화면과 콘솔 오류 부재를 실제 브라우저에서 확인했다.
+  - 첫 `save_plan`에서 workflow ID를 생략하면 서버가 `프로젝트명__yyyyMMdd-HHmmssfff` 형식으로 생성하고 이후 이벤트가 반환된 ID를 재사용하도록 계약을 변경했다.
+  - 현재 계층에 숨은 의존성을 보이는 조상 노드로 투영하고, SVG 텍스트를 축약하되 전체 값은 툴팁·상세에 유지한다.
+  - 드릴다운 화면에 현재 부모 노드를 기준점으로 함께 렌더링해 부모에서 직계 하위 작업으로 이어지는 선을 모든 계층에서 표시한다.
+  - SUCCESS 상태는 기존 저장 데이터와 신규 이벤트 모두 100%로 정규화하고 상단 완료 수는 전체 계획 노드 기준으로 표시한다.
+  - 실제 자동 생성 ID `smsr-apple-game-e2e__20260831-162316084`와 앱 자동 선택을 확인했다.
+  - 브라우저에서 루트 선 2개, 첫 드릴다운 선 1개·노드 2개, 다음 드릴다운 선 2개·노드 3개와 모든 하위 진행률 100%를 확인했다.
+  - 소스·설치 앱의 config·tracking·OAuth·전체 self-check가 모두 종료 코드 0으로 통과했다.
+  - 최종 Setup SHA-256은 `F08B8577B87E6961F7216ACBAD377B6CB39262249EDD7096BA5BC0BCA740B764`이다.
+- 남은 위험:
+  - 수정 전 ID로 저장된 사과게임 그래프는 복구 가능성을 위해 자동 삭제하지 않는다.
+- 다음 조치:
+  - 없음.

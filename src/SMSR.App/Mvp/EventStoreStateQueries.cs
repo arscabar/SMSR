@@ -20,7 +20,8 @@ public sealed partial class EventStore
             while (await reader.ReadAsync(cancellationToken))
             {
                 var metadata = EventMetadata.Parse(reader.GetString(6));
-                nodes.Add(new(reader.GetString(0), reader.GetString(1), reader.GetString(2), reader.IsDBNull(3) ? null : reader.GetString(3), reader.IsDBNull(4) ? null : reader.GetString(4), DateTimeOffset.Parse(reader.GetString(5)), metadata.AgentRole, metadata.ProgressPercentage, metadata.RetryCount, metadata.NextAction, metadata.Artifacts, metadata.HeartbeatAt));
+                var status = reader.GetString(2);
+                nodes.Add(new(reader.GetString(0), reader.GetString(1), status, reader.IsDBNull(3) ? null : reader.GetString(3), reader.IsDBNull(4) ? null : reader.GetString(4), DateTimeOffset.Parse(reader.GetString(5)), metadata.AgentRole, WorkflowProgress.Value(status, metadata.ProgressPercentage), metadata.RetryCount, metadata.NextAction, metadata.Artifacts, metadata.HeartbeatAt));
             }
         return new(projectId, workflowId, nodes, await GetAgentsAsync(projectId, workflowId, cancellationToken));
     }

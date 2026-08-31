@@ -11,7 +11,7 @@ internal sealed record EventMetadata(
     DateTimeOffset? HeartbeatAt)
 {
     public static EventMetadata From(RecordEventRequest request, DateTimeOffset heartbeatAt)
-        => new(request.AgentRole, request.ProgressPercentage, request.RetryCount, request.NextAction, request.Artifacts, heartbeatAt);
+        => new(request.AgentRole, WorkflowProgress.Value(request.Status, request.ProgressPercentage), request.RetryCount, request.NextAction, request.Artifacts, heartbeatAt);
 
     public static EventMetadata Parse(string json)
         => JsonSerializer.Deserialize<EventMetadata>(json) ?? new(null, null, 0, null, null, null);

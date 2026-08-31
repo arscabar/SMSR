@@ -57,7 +57,7 @@ public static class MvpSelfCheck
             var done = first with { EventId = "evt-2", Status = "SUCCESS", Summary = "완료" };
             if (!await store.RecordAsync(done)) throw new InvalidOperationException("상태 기록이 실패했습니다.");
             var state = await store.GetStateAsync("demo", "wf-1");
-            if (state.Nodes.Count != 1 || state.Nodes[0].Status != "SUCCESS" || state.Nodes[0].AgentRole != "implementer" || state.Nodes[0].RetryCount != 1 || state.Agents?.Count != 1)
+            if (state.Nodes.Count != 1 || state.Nodes[0].Status != "SUCCESS" || state.Nodes[0].ProgressPercentage != 100 || state.Nodes[0].AgentRole != "implementer" || state.Nodes[0].RetryCount != 1 || state.Agents?.Count != 1)
                 throw new InvalidOperationException("확장 상태와 에이전트 계산이 실패했습니다.");
             var recent = await store.GetRecentEventsAsync("demo", "wf-1");
             if (recent.Count != 2 || recent[0].Status != "SUCCESS") throw new InvalidOperationException("최근 이벤트 조회가 실패했습니다.");
@@ -83,6 +83,15 @@ public static class MvpSelfCheck
             var page = DashboardPage.Render(state with { Nodes = [state.Nodes[0] with { Summary = "<script>" }] }, hierarchicalPlan, [new RecentEvent("node-1", "agent-1", "SUCCESS", "<script>", null, DateTimeOffset.UtcNow)], null, "group", "node-1");
             if (!page.Contains("&lt;script&gt;") || !page.Contains("breadcrumb") || !page.Contains("검증 통과") || !page.Contains("new EventSource"))
                 throw new InvalidOperationException("계층 대시보드와 이스케이프 검증이 실패했습니다.");
+            var projectedPlan = new WorkflowPlan("demo", "wf-1", [
+                new("phase", "아주 긴 프로젝트 기반 구성 제목", 1, [], "SUCCESS", null, null, null, null, "01a05675-2be3-7011-8574-f7130ef83a35"),
+                new("leaf", "구현", 1, ["phase"], "SUCCESS", null, null, null, "phase"),
+                new("release", "배포", 1, ["leaf"], "SUCCESS", null, null, null)]);
+            var projectedGraph = DashboardGraph.Render(projectedPlan, state);
+            var childGraph = DashboardGraph.Render(projectedPlan, state, "phase");
+            if (!projectedGraph.Contains("class=\"edge SUCCESS\"") || !childGraph.Contains("class=\"edge SUCCESS\"")
+                || !projectedGraph.Contains("01a05675…3a35") || !projectedGraph.Contains("…"))
+                throw new InvalidOperationException("계층 의존선 투영과 SVG 텍스트 축약 검증이 실패했습니다.");
             await using (var server = await LocalServer.StartAsync(serverPath, 0))
             using (var client = new HttpClient())
             {

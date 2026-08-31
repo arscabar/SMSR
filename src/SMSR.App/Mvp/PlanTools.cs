@@ -7,13 +7,15 @@ namespace SMSR.App.Mvp;
 [McpServerToolType]
 public sealed class PlanTools(EventStore events, WorkflowEventNotifier notifier)
 {
-    [McpServerTool(Name = "save_plan"), Description("계층형 계획, 의존성, 담당 에이전트 역할과 완료 조건을 저장합니다. parentNodeId로 드릴다운 계층을 만듭니다.")]
-    public async Task<string> SavePlan(string projectId, string workflowId, IReadOnlyList<PlanNodeDefinition> nodes)
+    [McpServerTool(Name = "save_plan"), Description("새 그래프에서는 workflowId를 생략하면 프로젝트명과 현재 날짜시간으로 자동 생성합니다. 계층형 계획, 의존성, 담당 에이전트 역할과 완료 조건을 저장합니다.")]
+    public async Task<string> SavePlan(string projectId, IReadOnlyList<PlanNodeDefinition> nodes, string? workflowId = null)
     {
-        if (PlanValidation.Validate(projectId, workflowId, nodes) is { } error) return JsonSerializer.Serialize(new { error });
-        await events.SavePlanAsync(projectId, workflowId, nodes);
-        notifier.Publish(projectId, workflowId);
-        return JsonSerializer.Serialize(new { projectId, workflowId, nodeCount = nodes.Count });
+        var generated = string.IsNullOrWhiteSpace(workflowId);
+        var resolvedWorkflowId = generated ? WorkflowIdGenerator.Create(projectId) : workflowId!;
+        if (PlanValidation.Validate(projectId, resolvedWorkflowId, nodes) is { } error) return JsonSerializer.Serialize(new { error });
+        await events.SavePlanAsync(projectId, resolvedWorkflowId, nodes);
+        notifier.Publish(projectId, resolvedWorkflowId);
+        return JsonSerializer.Serialize(new { projectId, workflowId = resolvedWorkflowId, generated, nodeCount = nodes.Count });
     }
 
     [McpServerTool(Name = "get_plan"), Description("계획 노드와 최신 적용 상태를 조회합니다.")]
