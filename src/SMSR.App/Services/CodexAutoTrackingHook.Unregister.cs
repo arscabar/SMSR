@@ -15,7 +15,7 @@ internal static partial class CodexAutoTrackingHook
         if (root["hooks"] is not JsonObject hooks) return null;
         var changed = false;
 
-        foreach (var name in Events)
+        foreach (var name in OwnedEvents)
         {
             if (hooks[name] is not JsonArray entries) continue;
             for (var index = entries.Count - 1; index >= 0; index--)

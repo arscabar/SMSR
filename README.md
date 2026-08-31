@@ -12,9 +12,9 @@ dotnet run --project src/SMSR.App/SMSR.App.csproj
 
 ## Codex 연결
 
-1. SMSR을 한 번 실행한다. 서버, Windows 자동 시작, Codex MCP와 전역 lifecycle·그래프 추적 훅이 자동 구성된다.
+1. SMSR을 한 번 실행한다. 서버, Windows 자동 시작, Codex MCP와 전역 요청형 그래프 훅이 자동 구성된다.
 2. 처음 등록한 환경에서는 Codex를 다시 열고 OAuth 인증과 전역 훅 신뢰를 한 번 승인한다.
-3. 이후에는 사람이 SMSR 추적을 요청하지 않아도 새 Codex 작업이 자동으로 계획·heartbeat·상태를 전송한다.
+3. 이후에는 그래프 추적을 명시적으로 요청한 작업만 계획·heartbeat·상태를 전송한다. 일반 작업은 SMSR에 기록하지 않는다.
 
 `서버 · 연결` 탭의 `연결·그래프 추적 설정 복구` 버튼은 자동 설정이 실패했거나 실행 파일을 옮겼을 때만 사용한다. 작업 그래프는 사용자가 요청한 작업에만 생성되고 해당 작업이 끝날 때까지만 갱신된다.
 
@@ -28,7 +28,7 @@ dotnet run --project src/SMSR.App/SMSR.App.csproj
 powershell -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1
 ```
 
-결과는 `artifacts\installer\SMSR-Setup-버전-win-x64.exe`에 생성됩니다. 설치 프로그램은 관리자 권한 없이 현재 사용자에게 설치하며 시작 메뉴, Windows 자동 시작과 제거 프로그램을 등록합니다. 설치된 SMSR을 처음 실행하면 해당 PC의 Codex 공유 MCP 설정과 전역 lifecycle·요청형 그래프 훅을 구성합니다. 대상 PC에는 .NET SDK가 필요하지 않습니다. 자세한 설치·업데이트·제거·무인 설치 방법은 [Windows 설치 프로그램 안내](docs/installer-quickstart.md)를 참고하세요.
+결과는 `artifacts\installer\SMSR-Setup-버전-win-x64.exe`에 생성됩니다. 설치 프로그램은 관리자 권한 없이 현재 사용자에게 설치하며 시작 메뉴, Windows 자동 시작과 제거 프로그램을 등록합니다. 설치된 SMSR을 처음 실행하면 해당 PC의 Codex 공유 MCP 설정과 전역 요청형 그래프 훅을 구성합니다. 대상 PC에는 .NET SDK가 필요하지 않습니다. 자세한 설치·업데이트·제거·무인 설치 방법은 [Windows 설치 프로그램 안내](docs/installer-quickstart.md)를 참고하세요.
 
 설치 Wizard는 SMSR 브랜드 배너와 Windows 테마를 따르는 라이트·다크 화면을 제공합니다.
 
@@ -45,7 +45,7 @@ enabled = true
 
 SMSR은 OAuth DCR과 PKCE를 지원하며 Codex에 15분 액세스 토큰과 회전형 갱신 토큰을 발급합니다. 등록 클라이언트와 토큰 해시는 현재 Windows 사용자만 복호화할 수 있는 DPAPI 파일에 저장합니다. Codex 설정에는 토큰을 기록하지 않습니다. SMSR 서버가 실행 중이어야 인증과 MCP 연결이 가능합니다.
 
-추적 규칙은 MCP `instructions`와 전역 `UserPromptSubmit` 훅으로 자동 제공됩니다. 훅은 정확한 프로젝트·작업 ID만 개발자 컨텍스트에 추가하며 프롬프트 원문을 SMSR에 보내지 않습니다. SMSR은 에이전트를 호출하지 않고 메인·하위 에이전트가 `save_plan`, `record_heartbeat`, `record_event`로 상태를 직접 전송합니다. `parentNodeId`가 있는 계획 노드는 웹 순서도에서 하위 그래프로 드릴다운할 수 있습니다.
+추적 규칙은 MCP `instructions`와 전역 `UserPromptSubmit` 훅으로 제공됩니다. 훅은 정확한 프로젝트·작업 ID만 개발자 컨텍스트에 추가하며 프롬프트 원문이나 활동 정보를 SMSR에 보내지 않습니다. SMSR은 에이전트를 호출하지 않고 그래프 요청 중인 메인·하위 에이전트만 `save_plan`, `record_heartbeat`, `record_event`로 상태를 직접 전송합니다. 이전 그래프는 `list_workflows`로 찾고 `get_plan`·`get_state`로 불러올 수 있습니다.
 
 `--self-test`는 DPAPI 사용자 프로필이 로드된 일반 사용자 세션에서 실행해야 합니다. 조건이 맞지 않으면 앱이 충돌하지 않고 상세 오류를 표시합니다.
 
@@ -67,7 +67,7 @@ dotnet run --project src/SMSR.App/SMSR.App.csproj --no-build -- --tracking-self-
 dotnet run --project src/SMSR.App/SMSR.App.csproj --no-build -- --self-test
 ```
 
-Self-check는 MCP `save_plan`·`record_event`·`record_heartbeat`·`record_lifecycle`, 계층 계획, `/api/plan`, `/api/state`, `/dashboard` 반영을 검사합니다.
+Self-check는 MCP `save_plan`·`record_event`·`record_heartbeat`·`list_workflows`, 계층 계획, 이전 그래프 조회와 `/api/plan`, `/api/state`, `/dashboard` 반영을 검사합니다.
 
 ## Documents
 

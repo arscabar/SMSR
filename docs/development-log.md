@@ -1194,3 +1194,31 @@
   - 기존에 저장된 그래프 데이터는 삭제하지 않으며 변경된 규칙은 이후 요청부터 적용된다.
 - 다음 조치:
   - 새 Codex 작업에서 일반 요청과 명시적 그래프 요청을 각각 한 번 실행해 대시보드 생성 차이를 수용 확인한다.
+
+## 2026-08-31 - 상시 lifecycle 제거와 이전 그래프 불러오기
+
+- 변경 파일:
+  - `src/SMSR.App/Services/CodexAutoTrackingHook.cs`, `CodexAutoTrackingHook.Definitions.cs`, `CodexAutoTrackingHook.Unregister.cs`, `CodexAutoTrackingContext.cs`, `CodexMcpConfigSelfCheck.cs`
+  - `src/SMSR.App/Mvp/PlanTools.cs`, `PlanContracts.cs`, `EventStoreWorkflowCatalog.cs`, `SmsrMcpInstructions.cs`
+  - `src/SMSR.App/Mvp/MvpSelfCheck.cs`, `OAuthSelfCheck.cs`, `TrackingContractSelfCheck.cs`
+  - `src/SMSR.App/Views/ServerPanel.xaml`, `.agents/skills/smsr-tracking/SKILL.md`, `README.md`, 관련 안내 문서
+- 변경 사유:
+  - 그래프를 요청하지 않은 일반 작업의 세션·turn·에이전트 lifecycle은 활용 대상이 없으므로 SMSR에 저장하지 않아야 했다.
+  - 사용자가 기존 그래프를 다시 사용하려 할 때 에이전트가 이전 workflowId를 발견하고 계획·상태를 불러올 수 있어야 했다.
+- 실행 명령:
+  - Release 빌드와 config·tracking·OAuth·전체 self-check 실행
+  - 설치 프로그램 재빌드, 현재 사용자 무인 업그레이드, 설치 앱 self-check 4종 실행
+  - 실제 `~/.codex/hooks.json`의 SMSR 소유 훅과 `record_lifecycle` 잔존 여부 검사
+- 검증 결과:
+  - SessionStart·Stop·SubagentStart·SubagentStop의 SMSR MCP 훅과 `record_lifecycle` 도구를 제거했다.
+  - `UserPromptSubmit` 훅 하나만 남겨 프로젝트·task ID와 요청형 그래프 규칙을 에이전트 컨텍스트에 제공하며 DB에는 기록하지 않는다.
+  - 기존 9개 도구 수를 유지하면서 `record_lifecycle` 자리를 `list_workflows`로 교체했다.
+  - `list_workflows`는 기존 그래프를 최근 활동 순으로 workflowId·노드 수·ACTIVE/TERMINAL 상태와 함께 반환하고, 선택 후 `get_plan`·`get_state`로 이어갈 수 있다.
+  - 소스와 설치 앱의 self-check 4종이 모두 통과했다. 실제 사용자 훅은 SMSR marker 1개, `record_lifecycle` 없음, 컨텍스트 명령 있음으로 확인됐다.
+  - 설치 앱은 `C:\Users\pkm11\AppData\Local\Programs\SMSR\SMSR.App.exe`에서 127.0.0.1:49783을 수신 중이다.
+  - 최종 Setup SHA-256은 `D3A1E4AA52DE0E3B3E7E33997D0FA7E69998AD726FB0FD77ABF8182FAD8EA7F0`이다.
+- 남은 위험:
+  - 후보 그래프가 여러 개이고 사용자의 지칭이 모호하면 에이전트가 임의 선택하지 않고 workflowId 선택을 요청한다.
+  - 기존에 저장된 lifecycle 전용 워크플로우 데이터는 호환성과 복구 가능성을 위해 자동 삭제하지 않았다.
+- 다음 조치:
+  - 실제 Codex 요청에서 `이전 그래프를 불러와 이어서 추적해줘`를 실행해 후보 선택과 재개 흐름을 수용 확인한다.

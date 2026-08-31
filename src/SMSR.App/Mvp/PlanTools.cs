@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.IO;
 using System.Text.Json;
 using ModelContextProtocol.Server;
 
@@ -21,17 +20,15 @@ public sealed class PlanTools(EventStore events, WorkflowEventNotifier notifier)
     public async Task<string> GetPlan(string projectId, string workflowId)
         => JsonSerializer.Serialize(await events.GetPlanAsync(projectId, workflowId));
 
-    [McpServerTool(Name = "record_lifecycle"), Description("Codex 훅의 최소 세션 활동을 기록합니다. 계획 노드 상태에는 영향을 주지 않습니다.")]
-    public async Task<string> RecordLifecycle(string sessionId, string cwd, string eventName, string? turnId = null,
-        string? agentId = null, string? agentRole = null, string? nodeId = null, int retryCount = 0)
+    [McpServerTool(Name = "list_workflows"), Description("프로젝트의 기존 그래프를 최근 활동 순서로 조회합니다. 이전 그래프를 선택한 뒤 get_plan과 get_state로 불러오세요.")]
+    public async Task<string> ListWorkflows(string projectId)
     {
-        var projectId = Path.GetFileName(cwd.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
-        if (string.IsNullOrWhiteSpace(projectId)) projectId = "workspace";
-        var status = eventName.Contains("STOP", StringComparison.OrdinalIgnoreCase) ? "STOPPED" : "ACTIVE";
-        var request = new AgentHeartbeatRequest(projectId, sessionId, agentId ?? "codex-main", agentRole ?? "coordinator", status, nodeId, eventName, retryCount);
-        if (EventValidation.Validate(request) is { } error) return JsonSerializer.Serialize(new { error });
-        var heartbeat = await events.RecordHeartbeatAsync(request);
-        notifier.Publish(projectId, sessionId);
-        return JsonSerializer.Serialize(new { projectId, workflowId = sessionId, turnId, heartbeat });
+        if (string.IsNullOrWhiteSpace(projectId) || projectId.Length > 128)
+            return JsonSerializer.Serialize(new { error = "projectId가 올바르지 않습니다." });
+        return JsonSerializer.Serialize(new
+        {
+            projectId,
+            workflows = await events.GetWorkflowCatalogAsync(projectId)
+        });
     }
 }

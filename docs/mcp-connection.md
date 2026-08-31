@@ -2,9 +2,9 @@
 
 ## Codex 직접 연결
 
-1. SMSR을 실행한다. 앱이 서버·Windows 자동 시작·Codex 공유 MCP·사용자 전역 lifecycle·그래프 추적 훅을 자동 구성한다.
+1. SMSR을 실행한다. 앱이 서버·Windows 자동 시작·Codex 공유 MCP·사용자 전역 요청형 그래프 훅을 자동 구성한다.
 2. 처음 등록한 환경이면 Codex를 다시 열고 OAuth 인증과 `~/.codex/hooks.json` 신뢰를 한 번 승인한다.
-3. 이후 lifecycle 연결 상태는 자동 기록되고, 계획 그래프는 사용자가 요청한 작업에만 적용된다.
+3. 이후 일반 작업은 기록하지 않고 계획 그래프는 사용자가 요청한 작업에만 적용된다.
 
 SMSR은 별도 Codex CLI, Node.js, npm을 사용하지 않는다. 현재 사용자의 Codex 공유 설정 `~/.codex/config.toml`에는 다음 Streamable HTTP 항목만 등록한다.
 
@@ -25,17 +25,17 @@ Codex는 인증되지 않은 `/mcp` 요청의 `401 WWW-Authenticate` 응답에�
 |---|---|---|
 | `save_plan` | ID·제목·가중치·의존성, 부모 노드, 담당 에이전트·역할, 완료 조건 | 계층형 계획 그래프 저장 |
 | `get_plan` | 프로젝트 ID, 워크플로우 ID | 계획 노드에 적용된 최신 상태 |
+| `list_workflows` | 프로젝트 ID | 기존 그래프를 최근 활동 순서와 상태로 조회 |
 | `record_event` | 이벤트·노드·에이전트 ID, 상태, 진행률, 재시도, 다음 작업, 산출물 | 저장 결과와 중복 여부 |
 | `record_heartbeat` | 프로젝트·워크플로우·에이전트 ID, 역할, 상태, 현재 노드 | 에이전트 최신 생존 상태 |
 | `get_state` | 프로젝트 ID, 워크플로우 ID | 노드 및 에이전트 최신 상태 |
-| `record_lifecycle` | 세션·경로·이벤트, 선택 에이전트 ID·역할 | 훅용 heartbeat 기록 |
 | `generate_summary` | 프로젝트 ID, 워크플로우 ID | 로컬 상태 기반 요약 생성·저장 |
 | `save_summary` | 프로젝트 ID, 워크플로우 ID, 요약 내용 | 외부 생성 요약 저장 |
 | `export_workflow` | 프로젝트 ID, 워크플로우 ID | HTML·Markdown·JSON·ZIP 내보내기 |
 
 `eventType`은 `NODE_STATUS_CHANGED`만 가능하며 `status`는 `PENDING`, `IN_PROGRESS`, `VALIDATING`, `SUCCESS`, `FAILED`, `RETRYING`, `BLOCKED` 중 하나여야 한다. 같은 `eventId`는 다시 저장하지 않고 `duplicate: true`를 반환한다.
 
-SMSR은 에이전트를 능동 호출하거나 polling하지 않는다. 각 에이전트가 시작 시, 약 30초 이상 이어지는 작업 중, 종료 전에 `record_heartbeat`를 호출하고 의미 있는 상태 변화는 `record_event`로 전송한다. 활성 heartbeat가 90초 넘게 갱신되지 않으면 대시보드에서 `STALE`로 표시한다. WPF 화면은 이벤트 발생 시 SSE로 즉시 갱신하고 연결이 끊기면 2초 polling으로 전환하며, 웹 대시보드는 현재 URL을 2초마다 다시 읽는다.
+SMSR은 에이전트를 능동 호출하거나 polling하지 않는다. 그래프 추적이 요청된 동안 각 에이전트가 시작 시, 약 30초 이상 이어지는 작업 중, 종료 전에 `record_heartbeat`를 호출하고 의미 있는 상태 변화는 `record_event`로 전송한다. 활성 heartbeat가 90초 넘게 갱신되지 않으면 대시보드에서 `STALE`로 표시한다.
 
 ## 운영 점검
 
@@ -53,6 +53,6 @@ OAuth 토큰 발급만으로 연결 완료를 추정하지 않는다. 서버 시
 
 ## MCP 지침과 요청형 그래프 추적
 
-SMSR MCP는 초기화 응답에서 요청형 그래프 규칙을 제공하고, 앱이 병합한 사용자 전역 `UserPromptSubmit` 훅은 매 요청에 프로젝트 폴더명과 Codex 세션 ID를 자동 주입한다. 에이전트는 사용자가 그래프·흐름·대시보드·SMSR 워크플로우 추적을 명시적으로 요청한 경우에만 계획·heartbeat·상태를 전송한다. 요청한 범위가 완료·실패·중단되면 최종 상태를 기록하고 추적을 끝내며, 일반 작업은 lifecycle만 기록한다.
+SMSR MCP는 초기화 응답에서 요청형 그래프 규칙을 제공하고, 앱이 병합한 사용자 전역 `UserPromptSubmit` 훅은 매 요청에 프로젝트 폴더명과 Codex 세션 ID를 자동 주입하되 SMSR에는 저장하지 않는다. 에이전트는 사용자가 그래프 추적을 명시적으로 요청한 경우에만 계획·heartbeat·상태를 전송한다. 이전 그래프 요청에는 `list_workflows`, `get_plan`, `get_state`를 사용하며 요청 범위가 완료·실패·중단되면 최종 상태 후 추적을 끝낸다.
 
 전역 훅은 기존 `~/.codex/hooks.json` 항목을 보존하고 SMSR 소유 항목만 병합한다. 저장소별 훅 복사, `$smsr-tracking` 지정, Node.js·npm·CLI 또는 마켓플레이스 설치는 필요 없다. `.agents/skills/smsr-tracking`은 에이전트가 자동으로 따를 세부 데이터 계약의 저장소 사본이다. 상세 동작은 [SMSR Codex 로컬 추적](smsr-codex-local.md)을 따른다.

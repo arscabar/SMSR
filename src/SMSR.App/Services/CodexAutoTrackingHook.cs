@@ -8,7 +8,8 @@ namespace SMSR.App.Services;
 internal static partial class CodexAutoTrackingHook
 {
     private const string Marker = "SMSR automatic tracking";
-    private static readonly string[] Events = ["SessionStart", "UserPromptSubmit", "Stop", "SubagentStart", "SubagentStop"];
+    private static readonly string[] OwnedEvents = ["SessionStart", "UserPromptSubmit", "Stop", "SubagentStart", "SubagentStop"];
+    private const string ContextEvent = "UserPromptSubmit";
 
     public static bool IsRegistered(string configPath) => IsRegistered(configPath, CurrentExecutable());
     public static string? Register(string configPath) => Register(configPath, CurrentExecutable());
@@ -19,7 +20,10 @@ internal static partial class CodexAutoTrackingHook
         {
             var hooks = Load(HooksPath(configPath))["hooks"] as JsonObject;
             var command = BuildCommand(executable);
-            return hooks is not null && Events.All(name => HasOwnedEntry(hooks[name] as JsonArray, name, command));
+            return hooks is not null
+                && HasOwnedEntry(hooks[ContextEvent] as JsonArray, ContextEvent, command)
+                && OwnedEvents.Where(name => name != ContextEvent)
+                    .All(name => !HasOwnedEntry(hooks[name] as JsonArray, name, command));
         }
         catch { return false; }
     }
@@ -32,7 +36,8 @@ internal static partial class CodexAutoTrackingHook
         var hooks = root["hooks"] as JsonObject ?? new JsonObject();
         root["hooks"] = hooks;
         var command = BuildCommand(executable);
-        foreach (var name in Events) SetOwnedEntry(hooks, name, command);
+        foreach (var name in OwnedEvents) RemoveOwnedEntries(hooks, name);
+        SetOwnedEntry(hooks, ContextEvent, command);
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         var temporary = path + ".smsr.tmp";
         File.WriteAllText(temporary, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }), new UTF8Encoding(false));

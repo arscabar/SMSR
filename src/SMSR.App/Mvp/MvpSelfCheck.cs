@@ -105,25 +105,24 @@ public static class MvpSelfCheck
                 savePlan.Headers.Add("MCP-Name", "save_plan");
                 var planResponse = await client.SendAsync(savePlan);
                 var planJson = await planResponse.Content.ReadAsStringAsync();
-                using var lifecycle = new HttpRequestMessage(HttpMethod.Post, $"{server.Address}/mcp")
+                using var listWorkflows = new HttpRequestMessage(HttpMethod.Post, $"{server.Address}/mcp")
                 {
-                    Content = new StringContent("{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"record_lifecycle\",\"arguments\":{\"sessionId\":\"session-1\",\"cwd\":\"D:/workspace/SMSR\",\"eventName\":\"USER_PROMPT\",\"turnId\":\"turn-1\"},\"_meta\":{\"io.modelcontextprotocol/protocolVersion\":\"2026-07-28\",\"io.modelcontextprotocol/clientInfo\":{\"name\":\"self-test\",\"version\":\"1.0\"},\"io.modelcontextprotocol/clientCapabilities\":{}}}}", Encoding.UTF8, "application/json")
+                    Content = new StringContent("{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"list_workflows\",\"arguments\":{\"projectId\":\"demo\"},\"_meta\":{\"io.modelcontextprotocol/protocolVersion\":\"2026-07-28\",\"io.modelcontextprotocol/clientInfo\":{\"name\":\"self-test\",\"version\":\"1.0\"},\"io.modelcontextprotocol/clientCapabilities\":{}}}}", Encoding.UTF8, "application/json")
                 };
-                lifecycle.Headers.Authorization = new("Bearer", oauthToken);
-                lifecycle.Headers.Accept.ParseAdd("application/json, text/event-stream");
-                lifecycle.Headers.Add("MCP-Protocol-Version", "2026-07-28");
-                lifecycle.Headers.Add("MCP-Method", "tools/call");
-                lifecycle.Headers.Add("MCP-Name", "record_lifecycle");
-                var lifecycleResponse = await client.SendAsync(lifecycle);
-                var lifecycleJson = await lifecycleResponse.Content.ReadAsStringAsync();
+                listWorkflows.Headers.Authorization = new("Bearer", oauthToken);
+                listWorkflows.Headers.Accept.ParseAdd("application/json, text/event-stream");
+                listWorkflows.Headers.Add("MCP-Protocol-Version", "2026-07-28");
+                listWorkflows.Headers.Add("MCP-Method", "tools/call");
+                listWorkflows.Headers.Add("MCP-Name", "list_workflows");
+                var listResponse = await client.SendAsync(listWorkflows);
+                var listJson = await listResponse.Content.ReadAsStringAsync();
                 var recordedState = await client.GetStringAsync($"{server.Address}/api/state?projectId=demo&workflowId=wf-1");
                 var recordedPlan = await client.GetStringAsync($"{server.Address}/api/plan?projectId=demo&workflowId=wf-1");
-                var lifecycleState = await client.GetStringAsync($"{server.Address}/api/state?projectId=SMSR&workflowId=session-1");
                 var recordedDashboard = await client.GetStringAsync($"{server.Address}/dashboard?projectId=demo&workflowId=wf-1");
                 using var sseTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
                 var changedEvent = await streamReader.ReadLineAsync(sseTimeout.Token);
                 if (!recordResponse.IsSuccessStatusCode) throw new InvalidOperationException($"MCP record_event 호출 실패: {recordJson}");
-                if (denied.StatusCode != HttpStatusCode.Unauthorized || !stateResponse.IsSuccessStatusCode || !dashboardResponse.IsSuccessStatusCode || !streamResponse.IsSuccessStatusCode || initialEvent != "event: state" || initialData != "data: changed" || changedEvent != "event: state" || !recordResponse.IsSuccessStatusCode || !planResponse.IsSuccessStatusCode || !lifecycleResponse.IsSuccessStatusCode || !recordJson.Contains("evt-mcp-1") || !planJson.Contains("nodeCount") || !lifecycleJson.Contains("session-1") || !recordedState.Contains("mcp-node") || !recordedState.Contains("implementer") || !recordedPlan.Contains("MCP 계획 노드") || !recordedPlan.Contains("parentNodeId") || !lifecycleState.Contains("codex-main") || !recordedDashboard.Contains("계층형 작업 흐름") || !recordedDashboard.Contains("id=\"agents\"") || !recordedDashboard.Contains("flow-svg") || !recordedDashboard.Contains("MCP 계획 노드") || recordedDashboard.Contains("http-equiv=\"refresh\"") || !recordedDashboard.Contains("new EventSource") || !recordedDashboard.Contains("smsr-graph-nav") || !recordedDashboard.Contains("getAttribute('href')"))
+                if (denied.StatusCode != HttpStatusCode.Unauthorized || !stateResponse.IsSuccessStatusCode || !dashboardResponse.IsSuccessStatusCode || !streamResponse.IsSuccessStatusCode || initialEvent != "event: state" || initialData != "data: changed" || changedEvent != "event: state" || !recordResponse.IsSuccessStatusCode || !planResponse.IsSuccessStatusCode || !listResponse.IsSuccessStatusCode || !recordJson.Contains("evt-mcp-1") || !planJson.Contains("nodeCount") || !listJson.Contains("wf-1") || !listJson.Contains("ACTIVE") || !recordedState.Contains("mcp-node") || !recordedState.Contains("implementer") || !recordedPlan.Contains("MCP 계획 노드") || !recordedPlan.Contains("parentNodeId") || !recordedDashboard.Contains("계층형 작업 흐름") || !recordedDashboard.Contains("id=\"agents\"") || !recordedDashboard.Contains("flow-svg") || !recordedDashboard.Contains("MCP 계획 노드") || recordedDashboard.Contains("http-equiv=\"refresh\"") || !recordedDashboard.Contains("new EventSource") || !recordedDashboard.Contains("smsr-graph-nav") || !recordedDashboard.Contains("getAttribute('href')"))
                     throw new InvalidOperationException("로컬 서버 검증이 실패했습니다.");
             }
             var settings = new AppSettingsService(serverPath);

@@ -32,9 +32,10 @@ internal static class CodexMcpConfigSelfCheck
             var hooksText = File.ReadAllText(hooksPath);
             if (!CodexAutoTrackingHook.IsRegistered(path, fakeExecutable)
                 || !hooksText.Contains("other.exe", StringComparison.Ordinal)
-                || hooksText.Split("SMSR automatic tracking", StringSplitOptions.None).Length != 7
+                || hooksText.Split("SMSR automatic tracking", StringSplitOptions.None).Length != 2
+                || hooksText.Contains("record_lifecycle", StringComparison.Ordinal)
                 || hooksBackup is null || !File.Exists(hooksBackup))
-                throw new InvalidOperationException("Codex 전역 자동 추적 훅 병합 검증이 실패했습니다.");
+                throw new InvalidOperationException("Codex 요청형 그래프 훅 병합 검증이 실패했습니다.");
             if (CodexAutoTrackingHook.Register(path, fakeExecutable) is not null)
                 throw new InvalidOperationException("Codex 자동 추적 훅 중복 방지가 실패했습니다.");
             var context = CodexAutoTrackingContext.CreateOutput("{\"session_id\":\"session-1\",\"cwd\":\"C:\\\\work\\\\SMSR\",\"prompt\":\"SECRET\"}");

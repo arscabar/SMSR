@@ -71,7 +71,7 @@ internal static partial class OAuthSelfCheck
         toolsRequest.Headers.Accept.ParseAdd("application/json, text/event-stream");
         using var toolsResponse = await client.SendAsync(toolsRequest);
         var toolsJson = await toolsResponse.Content.ReadAsStringAsync();
-        string[] expectedTools = ["save_plan", "get_plan", "record_lifecycle", "record_event",
+        string[] expectedTools = ["save_plan", "get_plan", "list_workflows", "record_event",
             "record_heartbeat", "get_state", "generate_summary", "save_summary", "export_workflow"];
         if (!registration.IsSuccessStatusCode || approval.StatusCode != HttpStatusCode.Redirect
             || !token.IsSuccessStatusCode || !initialized.IsSuccessStatusCode

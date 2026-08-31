@@ -21,7 +21,7 @@
                 <Separator Margin="0,18,0,14" />
                 <TextBlock FontSize="16" FontWeight="SemiBold" Text="{Binding CodexConnectionTitle}" />
                 <TextBlock Margin="0,6,0,0" Foreground="{DynamicResource MutedTextBrush}"
-                           Text="앱 시작 시 서버, Windows 자동 시작, Codex OAuth MCP와 lifecycle 훅을 자동 구성합니다. 작업 그래프는 요청할 때만 생성됩니다. 처음에 OAuth와 훅 신뢰만 한 번 승인하세요."
+                           Text="앱 시작 시 서버, Windows 자동 시작, Codex OAuth MCP와 요청형 그래프 컨텍스트 훅을 자동 구성합니다. 일반 작업은 기록하지 않습니다. 처음에 OAuth와 훅 신뢰만 한 번 승인하세요."
                            TextWrapping="Wrap" />
                 <Button Margin="0,12,0,0" HorizontalAlignment="Left" Command="{Binding SetupConnectionCommand}"
                         Content="연결·그래프 추적 설정 복구" />
