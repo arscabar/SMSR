@@ -1,5 +1,7 @@
 # WPF MCP 작업 관제 앱 개발 계획서
 
+> 이 문서는 최초 설계 이력이다. 현재 사용법과 MCP 계약은 [요청형 그래프 사용 안내](graph-tracking-guide.md)와 [MCP 연결 및 이벤트 기록](mcp-connection.md)을 기준으로 한다.
+
 ## 1. 프로젝트 범위와 목표
 
 Windows 전용 로컬 앱으로, AI 에이전트가 MCP를 통해 기록한 작업 이벤트를 SQLite에 저장하고 기본 브라우저의 대시보드에서 프로젝트별 진행 상태를 확인한다.
@@ -62,7 +64,7 @@ Local Web/MCP Server
 
 Agents
   - record_event 호출
-  - get_summary_context 호출
+  - generate_summary 호출
   - 필요 시 save_summary 호출
 
 Browser Dashboard
@@ -106,24 +108,16 @@ Browser Dashboard
 
 ## 5. MCP Tool 설계
 
-### 필수
-
 ```text
+save_plan
+get_plan
+list_workflows
 record_event
+record_heartbeat
 get_state
-get_summary_context
+generate_summary
 save_summary
 export_workflow
-```
-
-### 선택
-
-```text
-list_projects
-list_workflows
-list_events
-create_project
-init_workflow
 ```
 
 ### record_event 입력
@@ -279,7 +273,7 @@ artifacts-index.json
 ### Phase 3: 실시간과 요약
 
 - SSE stream
-- get_summary_context
+- generate_summary
 - save_summary
 - 앱 LLM 옵션
 - summary stale 표시

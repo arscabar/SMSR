@@ -1222,3 +1222,22 @@
   - 기존에 저장된 lifecycle 전용 워크플로우 데이터는 호환성과 복구 가능성을 위해 자동 삭제하지 않았다.
 - 다음 조치:
   - 실제 Codex 요청에서 `이전 그래프를 불러와 이어서 추적해줘`를 실행해 후보 선택과 재개 흐름을 수용 확인한다.
+
+## 2026-08-31 - 요청형 그래프 사용자 문서 정리
+
+- 변경 파일:
+  - `docs/graph-tracking-guide.md`, `README.md`
+  - `docs/mcp-connection.md`, `docs/smsr-codex-local.md`, `docs/portable-quickstart.md`
+  - `docs/wpf-mcp-dashboard-project-plan.md`, `docs/wpf-mcp-dashboard-project-plan.html`
+- 변경 사유:
+  - 요청형 그래프 시작·종료와 이전 workflow 불러오기 절차가 여러 문서에 흩어져 있어 변경된 동작을 바로 확인하기 어려웠다.
+- 실행 명령:
+  - 저장소 전체 Markdown·HTML의 lifecycle·MCP 도구 명칭 검색, `git diff --check`
+- 검증 결과:
+  - 새 그래프 요청 문구, 종료 조건, `list_workflows` 조회와 `get_plan`·`get_state` 재개 절차를 전용 안내서로 정리했다.
+  - README와 휴대용·MCP 문서에서 전용 안내서를 연결했다.
+  - 최초 프로젝트 계획서는 설계 이력임을 표시하고 MCP 도구 목록과 요약 도구 명칭을 현재 계약으로 갱신했다.
+- 남은 위험:
+  - 최초 계획서 본문의 과거 일정·구현 전략은 역사적 기록으로 유지한다.
+- 다음 조치:
+  - 없음.

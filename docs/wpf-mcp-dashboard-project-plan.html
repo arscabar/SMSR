@@ -28,6 +28,7 @@
   <header>
     <h1>WPF MCP 작업 관제 앱 개발 계획서</h1>
     <p class="muted">Windows 전용 로컬 앱으로, AI 에이전트가 MCP로 남긴 작업 이벤트를 저장하고 브라우저 대시보드에서 프로젝트 진행 상황을 확인한다.</p>
+    <p><strong>최초 설계 이력:</strong> 현재 사용법과 MCP 계약은 요청형 그래프 사용 안내와 MCP 연결 문서를 기준으로 한다.</p>
   </header>
 
   <section class="card">
@@ -83,7 +84,7 @@ Local Web/MCP Server
 
 Agents
   - record_event 호출
-  - get_summary_context 호출
+  - generate_summary 호출
   - 필요 시 save_summary 호출</pre>
   </section>
 
@@ -107,9 +108,13 @@ Agents
 
   <section class="card">
     <h2>5. MCP Tool</h2>
-    <pre>record_event
+    <pre>save_plan
+get_plan
+list_workflows
+record_event
+record_heartbeat
 get_state
-get_summary_context
+generate_summary
 save_summary
 export_workflow</pre>
     <p>처음에는 record_event를 중심으로 두고, 서버가 이벤트를 상태로 환산한다.</p>

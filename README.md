@@ -71,6 +71,7 @@ Self-check는 MCP `save_plan`·`record_event`·`record_heartbeat`·`list_workflo
 
 ## Documents
 
+- [요청형 그래프 사용 안내](docs/graph-tracking-guide.md)
 - [Windows 설치 프로그램](docs/installer-quickstart.md)
 - [MCP 연결 및 이벤트 기록](docs/mcp-connection.md)
 - [선택형 SMSR Codex 로컬 추적](docs/smsr-codex-local.md)
