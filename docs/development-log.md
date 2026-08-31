@@ -1087,3 +1087,25 @@
   - 현재 설치 프로그램은 win-x64용이며 깨끗한 별도 PC에서의 최종 사용자 수용 시험은 남아 있다.
 - 다음 조치:
   - 코드 서명 인증서가 준비되면 앱과 Setup EXE 서명을 빌드 단계에 연결하고, 필요하면 GitHub Release에 설치 파일과 SHA-256을 게시한다.
+
+## 2026-08-31 - SMSR 설치 Wizard 브랜드 UI
+
+- 변경 파일:
+  - `installer/SMSR.iss`, `installer/SMSR.UI.iss`, `installer/SMSR-Wizard.png`
+  - `README.md`, `docs/installer-quickstart.md`
+- 변경 사유:
+  - 검증된 Inno Setup 설치 엔진과 설치 계약을 유지하면서 다른 PC 사용자에게 일관된 SMSR 브랜드 경험을 제공할 필요가 있었다.
+- 실행 명령:
+  - `powershell -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1`
+  - 최종 Setup의 무인 업그레이드와 설치 경로 앱 self-check 4종 실행
+  - 실제 한국어 Wizard 창 캡처와 레이아웃 확인
+- 검증 결과:
+  - Inno Setup 6.7.3에서 동적 polar 라이트·다크 스타일, 브랜드 세로 배너와 헤더 아이콘, 한·영 환영·완료 문구가 정상 컴파일됐다.
+  - 1018x773 실제 다크 모드 Wizard 캡처에서 텍스트·배너·버튼 잘림이 없었다.
+  - 최종 Setup 업그레이드 종료 코드 0, self-check 4종 종료 코드 0, 127.0.0.1:49783 리스너와 MCP 재연결을 확인했다.
+  - 최종 파일은 `SMSR-Setup-1.0.0.0-win-x64.exe`, SHA-256 `14DAA76505229F015531B4FC929B87734C77B2E9B3A9945312CD0C3B62AFF22B`이다.
+- 남은 위험:
+  - 라이트 모드는 Inno Setup 내장 동적 스타일로 제공되지만 이번 실제 화면 캡처는 현재 Windows 다크 모드에서 수행했다.
+  - Setup은 여전히 Authenticode 미서명이라 다른 PC에서 SmartScreen 경고가 나타날 수 있다.
+- 다음 조치:
+  - 별도 PC 수용 시험에서 라이트·다크 화면과 최초 OAuth·훅 승인 흐름을 확인하고, 코드 서명 인증서가 준비되면 배포 파일에 서명한다.

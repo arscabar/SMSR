@@ -9,6 +9,8 @@
 
 관리자 권한은 필요하지 않습니다. SMSR은 `%LOCALAPPDATA%\Programs\SMSR`에 설치되고 시작 메뉴, Windows 로그인 자동 시작, 앱 및 기능의 제거 항목이 생성됩니다. 대상 PC에는 .NET SDK, Node.js, npm 또는 별도 Codex CLI가 필요하지 않습니다.
 
+설치 Wizard는 SMSR 브랜드 환영·완료 화면을 표시하며 Windows의 라이트·다크 모드에 맞춰 자동 전환됩니다. `/VERYSILENT` 무인 설치에서는 Wizard 화면을 표시하지 않습니다.
+
 ## 업데이트와 제거
 
 새 버전 설치 프로그램을 다시 실행하면 같은 위치에서 업그레이드됩니다. 설치 경로가 유지되므로 SMSR 전역 훅 명령도 같은 경로를 사용합니다.

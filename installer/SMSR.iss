@@ -23,7 +23,13 @@ SetupIconFile={#SourcePath}SMSR-Setup.ico
 UninstallDisplayIcon={app}\SMSR.App.exe
 Compression=lzma2/ultra64
 SolidCompression=yes
-WizardStyle=modern
+WizardStyle=modern dynamic polar includetitlebar
+WizardSizePercent=120
+DisableWelcomePage=no
+WizardSmallImageFile={#SourcePath}..\src\SMSR.App\Assets\SMSR.png
+WizardSmallImageFileDynamicDark={#SourcePath}..\src\SMSR.App\Assets\SMSR.png
+WizardImageFile={#SourcePath}SMSR-Wizard.png
+WizardImageFileDynamicDark={#SourcePath}SMSR-Wizard.png
 CloseApplications=force
 CloseApplicationsFilter=SMSR.App.exe
 RestartApplications=no
@@ -51,3 +57,5 @@ Filename: "{app}\SMSR.App.exe"; Description: "{cm:LaunchProgram,SMSR}"; WorkingD
 
 [UninstallRun]
 Filename: "{app}\SMSR.App.exe"; Parameters: "--uninstall-cleanup"; WorkingDir: "{app}"; RunOnceId: "SMSRCodexCleanup"; Flags: runhidden waituntilterminated skipifdoesntexist
+
+#include "SMSR.UI.iss"
