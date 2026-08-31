@@ -53,6 +53,8 @@ internal static class CodexMcpConfigSelfCheck
             var noPlanning = CodexAutoTrackingContext.CreateOutput("{\"session_id\":\"session-1\",\"cwd\":\"C:\\\\work\\\\SMSR\"}", planningSettings with { RequirePlanReview = false });
             if (noPlanning.Contains("User-configured SMSR planning policy", StringComparison.Ordinal))
                 throw new InvalidOperationException("작업계획 검토 비활성화 검증이 실패했습니다.");
+            if (PlanningPromptSettings.Normalize(PlanningPromptSettings.LegacyDefault) != PlanningPromptSettings.Default)
+                throw new InvalidOperationException("이전 작업계획 기본 문구 마이그레이션이 실패했습니다.");
             if (WindowsStartupRegistration.BuildCommand(@"C:\Program Files\SMSR\SMSR.App.exe")
                 != "\"C:\\Program Files\\SMSR\\SMSR.App.exe\" --background")
                 throw new InvalidOperationException("Windows 자동 시작 명령 검증이 실패했습니다.");
