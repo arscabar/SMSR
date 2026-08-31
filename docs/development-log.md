@@ -1146,3 +1146,26 @@
   - 없음.
 - 다음 조치:
   - 설치본 갱신 후 대시보드를 새로고침한다.
+
+## 2026-08-31 - 설치본 설정 보존·완전 초기화 실제 검증
+
+- 변경 파일:
+  - `docs/development-log.md`
+- 변경 사유:
+  - 일반 재설치와 사용자 데이터까지 지운 완전 초기화에서 설치본이 설정·인증·Codex 연동을 어떻게 처리하는지 실제 설치 환경으로 확인했다.
+- 실행 명령:
+  - 현재 사용자 무인 제거·재설치, 설치 앱 실행, 데이터 파일 SHA-256 비교
+  - 사용자 데이터 격리 후 무인 재설치, 신규 데이터 생성 확인
+  - 원본 데이터·Codex 설정 복원 후 설치 앱 self-check 4종 실행
+- 검증 결과:
+  - 일반 제거는 설치 폴더와 SMSR 소유 자동 시작·MCP·훅만 제거했고 `%LOCALAPPDATA%\SMSR`의 27개 파일은 해시 차이 없이 보존했다.
+  - 일반 재설치 후 앱 첫 실행이 `~/.codex/config.toml`의 SMSR MCP와 `~/.codex/hooks.json`의 전역 훅을 현재 PC의 설치 경로로 다시 생성했다.
+  - 완전 초기화에서는 `smsr.db`와 `logs/activity.log`만 새로 생성됐고 기본 설정은 파일 없이 메모리 기본값으로 적용됐다. OAuth 상태와 MCP 토큰은 생성되지 않아 새 PC처럼 최초 인증이 필요했다.
+  - 원본 `settings.json`, `mcp-token.bin`, `oauth-state.bin`, Codex config·hooks를 해시 일치 상태로 복원했다.
+  - 자동 시작은 시작프로그램 바로가기가 아니라 `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`의 `SMSR` 값으로 설치 실행 파일과 `--background`가 정상 등록됐다.
+  - 설치 앱의 config·tracking·OAuth·전체 self-check 4종이 모두 통과했고 설치 실행 파일이 127.0.0.1:49783을 수신 중이다.
+- 남은 위험:
+  - 완전 초기화나 새 PC에서는 보안상 OAuth 동의와 Codex의 비관리 훅 최초 신뢰를 사용자가 한 번 승인해야 한다.
+  - 복구용 테스트 사본은 안전 정책상 `%TEMP%\SMSR-reset-test-55cc5270819e4b61a536602c12ee6d59`에 보존했다.
+- 다음 조치:
+  - 별도 PC에서 설치 후 최초 OAuth·훅 승인까지 한 차례 수용 시험한다.
