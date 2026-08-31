@@ -1,40 +1,71 @@
-using System.IO;
-
 namespace SMSR.App.Services;
 
-public sealed record CodexConnectionState(bool CodexFound, bool McpRegistered, string Message);
+internal sealed record CodexConnectionState(
+    bool CodexFound,
+    bool McpRegistered,
+    bool AutoTrackingRegistered,
+    bool StartsWithWindows,
+    bool IsConnected,
+    string Message);
 
-public sealed class CodexConnectionService
+internal sealed class CodexConnectionService
 {
+    private readonly LocalServerHost _host;
+    private readonly AppSettingsService _settings;
+    private readonly WindowsStartupRegistration _startup = new();
+
+    public CodexConnectionService(LocalServerHost host, AppSettingsService settings)
+    {
+        _host = host;
+        _settings = settings;
+    }
+
     public Task<CodexConnectionState> CheckAsync()
     {
         var codex = CodexDesktopLocator.Find();
-        if (codex is null) return Result(false, false, "Codex 데스크톱 앱을 찾지 못했습니다. 현재 Windows 사용자에게 Codex가 설치되어 있는지 확인하세요.");
-
-        var registered = CodexMcpConfig.IsRegistered(codex.ConfigPath);
-        var message = registered
-            ? $"Codex {codex.Version}에 SMSR HTTP MCP와 OAuth 인증 설정이 등록되어 있습니다. Codex의 MCP 설정에서 인증을 눌러 연결하세요."
-            : $"Codex {codex.Version} 데스크톱 앱을 찾았습니다. 초기 연결을 눌러 MCP 설정을 등록하세요.";
-        return Result(true, registered, message);
+        var configPath = CodexDesktopLocator.GetConfigPath();
+        var registered = CodexMcpConfig.IsRegistered(configPath);
+        var tracking = CodexAutoTrackingHook.IsRegistered(configPath);
+        return Result(codex is not null, registered, tracking, StartsWithWindows(), Message(codex?.Version, registered, tracking));
     }
 
-    public Task<CodexConnectionState> SetupAsync()
+    public async Task<CodexConnectionState> SetupAsync()
     {
         var codex = CodexDesktopLocator.Find();
-        if (codex is null) return Result(false, false, "Codex 데스크톱 앱을 찾지 못했습니다. 현재 Windows 사용자에게 Codex를 설치한 뒤 다시 시도하세요.");
-
+        var configPath = CodexDesktopLocator.GetConfigPath();
         try
         {
-            var backup = CodexMcpConfig.Register(codex.ConfigPath);
-            var backupMessage = backup is null ? string.Empty : $" 기존 설정은 {backup}에 백업했습니다.";
-            return Result(true, true, $"Codex {codex.Version}에 SMSR HTTP MCP를 OAuth 방식으로 등록했습니다.{backupMessage} Codex를 완전히 재시작한 뒤 MCP 설정에서 인증을 누르고 SMSR 승인 화면에서 연결을 승인하세요.");
+            if (!_host.IsRunning) await _host.StartAsync();
+            if (!StartsWithWindows()) _startup.Enable();
+            if (!_settings.Current.StartServerAutomatically || !_settings.Current.AutomateCodexIntegration)
+                _settings.Save(_settings.Current with { StartServerAutomatically = true, AutomateCodexIntegration = true });
+            if (!CodexMcpConfig.IsRegistered(configPath)) CodexMcpConfig.Register(configPath);
+            if (!CodexAutoTrackingHook.IsRegistered(configPath)) CodexAutoTrackingHook.Register(configPath);
+            return await Result(codex is not null, true, true, true, Message(codex?.Version, true, true));
         }
         catch (Exception exception)
         {
-            return Result(true, false, $"Codex MCP 설정을 저장하지 못했습니다: {exception.Message}");
+            return await Result(codex is not null, false, false, StartsWithWindows(), $"자동 설정에 실패했습니다: {exception.Message}");
         }
     }
 
-    private static Task<CodexConnectionState> Result(bool found, bool registered, string message)
-        => Task.FromResult(new CodexConnectionState(found, registered, message));
+    private string Message(string? version, bool registered, bool tracking)
+    {
+        var name = version is null ? "Codex 공유 환경" : $"Codex {version}";
+        if (_host.IsCodexConnected && tracking) return $"{name} 연결 완료 · 도구 9개 · 자동 추적 켜짐";
+        if (!registered || !tracking) return $"{name}의 연결과 자동 추적을 자동 구성합니다.";
+        if (!StartsWithWindows()) return "MCP는 등록됐지만 자동 시작이 꺼져 있습니다. 한 번에 설정으로 복구하세요.";
+        return _host.IsCodexAuthorized
+            ? "자동 설정 완료 · Codex를 다시 열고 새 자동 추적 훅을 한 번 신뢰하세요."
+            : "자동 설정 완료 · Codex를 다시 연 뒤 OAuth와 자동 추적 훅을 한 번 승인하세요.";
+    }
+
+    private Task<CodexConnectionState> Result(bool found, bool registered, bool tracking, bool startup, string message)
+        => Task.FromResult(new CodexConnectionState(found, registered, tracking, startup, _host.IsCodexConnected, message));
+
+    private bool StartsWithWindows()
+    {
+        try { return _startup.IsEnabled(); }
+        catch { return false; }
+    }
 }

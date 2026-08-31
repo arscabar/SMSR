@@ -9,15 +9,22 @@ using ModelContextProtocol.Server;
 namespace SMSR.App.Mvp;
 
 public sealed class LocalServer(WebApplication app, EventStore events, WorkflowSummaryService summaries,
-    WorkflowExportService exports, LocalOAuthStore oauth) : IAsyncDisposable
+    WorkflowExportService exports, LocalOAuthStore oauth, McpConnectionTracker connections) : IAsyncDisposable
 {
     public const int Port = 49783;
     public string Address => app.Urls.Single();
     public bool HasAuthorizedCodex => oauth.HasActiveAuthorization;
+    public bool HasActiveMcpClient => connections.IsConnected;
+    public DateTimeOffset? LastMcpActivityAt => connections.LastActivityAt;
     public event EventHandler? AuthorizationChanged
     {
         add => oauth.AuthorizationChanged += value;
         remove => oauth.AuthorizationChanged -= value;
+    }
+    public event EventHandler? ConnectionChanged
+    {
+        add => connections.Changed += value;
+        remove => connections.Changed -= value;
     }
 
     public static async Task<LocalServer> StartAsync(string? dataPath = null, int port = Port,
@@ -31,6 +38,7 @@ public sealed class LocalServer(WebApplication app, EventStore events, WorkflowS
         var flows = new OAuthFlowStore();
         var oauthAudit = new OAuthAuditLog(Path.Combine(dataPath, "logs"));
         var notifier = new WorkflowEventNotifier();
+        var connections = new McpConnectionTracker();
         var summaries = new WorkflowSummaryService(store);
         var exports = new WorkflowExportService(store, Path.Combine(dataPath, "exports"), dashboardTheme);
         var builder = WebApplication.CreateSlimBuilder();
@@ -39,15 +47,16 @@ public sealed class LocalServer(WebApplication app, EventStore events, WorkflowS
         builder.Services.AddSingleton(notifier);
         builder.Services.AddSingleton(summaries);
         builder.Services.AddSingleton(exports);
+        builder.Services.AddSingleton(connections);
         builder.Services.AddMcpServer(options => options.ServerInstructions = SmsrMcpInstructions.Text)
             .WithHttpTransport(options => options.Stateless = true)
             .WithTools<WorkflowTools>()
             .WithTools<PlanTools>()
             .WithTools<AgentTools>();
         var app = builder.Build();
-        LocalServerEndpoints.Map(app, oauth, flows, oauthAudit, dashboardTheme);
+        LocalServerEndpoints.Map(app, oauth, flows, oauthAudit, connections, dashboardTheme);
         await app.StartAsync();
-        return new(app, store, summaries, exports, oauth);
+        return new(app, store, summaries, exports, oauth, connections);
     }
 
     public Task<IReadOnlyList<string>> GetProjectIdsAsync(CancellationToken cancellationToken = default)

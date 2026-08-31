@@ -8,7 +8,7 @@ public sealed class MainWindowViewModel
     public MainWindowViewModel(LocalServerHost host, IPlatformActions platform, AppSettingsService settings,
         Action? exitApplication = null)
     {
-        Server = new ServerControlViewModel(host);
+        Server = new ServerControlViewModel(host, settings);
         Workspace = new WorkflowWorkspaceViewModel(host, platform);
         Settings = new SettingsViewModel(settings, host, platform);
         ExitCommand = new RelayCommand(exitApplication ?? (() => { }));

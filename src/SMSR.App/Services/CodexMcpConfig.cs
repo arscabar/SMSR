@@ -14,14 +14,15 @@ internal static partial class CodexMcpConfig
         var block = GetBlock(File.ReadAllText(path));
         return block is not null
             && block.Contains($"url = {Quote(Endpoint)}", StringComparison.Ordinal)
-            && block.Contains("auth = \"oauth\"", StringComparison.Ordinal);
+            && block.Contains("auth = \"oauth\"", StringComparison.Ordinal)
+            && block.Contains("enabled = true", StringComparison.Ordinal);
     }
 
     public static string? Register(string path)
     {
         var original = File.Exists(path) ? File.ReadAllText(path) : string.Empty;
         var newline = original.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
-        var block = $"[mcp_servers.smsr]{newline}url = {Quote(Endpoint)}{newline}auth = \"oauth\"{newline}";
+        var block = $"[mcp_servers.smsr]{newline}url = {Quote(Endpoint)}{newline}auth = \"oauth\"{newline}enabled = true{newline}";
         var updated = ReplaceBlock(original, block, newline);
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
 

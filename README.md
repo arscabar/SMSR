@@ -12,13 +12,23 @@ dotnet run --project src/SMSR.App/SMSR.App.csproj
 
 ## Codex 연결
 
-1. 앱의 `서버 · 연결` 탭에서 `초기 연결`을 누른다.
-2. 앱이 현재 Windows 사용자에게 설치된 `OpenAI.Codex` 데스크톱 패키지를 찾는다.
-3. 공유 설정 `~/.codex/config.toml`에 `http://127.0.0.1:49783/mcp`를 OAuth HTTP MCP로 등록한다.
-4. Codex를 완전히 재시작하고 MCP 설정에서 `smsr`의 `인증`을 누른다.
-5. 브라우저에 표시되는 SMSR 승인 화면에서 `연결 승인`을 누른 뒤 `/mcp`에서 연결을 확인한다.
+1. SMSR을 한 번 실행한다. 서버, Windows 자동 시작, Codex MCP와 전역 자동 추적 훅이 자동 구성된다.
+2. 처음 등록한 환경에서는 Codex를 다시 열고 OAuth 인증과 전역 훅 신뢰를 한 번 승인한다.
+3. 이후에는 사람이 SMSR 추적을 요청하지 않아도 새 Codex 작업이 자동으로 계획·heartbeat·상태를 전송한다.
+
+`서버 · 연결` 탭의 `연결·자동 추적 지금 복구` 버튼은 자동 설정이 실패했거나 실행 파일을 옮겼을 때만 사용한다.
 
 별도 Codex CLI, Node.js, npm은 필요하지 않습니다. SMSR은 `WindowsApps` 내부 실행 파일을 호출하지 않고 Codex가 공유하는 설정 파일을 직접 갱신합니다. 기존 설정 파일은 변경 전에 `config.toml.smsr.bak`으로 백업합니다.
+
+## 다른 Windows 환경에 배포
+
+개발 PC 경로에 의존하지 않는 자체 포함형 ZIP은 다음 명령으로 만듭니다.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\publish-portable.ps1 -Runtime win-x64
+```
+
+결과는 `artifacts\SMSR-win-x64-날짜.zip`에 생성됩니다. 다른 Windows PC나 폴더에 전체 압축을 풀고 `SMSR.App.exe`를 실행하면 현재 위치와 현재 Windows 사용자를 기준으로 Codex 공유 MCP 설정, 전역 자동 추적 훅, Windows 자동 시작을 생성합니다. 대상 PC에는 .NET SDK가 필요하지 않습니다. 자세한 최초 승인·폴더 이동·ARM64·Windows 전용 범위는 [휴대용 배포 빠른 시작](docs/portable-quickstart.md)을 참고하세요.
 
 등록되는 설정은 다음과 같습니다.
 
@@ -26,11 +36,12 @@ dotnet run --project src/SMSR.App/SMSR.App.csproj
 [mcp_servers.smsr]
 url = "http://127.0.0.1:49783/mcp"
 auth = "oauth"
+enabled = true
 ```
 
 SMSR은 OAuth DCR과 PKCE를 지원하며 Codex에 15분 액세스 토큰과 회전형 갱신 토큰을 발급합니다. 등록 클라이언트와 토큰 해시는 현재 Windows 사용자만 복호화할 수 있는 DPAPI 파일에 저장합니다. Codex 설정에는 토큰을 기록하지 않습니다. SMSR 서버가 실행 중이어야 인증과 MCP 연결이 가능합니다.
 
-추적 규칙은 MCP `instructions`로 제공됩니다. SMSR은 에이전트를 호출하지 않으며, 메인·하위 에이전트가 `save_plan`, `record_heartbeat`, `record_event`로 자신의 계층 계획과 상태를 직접 전송할 때만 화면이 바뀝니다. `parentNodeId`가 있는 계획 노드는 웹 순서도에서 클릭해 하위 그래프로 드릴다운할 수 있습니다.
+추적 규칙은 MCP `instructions`와 전역 `UserPromptSubmit` 훅으로 자동 제공됩니다. 훅은 정확한 프로젝트·작업 ID만 개발자 컨텍스트에 추가하며 프롬프트 원문을 SMSR에 보내지 않습니다. SMSR은 에이전트를 호출하지 않고 메인·하위 에이전트가 `save_plan`, `record_heartbeat`, `record_event`로 상태를 직접 전송합니다. `parentNodeId`가 있는 계획 노드는 웹 순서도에서 하위 그래프로 드릴다운할 수 있습니다.
 
 `--self-test`는 DPAPI 사용자 프로필이 로드된 일반 사용자 세션에서 실행해야 합니다. 조건이 맞지 않으면 앱이 충돌하지 않고 상세 오류를 표시합니다.
 
@@ -38,9 +49,9 @@ SMSR은 OAuth DCR과 PKCE를 지원하며 Codex에 15분 액세스 토큰과 회
 
 ## 설정
 
-`설정` 탭에서 앱 시작 시 서버 자동 시작, 닫기 버튼의 트레이 숨김 동작, 앱과 웹 대시보드의 밝은·어두운 테마를 선택할 수 있습니다. 테마는 즉시 반영됩니다. 설정은 현재 사용자의 `%LocalAppData%\SMSR\settings.json`에 저장되며 데이터·로그 폴더도 바로 열 수 있습니다.
+`설정` 탭에서 Codex 연결·추적 자동 유지, Windows 로그인 시 SMSR 시작, SMSR 시작 시 서버 자동 시작, 트레이 동작과 테마를 선택할 수 있습니다. 자동 시작과 전역 훅 명령은 현재 실행 파일 경로로 생성되며 소스에 컴퓨터별 절대 경로를 하드코딩하지 않습니다. 설정은 현재 사용자의 `%LocalAppData%\SMSR\settings.json`에 저장됩니다.
 
-OAuth 인증이 완료되면 `서버 · 연결` 탭의 초기 연결 버튼 영역은 자동으로 사라지고 `Codex 연결됨` 상태만 표시됩니다. 이 상태는 암호화된 갱신 토큰의 유효 여부를 기준으로 앱 재시작 후에도 복원됩니다.
+OAuth 토큰 보유 여부만으로는 연결 완료로 표시하지 않습니다. SMSR 서버가 현재 실행된 뒤 인증된 MCP 요청을 실제로 한 번 받아야 설정 버튼이 사라지고 `Codex 연결됨 · 도구 9개`가 표시됩니다.
 
 포트 `49783`을 이미 사용하는지 확인하려면 `Get-NetTCPConnection -LocalPort 49783`을 실행합니다. 충돌한 프로세스를 종료한 뒤 SMSR을 다시 시작해야 하며, MCP 등록 주소와 같은 포트로 변경해야 합니다.
 

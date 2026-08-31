@@ -4,7 +4,7 @@ using SMSR.App.Services;
 
 namespace SMSR.App.ViewModels;
 
-public sealed class SettingsViewModel : ViewModelBase
+public sealed partial class SettingsViewModel : ViewModelBase
 {
     private readonly AppSettingsService _settings;
     private readonly IPlatformActions _platform;
@@ -18,12 +18,20 @@ public sealed class SettingsViewModel : ViewModelBase
         LogPath = System.IO.Path.GetDirectoryName(host.LogPath) ?? host.DataPath;
         OpenDataFolderCommand = new RelayCommand(() => Open(DataPath, "데이터"));
         OpenLogFolderCommand = new RelayCommand(() => Open(LogPath, "로그"));
+        _startWithWindows = ReadStartupState();
+        _settings.Changed += OnSettingsChanged;
     }
 
     public bool StartServerAutomatically
     {
         get => _settings.Current.StartServerAutomatically;
         set => Update(_settings.Current with { StartServerAutomatically = value }, nameof(StartServerAutomatically));
+    }
+
+    public bool AutomateCodexIntegration
+    {
+        get => _settings.Current.AutomateCodexIntegration;
+        set => Update(_settings.Current with { AutomateCodexIntegration = value }, nameof(AutomateCodexIntegration));
     }
 
     public bool MinimizeToTray
@@ -54,4 +62,5 @@ public sealed class SettingsViewModel : ViewModelBase
 
     private void Open(string path, string label)
         => StatusMessage = _platform.TryOpenPath(path) ? $"{label} 폴더를 열었습니다." : $"{label} 폴더를 열지 못했습니다.";
+
 }

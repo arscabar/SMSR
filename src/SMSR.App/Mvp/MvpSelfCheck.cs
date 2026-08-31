@@ -18,6 +18,13 @@ public static class MvpSelfCheck
         try
         {
             CodexMcpConfigSelfCheck.Run();
+            var connectionTracker = new McpConnectionTracker();
+            var connectionChanges = 0;
+            connectionTracker.Changed += (_, _) => connectionChanges++;
+            connectionTracker.MarkActivity();
+            connectionTracker.MarkActivity();
+            if (!connectionTracker.IsConnected || connectionTracker.LastActivityAt is null || connectionChanges != 1)
+                throw new InvalidOperationException("실제 MCP 연결 추적 검증이 실패했습니다.");
             var activityLog = new LocalActivityLog(logPath);
             Directory.CreateDirectory(logPath);
             await File.WriteAllTextAsync(activityLog.Path, new string('x', 1_000_000));
@@ -123,21 +130,24 @@ public static class MvpSelfCheck
             await using (var host = new LocalServerHost(serverPath, 0, () => settings.Current.DashboardTheme))
             {
                 await host.StartAsync();
+                await OAuthSelfCheck.RunAsync(host.Address);
                 var platform = new TestPlatformActions();
                 var viewModel = new MainWindowViewModel(host, platform, settings);
                 await viewModel.LoadAsync();
-                if (!host.IsCodexAuthorized || !viewModel.Server.IsCodexConnected || viewModel.Server.NeedsCodexSetup)
+                if (!host.IsCodexAuthorized || !host.IsCodexConnected || !viewModel.Server.IsCodexConnected || viewModel.Server.NeedsCodexSetup)
                     throw new InvalidOperationException("Codex 연결 완료 UI 상태 복원이 실패했습니다.");
                 viewModel.Settings.StartServerAutomatically = false;
+                viewModel.Settings.AutomateCodexIntegration = false;
                 viewModel.Settings.MinimizeToTray = false;
                 viewModel.Settings.DashboardTheme = DashboardThemes.Light;
                 var savedSettings = new AppSettingsService(serverPath).Current;
-                if (savedSettings.StartServerAutomatically || savedSettings.MinimizeToTray || savedSettings.DashboardTheme != DashboardThemes.Light)
+                if (savedSettings.StartServerAutomatically || savedSettings.AutomateCodexIntegration
+                    || savedSettings.MinimizeToTray || savedSettings.DashboardTheme != DashboardThemes.Light)
                     throw new InvalidOperationException("사용자 설정 저장 검증이 실패했습니다.");
                 viewModel.Workspace.Selection.ProjectId = "demo";
                 await viewModel.Workspace.Selection.LoadAsync();
                 viewModel.Workspace.Selection.WorkflowId = "wf-1";
-                await host.StopAsync();
+                await host.StopAsync().WaitAsync(TimeSpan.FromSeconds(5));
                 await host.StartAsync();
                 viewModel = new MainWindowViewModel(host, platform, settings);
                 await viewModel.LoadAsync();
@@ -156,7 +166,7 @@ public static class MvpSelfCheck
                 var exportedDashboard = File.ReadAllText(Path.Combine(export.DirectoryPath, "dashboard.html"));
                 if (!platform.OpenedUrl.Contains("projectId=demo") || viewModel.Workspace.Monitor.Nodes.Count == 0 || summary.Content.Length == 0 || !File.Exists(export.ZipPath) || !File.ReadAllText(Path.Combine(export.DirectoryPath, "events.jsonl")).Contains("evt-mcp-1") || !themedDashboard.Contains("color-scheme:light") || !exportedDashboard.Contains("color-scheme:light") || !exportedDashboard.Contains("flow-svg"))
                     throw new InvalidOperationException("WPF 서버 제어·요약·내보내기 검증이 실패했습니다.");
-                await host.StopAsync();
+                await host.StopAsync().WaitAsync(TimeSpan.FromSeconds(5));
                 if (host.IsRunning || viewModel.Workspace.ExportCommand.CanExecute(null) || !File.ReadAllText(host.LogPath).Contains("server started") || !File.ReadAllText(host.LogPath).Contains("server stopped"))
                     throw new InvalidOperationException("서버 중지·로그 복구 검증이 실패했습니다.");
             }

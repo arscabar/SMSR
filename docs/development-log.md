@@ -915,3 +915,144 @@
   - 변경된 저장소 로컬 훅은 새 작업에서 `/hooks`를 열어 다시 신뢰해야 한다.
 - 다음 조치:
   - 수정본을 커밋·푸시하고 다른 환경에서는 SMSR OAuth 연결과 훅 신뢰만 수행한다.
+
+## 2026-08-28 - 실서버 MCP 재검증과 self-test 종료 교착 수정
+
+- 변경 파일:
+  - `src/SMSR.App/Services/LocalServerHost.cs`
+  - `src/SMSR.App/ViewModels/WorkflowWorkspaceViewModel.cs`
+  - `src/SMSR.App/Mvp/MvpSelfCheck.cs`
+  - `docs/development-log.md`
+- 변경 사유:
+  - 전체 `--self-test`가 서버 중지 시 활성 SSE 연결의 종료를 기다리고, 모니터는 서버 중지 완료 알림을 기다리는 순서 역전 때문에 종료되지 않았다.
+  - 실행 중인 SMSR가 최신 소스보다 오래되어 새 `record_heartbeat` 도구가 Codex 캐시에 반영되지 않은 상태를 실제 서버 기준으로 다시 확인할 필요가 있었다.
+- 실행 명령:
+  - 실행 중인 SMSR PID와 실행 경로 및 `127.0.0.1:49783` listener 확인
+  - `dotnet build src/SMSR.App/SMSR.App.csproj --no-restore --verbosity:minimal`
+  - 최신 SMSR 재실행 후 OAuth metadata 확인
+  - DCR, PKCE 승인, token 교환, MCP `initialize`, `tools/list` 실서버 통합 검사
+  - `SMSR.App.exe --codex-config-self-test`, `--tracking-self-test`, `--oauth-self-test`, `--self-test`
+  - `.codex/hooks.json` JSON 구문과 5개 lifecycle 이벤트의 `smsr.record_lifecycle` 매핑 검사
+- 검증 결과:
+  - 서버 폐기 전에 `Stopping` 이벤트로 실시간 모니터의 SSE 연결을 먼저 취소하도록 종료 순서를 수정했다.
+  - self-test의 서버 중지 대기에 5초 제한을 추가해 같은 회귀가 무한 대기 대신 명시적 실패로 드러나도록 했다.
+  - 빌드는 경고 0, 오류 0으로 통과했다. 네 self-check는 각각 종료 코드 0이며 전체 `--self-test`는 5.84초에 종료됐다.
+  - 최신 앱을 PID 73716으로 재실행했고 issuer `http://127.0.0.1:49783`, scope `smsr:mcp`를 확인했다.
+  - 실서버 OAuth 전체 흐름과 MCP 도구 9개(`record_heartbeat` 포함)가 통과했다.
+  - 저장소 훅 JSON은 유효하며 `SessionStart`, `UserPromptSubmit`, `Stop`, `SubagentStart`, `SubagentStop`이 모두 연결된 `smsr` 서버의 `record_lifecycle` 도구를 사용한다.
+- 남은 위험:
+  - 현재 실행 중인 Codex 작업의 MCP sidebar 캐시는 이전 8개 도구 목록이며 이 작업 ID에 lifecycle 데이터가 없다. 앱 자체 문제는 해소됐지만 Codex가 서버 목록과 변경된 저장소 훅을 다시 읽어야 한다.
+  - 저장소 훅은 Codex의 `/hooks`에서 사용자가 직접 신뢰해야 하며, 현재 작업을 실행 중인 상태에서 자동 승인할 수 없다.
+- 다음 조치:
+  - Codex를 재시작하거나 새 작업을 연 뒤 `/mcp`에서 `record_heartbeat` 포함 9개 도구를 확인하고, `/hooks`에서 저장소 훅을 신뢰한 다음 프롬프트 1회를 보내 SMSR lifecycle 표시를 확인한다.
+
+## 2026-08-28 - Codex 재시작 시 SMSR 동반 종료 원인 확인
+
+- 변경 파일:
+  - 사용자 설정: `%USERPROFILE%/.codex/config.toml`
+  - `docs/development-log.md`
+- 변경 사유:
+  - SMSR 서버를 켠 뒤 Codex를 재시작해도 `/mcp` 도구가 나타나지 않는 현상이 반복됐다.
+  - Codex 로그는 매 재시작마다 `127.0.0.1:49783` 연결 거부와 `smsr` 도구 0개를 기록했다.
+- 실행 명령:
+  - Codex 재시작 직후 ChatGPT·SMSR 프로세스와 port 49783 listener 확인
+  - `~/.codex/logs_2.sqlite`에서 `server_name=smsr` 연결 로그와 MCP catalog 확인
+  - Explorer shell을 통해 `SMSR.App.exe` 독립 실행 후 부모 PID와 listener 확인
+  - `[mcp_servers.smsr]`의 지원 옵션 `enabled`를 false에서 true로 전환해 설정 새로고침 시도
+- 검증 결과:
+  - 이전 SMSR는 Codex 도구 실행 프로세스의 자식이라 Codex 종료 시 함께 종료됐다. 따라서 재시작된 Codex는 정상 서버가 아닌 닫힌 포트에 접속하고 있었다.
+  - SMSR를 Explorer 소유 프로세스 PID 30608로 다시 실행했으며 부모 프로세스는 `explorer`, port 49783 listener는 정상이다.
+  - 현재 Codex Desktop은 실행 중 설정 변경을 즉시 다시 읽지 않아 false/true 전환만으로는 현재 작업의 도구 catalog가 갱신되지 않았다. 최종 설정은 `enabled = true`로 유지했다.
+  - 독립 실행 후 Codex 재시작에서 `SMSR.App 1.0.0.0` 초기화와 `record_heartbeat` 포함 MCP 도구 9개가 확인됐고 lifecycle agent가 기록됐다.
+  - 완료 이벤트에 `COMPLETED`를 사용한 동일 계약 오류가 4건 발생해 재시도를 중단했다. `EventValidation`의 허용 상태가 `PENDING`, `IN_PROGRESS`, `VALIDATING`, `SUCCESS`, `FAILED`, `RETRYING`, `BLOCKED`임을 확인하고 완료 상태를 `SUCCESS`로 수정하는 계획으로 전환했다.
+  - `SUCCESS`로 수정한 계획 노드 4개가 모두 중복 없이 기록됐고, coordinator heartbeat `STOPPED`와 `get_state` 왕복 조회까지 통과했다.
+- 남은 위험:
+  - 현재 Codex 작업은 시작 시 만들어진 `smsr` unavailable 상태를 유지하므로 독립 SMSR가 실행된 상태에서 Codex 프로세스를 한 번 새로 시작해야 한다.
+- 다음 조치:
+  - 완료. SMSR 앱을 종료하지 않는 동안 Codex가 저장된 OAuth 자격 증명으로 9개 도구에 재연결한다.
+
+## 2026-08-28 - Codex MCP 원클릭 설정과 실제 연결 표시
+
+- 변경 파일:
+  - `src/SMSR.App/Services/CodexConnectionService.cs`, `CodexMcpConfig.cs`, `WindowsStartupRegistration.cs`, `LocalServerHost.cs`
+  - `src/SMSR.App/Mvp/LocalServer.cs`, `LocalServerEndpoints.cs`, `McpConnectionTracker.cs`, `MvpSelfCheck.cs`
+  - `src/SMSR.App/ViewModels/ServerControlViewModel.cs`, `ServerControlViewModel.Codex.cs`, `SettingsViewModel.cs`, `SettingsViewModel.Startup.cs`
+  - `src/SMSR.App/Views/ServerPanel.xaml`, `SettingsGeneralPanel.xaml`, `App.xaml.cs`
+  - `README.md`, `docs/mcp-connection.md`
+- 변경 사유:
+  - MCP 설정, 서버 생존, OAuth 승인, 연결 확인이 여러 단계로 분리돼 반복 설정이 필요했고 토큰 보유 상태가 실제 MCP 연결처럼 표시됐다.
+  - 사용자가 한 버튼으로 자동화 가능한 설정을 모두 적용하고 실제 인증 요청을 받은 뒤에만 도구 연결 상태를 표시할 필요가 있었다.
+- 실행 명령:
+  - `dotnet build src/SMSR.App/SMSR.App.csproj -o <임시 경로> --no-restore --verbosity:minimal`
+  - 임시 빌드의 `SMSR.App.exe --codex-config-self-test`, `--tracking-self-test`, `--oauth-self-test`, `--self-test`
+  - 실행 중인 기존 SMSR의 경로와 PID를 확인한 뒤 기본 출력 빌드로 교체하고 Explorer를 통해 독립 실행
+  - UI Automation으로 `Codex 연결 한 번에 설정`을 호출하고 Windows 자동 시작, 설정 파일, 연결 완료 화면 확인
+- 검증 결과:
+  - 빌드가 경고 0, 오류 0으로 통과했다.
+  - 네 self-check가 모두 종료 코드 0을 반환했고 OAuth MCP `tools/list`에서 9개 도구를 검증했다.
+  - 한 번에 설정이 서버 시작, 현재 실행 파일의 Windows 로그인 자동 시작, 앱 시작 시 서버 시작, `auth = "oauth"`, `enabled = true` 등록을 함께 수행한다.
+  - 인증된 `/mcp` 요청이 실제로 들어온 뒤에만 `Codex 연결됨 · 도구 9개` 상태로 전환한다.
+  - 새 앱은 Explorer 소유 PID 7964로 port 49783을 유지하며 현재 실행 파일의 `--background` 자동 시작 등록이 생성됐다.
+  - 현재 Codex 작업의 `get_state` 실호출 후 연결 완료 문구가 표시되고 원클릭 설정 버튼이 숨겨지는 것을 확인했다.
+- 남은 위험:
+  - Codex가 실행 중 설정을 다시 읽지 않는 버전에서는 최초 등록 후 Codex를 한 번 다시 열어야 한다.
+  - OAuth 동의와 저장소 훅 신뢰는 보안 경계이므로 사용자가 직접 승인해야 한다.
+- 다음 조치:
+  - 완료. 다른 컴퓨터에서는 그 컴퓨터에서 한 번에 설정 버튼과 최초 OAuth 승인만 수행한다.
+
+## 2026-08-31 - 무지정 Codex 자동 설정과 전역 작업 추적
+
+- 변경 파일:
+  - 추가: `src/SMSR.App/Services/CodexAutoTrackingHook.cs`, `CodexAutoTrackingHook.Definitions.cs`, `CodexAutoTrackingContext.cs`
+  - 수정: `src/SMSR.App/App.xaml.cs`, `Services/CodexConnectionService.cs`, `Services/AppSettingsService.cs`, `Services/CodexMcpConfigSelfCheck.cs`
+  - 수정: `ViewModels/SettingsViewModel.cs`, `SettingsViewModel.Startup.cs`, `ServerControlViewModel.Codex.cs`, 관련 XAML과 문서
+  - 삭제: 저장소별 중복 신뢰를 요구하던 `.codex/hooks.json`
+- 변경 사유:
+  - 사용자가 매 컴퓨터·저장소·작업에서 연결 버튼과 `$smsr-tracking`을 지정하지 않아도 SMSR 연결과 의미 기반 추적이 자동 적용돼야 했다.
+  - 저장소 훅과 전역 훅이 동시에 실행되는 중복 및 저장소별 반복 신뢰를 제거할 필요가 있었다.
+- 실행 명령:
+  - 공식 OpenAI MCP·Hooks 문서에서 공유 `config.toml`, 전역 `~/.codex/hooks.json`, `UserPromptSubmit` 추가 컨텍스트와 MCP tool hook 동작 확인
+  - `dotnet build src/SMSR.App/SMSR.App.csproj -o <임시 경로> --no-restore --verbosity:minimal`
+  - 임시 앱의 `--smsr-auto-track-hook` 표준 입출력 검사
+  - 임시 앱의 `--codex-config-self-test`, `--tracking-self-test`, `--oauth-self-test`, `--self-test`
+- 검증 결과:
+  - 빌드는 경고 0, 오류 0이며 네 self-check가 모두 종료 코드 0을 반환했다.
+  - 자동 추적 훅이 기존 전역 훅을 보존하고 SMSR 소유 항목만 병합하며 재등록 시 중복되지 않음을 확인했다.
+  - 훅 컨텍스트가 프로젝트 폴더명과 세션 ID를 제공하고 테스트 프롬프트 원문은 출력하지 않음을 확인했다.
+  - SMSR 실행 시 서버·Windows 자동 시작·MCP 설정·전역 lifecycle 및 추적 컨텍스트 훅을 자동 복구하도록 변경했다.
+  - 기본 출력 앱을 Explorer 소유 PID 18832로 교체했고 `~/.codex/hooks.json`에 SMSR 전역 훅 5개와 컨텍스트 명령 1개가 생성됐다.
+  - 실사용 실행 파일의 훅 표준입출력에서 세션·프로젝트 ID를 확인했으며 테스트 프롬프트 원문은 포함되지 않았다.
+- 남은 위험:
+  - OAuth 승인과 비관리 전역 훅의 최초 신뢰는 Codex 보안 경계이므로 사용자 확인을 우회할 수 없다.
+  - 모델이 의미 기반 계획·상태를 생성하므로 단순 lifecycle은 훅이 보장하지만 세부 계획 품질은 작업 문맥과 모델 판단에 영향을 받는다.
+- 다음 조치:
+  - Codex를 한 번 다시 열어 사용자 전역 SMSR 훅을 신뢰한 뒤, 새 작업의 무지정 계획·heartbeat·상태 전송을 확인한다.
+
+## 2026-08-31 - 경로 독립형 Codex 연동과 휴대용 Windows 배포
+
+- 변경 파일:
+  - `src/SMSR.App/Services/CodexDesktopLocator.cs`, `CodexConnectionService.cs`, `App.xaml.cs`
+  - `src/SMSR.App/Properties/PublishProfiles/Portable.pubxml`
+  - `scripts/publish-portable.ps1`, `scripts/test-portable.ps1`
+  - `README.md`, `docs/portable-quickstart.md`
+- 변경 사유:
+  - 저장소의 Debug 출력이나 특정 PC의 Codex Store 패키지 탐지에 의존하지 않고 다른 폴더·저장소·Windows PC에서도 SMSR을 실행하고 자동 설정할 수 있어야 했다.
+  - Codex 데스크톱·CLI·IDE가 같은 호스트에서 공유하는 사용자 `config.toml`을 기준으로 연동하고, 대상 PC에 .NET SDK가 없어도 실행되는 배포물이 필요했다.
+- 실행 명령:
+  - 공식 OpenAI MCP·Hooks 문서에서 사용자 공유 MCP 설정, 전역 훅 위치와 훅 해시별 신뢰 동작 확인
+  - 제품 코드·스크립트의 개발 PC 절대경로 검색과 `git diff --check`
+  - `dotnet build SMSR.slnx --configuration Release --no-restore --nologo`
+  - `powershell -ExecutionPolicy Bypass -File .\scripts\publish-portable.ps1 -Runtime win-x64`
+  - `powershell -ExecutionPolicy Bypass -File .\scripts\test-portable.ps1`
+- 검증 결과:
+  - 제품 코드와 배포 설정에서 `C:\gitsource\SMSR`, 개발 사용자명, Debug 출력 경로 하드코딩이 발견되지 않았다.
+  - Microsoft Store판 Codex 탐지가 실패해도 현재 사용자의 표준 `~/.codex/config.toml`과 `hooks.json`을 구성하도록 변경했다.
+  - Release 빌드가 경고 0, 오류 0으로 통과했다. 실행 중인 기존 Debug 앱 잠금 때문에 Debug 기본 출력 빌드는 실패했으나 Release 출력과 배포에는 영향이 없었다.
+  - `SMSR-win-x64-20260831-102924.zip`을 생성했고 SHA-256은 `5F72391F4304CEFF0C3AA065BA78FDB9D762B8305C63918520A4E9EF027F936C`이다.
+  - 저장소 밖 임시 폴더의 자체 포함형 EXE에서 config, tracking, OAuth, 전체 self-check가 모두 종료 코드 0을 반환했고 자동 훅이 세션 ID를 출력하되 테스트 프롬프트는 제외했다.
+- 남은 위험:
+  - WPF 앱이므로 Windows 전용이다. macOS·Linux 지원은 UI 프레임워크 교체가 필요한 별도 작업이다.
+  - OAuth 자격증명과 비관리 훅 신뢰는 Windows 사용자별 보안 상태이므로 새 PC·새 사용자에서는 한 번 직접 승인해야 한다.
+  - 배포본은 코드 서명되지 않아 새 PC에서 SmartScreen 경고가 나타날 수 있다. ARM64 생성 경로는 제공하지만 실제 장치 실행 검증은 하지 않았다.
+- 다음 조치:
+  - 정식 배포가 필요해지면 코드 서명과 설치 관리자 또는 릴리스 자동화를 추가하고, 깨끗한 Windows x64 PC에서 최초 OAuth·훅 승인까지 수동 수용 시험한다.

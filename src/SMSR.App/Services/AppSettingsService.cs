@@ -13,7 +13,8 @@ public static class DashboardThemes
 public sealed record AppSettings(
     bool StartServerAutomatically = true,
     bool MinimizeToTray = true,
-    string DashboardTheme = DashboardThemes.Dark);
+    string DashboardTheme = DashboardThemes.Dark,
+    bool AutomateCodexIntegration = true);
 
 public sealed class AppSettingsService
 {
@@ -44,9 +45,12 @@ public sealed class AppSettingsService
     {
         try
         {
-            var loaded = File.Exists(_path)
-                ? JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(_path)) ?? new()
-                : new();
+            if (!File.Exists(_path)) return new();
+            var text = File.ReadAllText(_path);
+            var loaded = JsonSerializer.Deserialize<AppSettings>(text) ?? new();
+            using var document = JsonDocument.Parse(text);
+            if (!document.RootElement.TryGetProperty(nameof(AppSettings.AutomateCodexIntegration), out _))
+                loaded = loaded with { AutomateCodexIntegration = true };
             return loaded with { DashboardTheme = DashboardThemes.Normalize(loaded.DashboardTheme) };
         }
         catch { return new(); }

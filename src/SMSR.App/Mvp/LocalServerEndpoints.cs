@@ -7,7 +7,7 @@ namespace SMSR.App.Mvp;
 internal static class LocalServerEndpoints
 {
     public static void Map(WebApplication app, LocalOAuthStore oauth, OAuthFlowStore flows,
-        OAuthAuditLog audit, Func<string>? dashboardTheme)
+        OAuthAuditLog audit, McpConnectionTracker connections, Func<string>? dashboardTheme)
     {
         app.Use(async (context, next) =>
         {
@@ -22,6 +22,7 @@ internal static class LocalServerEndpoints
                 context.Response.Headers.WWWAuthenticate = $"Bearer resource_metadata=\"{OAuthUris.Metadata(context.Request)}\", scope=\"{OAuthUris.Scope}\"";
                 return;
             }
+            if (context.Request.Path.StartsWithSegments("/mcp")) connections.MarkActivity();
             await next();
         });
         OAuthEndpoints.Map(app, oauth, flows, audit);

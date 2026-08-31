@@ -10,14 +10,19 @@ public sealed class LocalServerHost(string? dataPath = null, int port = LocalSer
     private readonly LocalActivityLog _log = new(System.IO.Path.Combine(ResolveDataPath(dataPath), "logs"));
     private LocalServer? _server;
     private bool _isCodexAuthorized;
+    private bool _isCodexConnected;
+    private DateTimeOffset? _lastMcpActivityAt;
 
     public event EventHandler? StateChanged;
+    public event EventHandler? Stopping;
     public event EventHandler? AuthorizationChanged;
     public bool IsRunning => _server is not null;
     public string Address => _server?.Address ?? "";
     public string LogPath => _log.Path;
     public string DataPath => _dataPath;
     public bool IsCodexAuthorized => _isCodexAuthorized;
+    public bool IsCodexConnected => _isCodexConnected;
+    public DateTimeOffset? LastMcpActivityAt => _lastMcpActivityAt;
 
     public async Task StartAsync()
     {
@@ -28,7 +33,9 @@ public sealed class LocalServerHost(string? dataPath = null, int port = LocalSer
             {
                 _server = await LocalServer.StartAsync(_dataPath, port, dashboardTheme);
                 _server.AuthorizationChanged += OnAuthorizationChanged;
+                _server.ConnectionChanged += OnConnectionChanged;
                 _isCodexAuthorized = _server.HasAuthorizedCodex;
+                UpdateConnectionState();
                 await WriteLogAsync("server started");
             }
         }
@@ -48,11 +55,14 @@ public sealed class LocalServerHost(string? dataPath = null, int port = LocalSer
         {
             if (_server is not null)
             {
+                Stopping?.Invoke(this, EventArgs.Empty);
                 _server.AuthorizationChanged -= OnAuthorizationChanged;
+                _server.ConnectionChanged -= OnConnectionChanged;
                 await _server.DisposeAsync();
                 await WriteLogAsync("server stopped");
             }
             _server = null;
+            UpdateConnectionState();
         }
         finally { _gate.Release(); }
         StateChanged?.Invoke(this, EventArgs.Empty);
@@ -73,9 +83,12 @@ public sealed class LocalServerHost(string? dataPath = null, int port = LocalSer
         {
             if (_server is not null)
             {
+                Stopping?.Invoke(this, EventArgs.Empty);
                 _server.AuthorizationChanged -= OnAuthorizationChanged;
+                _server.ConnectionChanged -= OnConnectionChanged;
                 await _server.DisposeAsync().ConfigureAwait(false);
                 _server = null;
+                UpdateConnectionState();
                 await WriteLogAsync("server stopped").ConfigureAwait(false);
             }
         }
@@ -95,6 +108,18 @@ public sealed class LocalServerHost(string? dataPath = null, int port = LocalSer
     {
         _isCodexAuthorized = _server?.HasAuthorizedCodex ?? _isCodexAuthorized;
         AuthorizationChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OnConnectionChanged(object? sender, EventArgs eventArgs)
+    {
+        UpdateConnectionState();
+        AuthorizationChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void UpdateConnectionState()
+    {
+        _isCodexConnected = _server?.HasActiveMcpClient ?? false;
+        _lastMcpActivityAt = _server?.LastMcpActivityAt;
     }
 
     private static string ResolveDataPath(string? path)

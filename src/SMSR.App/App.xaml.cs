@@ -17,11 +17,18 @@ public partial class App : WpfApplication
     {
         base.OnStartup(e);
         ShutdownMode = ShutdownMode.OnMainWindowClose;
+        if (e.Args.Contains("--smsr-auto-track-hook"))
+        {
+            try { await CodexAutoTrackingContext.RunAsync(); Shutdown(); }
+            catch { Shutdown(-1); }
+            return;
+        }
         if (e.Args.Contains("--codex-config-self-test"))
         {
             try
             {
-                if (CodexDesktopLocator.Find() is null) throw new InvalidOperationException("Codex 데스크톱 앱 탐지 실패");
+                if (!System.IO.Path.IsPathFullyQualified(CodexDesktopLocator.GetConfigPath()))
+                    throw new InvalidOperationException("Codex 공유 설정 경로 확인 실패");
                 CodexMcpConfigSelfCheck.Run();
                 Shutdown();
             }
@@ -65,16 +72,19 @@ public partial class App : WpfApplication
         }
         try
         {
+            var startInBackground = e.Args.Contains("--background", StringComparer.OrdinalIgnoreCase);
             var settings = new AppSettingsService();
             AppThemeService.Apply(settings.Current.DashboardTheme);
             settings.Changed += (_, _) => Dispatcher.Invoke(() => AppThemeService.Apply(settings.Current.DashboardTheme));
             _server = new LocalServerHost(dashboardTheme: () => settings.Current.DashboardTheme);
             if (settings.Current.StartServerAutomatically) await _server.StartAsync();
+            if (settings.Current.AutomateCodexIntegration)
+                await new CodexConnectionService(_server, settings).SetupAsync();
             var viewModel = new MainWindowViewModel(_server, new WindowsPlatformActions(), settings, ExitApplication);
             await viewModel.LoadAsync();
             MainWindow = new MainWindow(viewModel, () => settings.Current.MinimizeToTray);
             _tray = new TrayStatusIcon(((MainWindow)MainWindow).ShowFromTray, ExitApplication);
-            MainWindow.Show();
+            if (!startInBackground) MainWindow.Show();
         }
         catch (Exception exception)
         {

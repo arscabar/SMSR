@@ -25,6 +25,7 @@ public sealed class WorkflowWorkspaceViewModel : ViewModelBase
         ExportCommand = new RelayCommand(() => _ = ExportAsync(), HasWorkflowSelection);
         _openDashboardCommand = new RelayCommand(OpenDashboard, HasWorkflowSelection);
         OpenDashboardCommand = _openDashboardCommand;
+        _host.Stopping += OnHostStopping;
         _host.StateChanged += OnHostStateChanged;
     }
 
@@ -103,4 +104,6 @@ public sealed class WorkflowWorkspaceViewModel : ViewModelBase
         foreach (var command in new[] { RefreshMonitorCommand, GenerateSummaryCommand, ExportCommand, OpenDashboardCommand })
             ((RelayCommand)command).NotifyCanExecuteChanged();
     }
+
+    private void OnHostStopping(object? sender, EventArgs eventArgs) => Monitor.StopLiveUpdates();
 }

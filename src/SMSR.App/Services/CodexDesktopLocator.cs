@@ -4,7 +4,7 @@ using System.IO;
 
 namespace SMSR.App.Services;
 
-internal sealed record CodexDesktopInstallation(string Version, string Root, string ConfigPath);
+internal sealed record CodexDesktopInstallation(string Version, string Root);
 
 internal static class CodexDesktopLocator
 {
@@ -47,14 +47,14 @@ internal static class CodexDesktopLocator
     {
         var parts = packageName.Split('_');
         var version = parts.Length > 1 ? parts[1] : "설치됨";
-        return new(version, root, GetConfigPath());
+        return new(version, root);
     }
 
     private static bool IsCodexRoot(string? root) => !string.IsNullOrWhiteSpace(root)
         && root.Contains("OpenAI.Codex_", StringComparison.OrdinalIgnoreCase)
         && File.Exists(Path.Combine(root, "app", "ChatGPT.exe"));
 
-    private static string GetConfigPath()
+    public static string GetConfigPath()
     {
         var home = Environment.GetEnvironmentVariable("CODEX_HOME");
         if (string.IsNullOrWhiteSpace(home))
