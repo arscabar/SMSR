@@ -14,7 +14,9 @@ public sealed record AppSettings(
     bool StartServerAutomatically = true,
     bool MinimizeToTray = true,
     string DashboardTheme = DashboardThemes.Dark,
-    bool AutomateCodexIntegration = true);
+    bool AutomateCodexIntegration = true,
+    bool RequirePlanReview = true,
+    string PlanningPrompt = PlanningPromptSettings.Default);
 
 public sealed class AppSettingsService
 {
@@ -51,7 +53,13 @@ public sealed class AppSettingsService
             using var document = JsonDocument.Parse(text);
             if (!document.RootElement.TryGetProperty(nameof(AppSettings.AutomateCodexIntegration), out _))
                 loaded = loaded with { AutomateCodexIntegration = true };
-            return loaded with { DashboardTheme = DashboardThemes.Normalize(loaded.DashboardTheme) };
+            if (!document.RootElement.TryGetProperty(nameof(AppSettings.RequirePlanReview), out _))
+                loaded = loaded with { RequirePlanReview = true };
+            return loaded with
+            {
+                DashboardTheme = DashboardThemes.Normalize(loaded.DashboardTheme),
+                PlanningPrompt = PlanningPromptSettings.Normalize(loaded.PlanningPrompt)
+            };
         }
         catch { return new(); }
     }

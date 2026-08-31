@@ -40,5 +40,7 @@ public sealed partial class SettingsViewModel
         OnPropertyChanged(nameof(AutomateCodexIntegration));
         OnPropertyChanged(nameof(MinimizeToTray));
         OnPropertyChanged(nameof(DashboardTheme));
+        OnPropertyChanged(nameof(RequirePlanReview));
+        OnPropertyChanged(nameof(PlanningPrompt));
     }
 }

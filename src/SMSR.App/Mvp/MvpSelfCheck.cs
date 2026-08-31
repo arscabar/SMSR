@@ -160,9 +160,12 @@ public static class MvpSelfCheck
                 viewModel.Settings.AutomateCodexIntegration = false;
                 viewModel.Settings.MinimizeToTray = false;
                 viewModel.Settings.DashboardTheme = DashboardThemes.Light;
+                viewModel.Settings.RequirePlanReview = false;
+                viewModel.Settings.PlanningPrompt = "검토용 계획 {projectId}";
                 var savedSettings = new AppSettingsService(serverPath).Current;
                 if (savedSettings.StartServerAutomatically || savedSettings.AutomateCodexIntegration
-                    || savedSettings.MinimizeToTray || savedSettings.DashboardTheme != DashboardThemes.Light)
+                    || savedSettings.MinimizeToTray || savedSettings.DashboardTheme != DashboardThemes.Light
+                    || savedSettings.RequirePlanReview || savedSettings.PlanningPrompt != "검토용 계획 {projectId}")
                     throw new InvalidOperationException("사용자 설정 저장 검증이 실패했습니다.");
                 viewModel.Workspace.Selection.ProjectId = "demo";
                 await viewModel.Workspace.Selection.LoadAsync();

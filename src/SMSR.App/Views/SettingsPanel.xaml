@@ -5,6 +5,7 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel>
             <views:SettingsGeneralPanel />
+            <views:SettingsPlanningPanel />
             <Border Margin="0,14,0,0" Padding="18" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10">
                 <StackPanel>
                     <TextBlock FontSize="16" FontWeight="SemiBold" Text="로컬 데이터" />

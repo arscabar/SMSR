@@ -1339,3 +1339,11 @@
   - 수정 전 ID로 저장된 사과게임 그래프는 복구 가능성을 위해 자동 삭제하지 않는다.
 - 다음 조치:
   - 없음.
+## 2026-08-31 - 사용자 편집형 작업계획서 검토 정책
+
+- 변경 파일: `AppSettingsService.cs`, `PlanningPromptSettings.cs`, `CodexAutoTrackingContext.cs`, 설정 ViewModel·XAML, self-check, README와 계획 프롬프트 문서
+- 변경 사유: 비단순 구현 전에 Codex가 작업계획서를 먼저 제시하고 사용자가 검토하거나, 계획 생성 문구 자체를 설정에서 수정할 수 있어야 했다.
+- 실행 명령: `dotnet build src/SMSR.App/SMSR.App.csproj -c Release --no-restore`, 설치본 self-check, 설치 프로그램 빌드
+- 검증 결과: Release 빌드 경고 0·오류 0, 소스와 설치본의 config·tracking·OAuth·전체 self-check가 모두 종료 코드 0을 반환했다. 설치 UI에서 검토 체크박스, 편집기와 기본값 복원 버튼을 확인하고 `사용자 검토 계획 {projectId} {taskId}` 저장, 훅의 `DemoProject task-77` 치환, 요청 원문 제외, 기본값 복원까지 왕복 검증했다. 설치 프로그램 SHA-256은 `9282283520092795D8AEBBD75254704EDE6FC1F68F85919E3BBAA4F47964B826`이다.
+- 남은 위험: Codex가 이미 처리 중인 요청에는 설정 변경이 소급 적용되지 않으며 다음 사용자 요청부터 적용된다.
+- 다음 조치: 설정 UI 육안 확인 후 `main` 커밋과 원격 푸시.

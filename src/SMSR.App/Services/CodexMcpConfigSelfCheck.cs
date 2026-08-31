@@ -38,7 +38,8 @@ internal static class CodexMcpConfigSelfCheck
                 throw new InvalidOperationException("Codex 요청형 그래프 훅 병합 검증이 실패했습니다.");
             if (CodexAutoTrackingHook.Register(path, fakeExecutable) is not null)
                 throw new InvalidOperationException("Codex 자동 추적 훅 중복 방지가 실패했습니다.");
-            var context = CodexAutoTrackingContext.CreateOutput("{\"session_id\":\"session-1\",\"cwd\":\"C:\\\\work\\\\SMSR\",\"prompt\":\"SECRET\"}");
+            var planningSettings = new AppSettings(PlanningPrompt: "PLAN {projectId} {taskId}");
+            var context = CodexAutoTrackingContext.CreateOutput("{\"session_id\":\"session-1\",\"cwd\":\"C:\\\\work\\\\SMSR\",\"prompt\":\"SECRET\"}", planningSettings);
             if (!context.Contains("session-1", StringComparison.Ordinal) || !context.Contains("SMSR", StringComparison.Ordinal)
                 || !context.Contains("graph tracking is opt-in", StringComparison.Ordinal)
                 || !context.Contains("Ignore source_thread_id", StringComparison.Ordinal)
@@ -46,8 +47,12 @@ internal static class CodexMcpConfigSelfCheck
                 || !context.Contains("omit workflowId in the first save_plan", StringComparison.Ordinal)
                 || !context.Contains("projectName__yyyyMMdd-HHmmssfff", StringComparison.Ordinal)
                 || !context.Contains("SUCCESS, FAILED, or BLOCKED", StringComparison.Ordinal)
+                || !context.Contains("PLAN SMSR session-1", StringComparison.Ordinal)
                 || context.Contains("SECRET", StringComparison.Ordinal))
                 throw new InvalidOperationException("Codex 자동 추적 컨텍스트 검증이 실패했습니다.");
+            var noPlanning = CodexAutoTrackingContext.CreateOutput("{\"session_id\":\"session-1\",\"cwd\":\"C:\\\\work\\\\SMSR\"}", planningSettings with { RequirePlanReview = false });
+            if (noPlanning.Contains("User-configured SMSR planning policy", StringComparison.Ordinal))
+                throw new InvalidOperationException("작업계획 검토 비활성화 검증이 실패했습니다.");
             if (WindowsStartupRegistration.BuildCommand(@"C:\Program Files\SMSR\SMSR.App.exe")
                 != "\"C:\\Program Files\\SMSR\\SMSR.App.exe\" --background")
                 throw new InvalidOperationException("Windows 자동 시작 명령 검증이 실패했습니다.");
