@@ -1169,3 +1169,28 @@
   - 복구용 테스트 사본은 안전 정책상 `%TEMP%\SMSR-reset-test-55cc5270819e4b61a536602c12ee6d59`에 보존했다.
 - 다음 조치:
   - 별도 PC에서 설치 후 최초 OAuth·훅 승인까지 한 차례 수용 시험한다.
+
+## 2026-08-31 - 작업 그래프를 명시적 요청 범위로 제한
+
+- 변경 파일:
+  - `src/SMSR.App/Services/CodexAutoTrackingContext.cs`, `CodexConnectionService.cs`, `CodexMcpConfigSelfCheck.cs`
+  - `src/SMSR.App/Mvp/SmsrMcpInstructions.cs`, `TrackingContractSelfCheck.cs`
+  - `src/SMSR.App/Views/ServerPanel.xaml`, `SettingsGeneralPanel.xaml`, `ViewModels/ServerControlViewModel.Codex.cs`
+  - `.agents/skills/smsr-tracking/SKILL.md`, `README.md`, `docs/mcp-connection.md`, `docs/smsr-codex-local.md`, `docs/installer-quickstart.md`
+- 변경 사유:
+  - 모든 실질 작업에 계획 그래프를 자동 생성하지 않고 사용자가 그래프 추적을 명시적으로 요청한 작업만 시각화해야 했다.
+- 실행 명령:
+  - Release 빌드, config·tracking·OAuth·전체 self-check 실행
+  - 설치 프로그램 재빌드, 현재 사용자 무인 업그레이드, 설치 앱 self-check 4종 실행
+- 검증 결과:
+  - 일반 요청에서는 `save_plan`, `record_heartbeat`, `record_event`를 호출하지 않고 lifecycle만 기록하도록 훅 컨텍스트와 MCP 초기화 지침을 변경했다.
+  - 그래프 요청 이후에는 관련 후속 턴을 같은 워크플로우로 유지하고 SUCCESS·FAILED·BLOCKED 최종 이벤트 후 heartbeat를 끝내며 이후 무관한 요청을 붙이지 않도록 계약을 고정했다.
+  - 앱 상태와 설정 화면을 `요청형 그래프` 용어로 통일하고 tracking self-check에서 해당 MCP 지침을 회귀 검사한다.
+  - 소스와 설치 앱 모두 빌드 경고 0·오류 0 및 self-check 4종 통과를 확인했다.
+  - 설치 앱이 `C:\Users\pkm11\AppData\Local\Programs\SMSR\SMSR.App.exe`에서 127.0.0.1:49783을 수신 중이다.
+  - 최종 Setup SHA-256은 `DCAE192D53192EAFF4875E078BAF0B206A67EE521B960C3A754E0DDD90875458`이다.
+- 남은 위험:
+  - 그래프 요청 여부는 에이전트가 사용자 표현의 의미를 판단하므로 모호한 표현보다 `이 작업을 그래프로 추적해줘`처럼 명시하는 것이 가장 확실하다.
+  - 기존에 저장된 그래프 데이터는 삭제하지 않으며 변경된 규칙은 이후 요청부터 적용된다.
+- 다음 조치:
+  - 새 Codex 작업에서 일반 요청과 명시적 그래프 요청을 각각 한 번 실행해 대시보드 생성 차이를 수용 확인한다.

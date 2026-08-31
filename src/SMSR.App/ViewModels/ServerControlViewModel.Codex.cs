@@ -14,7 +14,7 @@ public sealed partial class ServerControlViewModel
     public string CodexStatus { get => _codexStatus; private set => SetField(ref _codexStatus, value); }
     public bool IsCodexConnected => _host.IsCodexConnected;
     public bool NeedsCodexSetup => !IsCodexConnected;
-    public string CodexConnectionTitle => IsCodexConnected ? "● Codex 연결됨 · 도구 9개 · 자동 추적" : "Codex 연결 설정";
+    public string CodexConnectionTitle => IsCodexConnected ? "● Codex 연결됨 · 도구 9개 · 요청형 그래프" : "Codex 연결 설정";
     public bool IsSettingUp { get => _isSettingUp; private set => SetField(ref _isSettingUp, value); }
 
     private async Task SetupConnectionAsync()

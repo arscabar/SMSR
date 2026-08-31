@@ -52,12 +52,12 @@ internal sealed class CodexConnectionService
     private string Message(string? version, bool registered, bool tracking)
     {
         var name = version is null ? "Codex 공유 환경" : $"Codex {version}";
-        if (_host.IsCodexConnected && tracking) return $"{name} 연결 완료 · 도구 9개 · 자동 추적 켜짐";
-        if (!registered || !tracking) return $"{name}의 연결과 자동 추적을 자동 구성합니다.";
+        if (_host.IsCodexConnected && tracking) return $"{name} 연결 완료 · 도구 9개 · 요청형 그래프 준비됨";
+        if (!registered || !tracking) return $"{name}의 연결과 그래프 추적 훅을 자동 구성합니다.";
         if (!StartsWithWindows()) return "MCP는 등록됐지만 자동 시작이 꺼져 있습니다. 한 번에 설정으로 복구하세요.";
         return _host.IsCodexAuthorized
-            ? "자동 설정 완료 · Codex를 다시 열고 새 자동 추적 훅을 한 번 신뢰하세요."
-            : "자동 설정 완료 · Codex를 다시 연 뒤 OAuth와 자동 추적 훅을 한 번 승인하세요.";
+            ? "자동 설정 완료 · Codex를 다시 열고 새 그래프 추적 훅을 한 번 신뢰하세요."
+            : "자동 설정 완료 · Codex를 다시 연 뒤 OAuth와 그래프 추적 훅을 한 번 승인하세요.";
     }
 
     private Task<CodexConnectionState> Result(bool found, bool registered, bool tracking, bool startup, string message)

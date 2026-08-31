@@ -12,11 +12,11 @@ dotnet run --project src/SMSR.App/SMSR.App.csproj
 
 ## Codex 연결
 
-1. SMSR을 한 번 실행한다. 서버, Windows 자동 시작, Codex MCP와 전역 자동 추적 훅이 자동 구성된다.
+1. SMSR을 한 번 실행한다. 서버, Windows 자동 시작, Codex MCP와 전역 lifecycle·그래프 추적 훅이 자동 구성된다.
 2. 처음 등록한 환경에서는 Codex를 다시 열고 OAuth 인증과 전역 훅 신뢰를 한 번 승인한다.
 3. 이후에는 사람이 SMSR 추적을 요청하지 않아도 새 Codex 작업이 자동으로 계획·heartbeat·상태를 전송한다.
 
-`서버 · 연결` 탭의 `연결·자동 추적 지금 복구` 버튼은 자동 설정이 실패했거나 실행 파일을 옮겼을 때만 사용한다.
+`서버 · 연결` 탭의 `연결·그래프 추적 설정 복구` 버튼은 자동 설정이 실패했거나 실행 파일을 옮겼을 때만 사용한다. 작업 그래프는 사용자가 요청한 작업에만 생성되고 해당 작업이 끝날 때까지만 갱신된다.
 
 별도 Codex CLI, Node.js, npm은 필요하지 않습니다. SMSR은 `WindowsApps` 내부 실행 파일을 호출하지 않고 Codex가 공유하는 설정 파일을 직접 갱신합니다. 기존 설정 파일은 변경 전에 `config.toml.smsr.bak`으로 백업합니다.
 
@@ -28,7 +28,7 @@ dotnet run --project src/SMSR.App/SMSR.App.csproj
 powershell -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1
 ```
 
-결과는 `artifacts\installer\SMSR-Setup-버전-win-x64.exe`에 생성됩니다. 설치 프로그램은 관리자 권한 없이 현재 사용자에게 설치하며 시작 메뉴, Windows 자동 시작과 제거 프로그램을 등록합니다. 설치된 SMSR을 처음 실행하면 해당 PC의 Codex 공유 MCP 설정과 전역 자동 추적 훅을 구성합니다. 대상 PC에는 .NET SDK가 필요하지 않습니다. 자세한 설치·업데이트·제거·무인 설치 방법은 [Windows 설치 프로그램 안내](docs/installer-quickstart.md)를 참고하세요.
+결과는 `artifacts\installer\SMSR-Setup-버전-win-x64.exe`에 생성됩니다. 설치 프로그램은 관리자 권한 없이 현재 사용자에게 설치하며 시작 메뉴, Windows 자동 시작과 제거 프로그램을 등록합니다. 설치된 SMSR을 처음 실행하면 해당 PC의 Codex 공유 MCP 설정과 전역 lifecycle·요청형 그래프 훅을 구성합니다. 대상 PC에는 .NET SDK가 필요하지 않습니다. 자세한 설치·업데이트·제거·무인 설치 방법은 [Windows 설치 프로그램 안내](docs/installer-quickstart.md)를 참고하세요.
 
 설치 Wizard는 SMSR 브랜드 배너와 Windows 테마를 따르는 라이트·다크 화면을 제공합니다.
 

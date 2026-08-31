@@ -21,16 +21,16 @@
                 <Separator Margin="0,18,0,14" />
                 <TextBlock FontSize="16" FontWeight="SemiBold" Text="{Binding CodexConnectionTitle}" />
                 <TextBlock Margin="0,6,0,0" Foreground="{DynamicResource MutedTextBrush}"
-                           Text="앱 시작 시 서버, Windows 자동 시작, Codex OAuth MCP와 전역 자동 추적 훅을 자동 구성합니다. 처음에 OAuth와 훅 신뢰만 한 번 승인하세요."
+                           Text="앱 시작 시 서버, Windows 자동 시작, Codex OAuth MCP와 lifecycle 훅을 자동 구성합니다. 작업 그래프는 요청할 때만 생성됩니다. 처음에 OAuth와 훅 신뢰만 한 번 승인하세요."
                            TextWrapping="Wrap" />
                 <Button Margin="0,12,0,0" HorizontalAlignment="Left" Command="{Binding SetupConnectionCommand}"
-                        Content="연결·자동 추적 지금 복구" />
+                        Content="연결·그래프 추적 설정 복구" />
                 <TextBlock Margin="0,12,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="{Binding CodexStatus}" TextWrapping="Wrap" />
             </StackPanel>
             <StackPanel Visibility="{Binding IsCodexConnected, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <Separator Margin="0,18,0,14" />
                 <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" Text="{Binding CodexConnectionTitle}" />
-                <TextBlock Margin="0,6,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="실제 MCP 요청이 확인되었습니다. 새 작업은 별도 요청 없이 계획·heartbeat·상태를 자동 추적합니다." TextWrapping="Wrap" />
+                <TextBlock Margin="0,6,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="실제 MCP 요청이 확인되었습니다. 작업 그래프는 요청한 작업에만 생성되고 완료될 때까지 갱신됩니다." TextWrapping="Wrap" />
             </StackPanel>
         </StackPanel>
     </Border>

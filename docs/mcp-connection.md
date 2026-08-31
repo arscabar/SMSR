@@ -2,9 +2,9 @@
 
 ## Codex 직접 연결
 
-1. SMSR을 실행한다. 앱이 서버·Windows 자동 시작·Codex 공유 MCP·사용자 전역 자동 추적 훅을 자동 구성한다.
+1. SMSR을 실행한다. 앱이 서버·Windows 자동 시작·Codex 공유 MCP·사용자 전역 lifecycle·그래프 추적 훅을 자동 구성한다.
 2. 처음 등록한 환경이면 Codex를 다시 열고 OAuth 인증과 `~/.codex/hooks.json` 신뢰를 한 번 승인한다.
-3. 이후 새 작업은 별도 명령 없이 SMSR 계획·heartbeat·상태 추적을 자동 적용한다.
+3. 이후 lifecycle 연결 상태는 자동 기록되고, 계획 그래프는 사용자가 요청한 작업에만 적용된다.
 
 SMSR은 별도 Codex CLI, Node.js, npm을 사용하지 않는다. 현재 사용자의 Codex 공유 설정 `~/.codex/config.toml`에는 다음 Streamable HTTP 항목만 등록한다.
 
@@ -41,7 +41,7 @@ SMSR은 에이전트를 능동 호출하거나 polling하지 않는다. 각 에�
 
 - OAuth 검색 확인: `Invoke-RestMethod http://127.0.0.1:49783/.well-known/oauth-authorization-server`
 - 보호 상태 확인: 인증 없이 `/mcp`를 요청하면 `401`과 `resource_metadata`가 포함된 `WWW-Authenticate` 헤더가 반환되어야 한다.
-- 인증 또는 자동 추적이 없다면 `연결·자동 추적 지금 복구`를 눌러 설정을 일괄 복구한 뒤 Codex를 다시 연다.
+- 인증 또는 그래프 추적 훅이 없다면 `연결·그래프 추적 설정 복구`를 눌러 설정을 일괄 복구한 뒤 Codex를 다시 연다.
 - 실제 대화에서 `save_plan`과 `record_event`를 호출하고 SMSR 대시보드에서 계획·상태가 반영되는지 확인한다.
 - 포트 충돌은 `Get-NetTCPConnection -LocalPort 49783`으로 확인한다.
 
@@ -51,8 +51,8 @@ OAuth 토큰 발급만으로 연결 완료를 추정하지 않는다. 서버 시
 
 자동 설정은 현재 SMSR 실행 파일 경로를 Windows 자동 시작과 전역 훅 명령에 등록한다. 다른 컴퓨터에서는 그 컴퓨터의 실제 경로로 자동 재생성된다. OAuth 동의와 비관리 훅의 최초 신뢰는 Codex 보안 경계라 앱이 대신 승인하지 않는다.
 
-## MCP 지침과 자동 추적
+## MCP 지침과 요청형 그래프 추적
 
-SMSR MCP는 초기화 응답에서 도구 사용 규칙을 제공하고, 앱이 병합한 사용자 전역 `UserPromptSubmit` 훅은 매 요청에 프로젝트 폴더명과 Codex 세션 ID를 자동 주입한다. 실질적인 작업이면 에이전트가 계획·heartbeat·상태를 자동 전송하고, 단순 답변은 lifecycle만 기록한다.
+SMSR MCP는 초기화 응답에서 요청형 그래프 규칙을 제공하고, 앱이 병합한 사용자 전역 `UserPromptSubmit` 훅은 매 요청에 프로젝트 폴더명과 Codex 세션 ID를 자동 주입한다. 에이전트는 사용자가 그래프·흐름·대시보드·SMSR 워크플로우 추적을 명시적으로 요청한 경우에만 계획·heartbeat·상태를 전송한다. 요청한 범위가 완료·실패·중단되면 최종 상태를 기록하고 추적을 끝내며, 일반 작업은 lifecycle만 기록한다.
 
 전역 훅은 기존 `~/.codex/hooks.json` 항목을 보존하고 SMSR 소유 항목만 병합한다. 저장소별 훅 복사, `$smsr-tracking` 지정, Node.js·npm·CLI 또는 마켓플레이스 설치는 필요 없다. `.agents/skills/smsr-tracking`은 에이전트가 자동으로 따를 세부 데이터 계약의 저장소 사본이다. 상세 동작은 [SMSR Codex 로컬 추적](smsr-codex-local.md)을 따른다.

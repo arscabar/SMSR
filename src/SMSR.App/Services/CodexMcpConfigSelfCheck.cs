@@ -39,6 +39,8 @@ internal static class CodexMcpConfigSelfCheck
                 throw new InvalidOperationException("Codex 자동 추적 훅 중복 방지가 실패했습니다.");
             var context = CodexAutoTrackingContext.CreateOutput("{\"session_id\":\"session-1\",\"cwd\":\"C:\\\\work\\\\SMSR\",\"prompt\":\"SECRET\"}");
             if (!context.Contains("session-1", StringComparison.Ordinal) || !context.Contains("SMSR", StringComparison.Ordinal)
+                || !context.Contains("graph tracking is opt-in", StringComparison.Ordinal)
+                || !context.Contains("SUCCESS, FAILED, or BLOCKED", StringComparison.Ordinal)
                 || context.Contains("SECRET", StringComparison.Ordinal))
                 throw new InvalidOperationException("Codex 자동 추적 컨텍스트 검증이 실패했습니다.");
             if (WindowsStartupRegistration.BuildCommand(@"C:\Program Files\SMSR\SMSR.App.exe")

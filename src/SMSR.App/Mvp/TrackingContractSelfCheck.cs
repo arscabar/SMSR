@@ -6,6 +6,11 @@ internal static class TrackingContractSelfCheck
 {
     public static async Task RunAsync()
     {
+        if (!SmsrMcpInstructions.Text.Contains("명시적으로 요청", StringComparison.Ordinal)
+            || !SmsrMcpInstructions.Text.Contains("일반 작업에서는", StringComparison.Ordinal)
+            || !SmsrMcpInstructions.Text.Contains("최종 record_event", StringComparison.Ordinal))
+            Fail("요청형 그래프 지침");
+
         var path = Path.Combine(Path.GetTempPath(), $"smsr-tracking-{Guid.NewGuid():N}.db");
         try
         {
