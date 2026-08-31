@@ -13,7 +13,7 @@ SMSR은 에이전트를 호출하지 않는 수동 수신기다. 연결된 Codex
 
 ## 요청형 동작
 
-- `UserPromptSubmit` 명령 훅은 프로젝트 폴더명과 세션 ID를 추가 개발자 컨텍스트로만 제공하며 SMSR에 활동을 저장하지 않는다.
+- `UserPromptSubmit` 명령 훅은 프로젝트 폴더명과 현재 task/session ID를 추가 개발자 컨텍스트로만 제공하며 SMSR에 활동을 저장하지 않는다. 위임 작업의 원본·부모 task ID는 새 workflow에 사용하지 않는다.
 - 일반 작업은 SMSR에 아무 기록도 만들지 않는다.
 - 사용자가 그래프·흐름·대시보드·SMSR 워크플로우 추적을 명시적으로 요청하면 에이전트가 `save_plan`, `record_heartbeat`, `record_event`를 호출한다.
 - 이전 그래프를 이어 달라고 요청하면 `list_workflows`로 찾고 선택한 그래프를 `get_plan`·`get_state`로 불러온다.

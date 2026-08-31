@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Windows.Input;
 using SMSR.App.Infrastructure;
+using SMSR.App.Mvp;
 using SMSR.App.Services;
 
 namespace SMSR.App.ViewModels;
@@ -27,6 +28,7 @@ public sealed class WorkflowWorkspaceViewModel : ViewModelBase
         OpenDashboardCommand = _openDashboardCommand;
         _host.Stopping += OnHostStopping;
         _host.StateChanged += OnHostStateChanged;
+        _host.WorkflowChanged += OnWorkflowChanged;
     }
 
     public WorkflowSelectionViewModel Selection { get; }
@@ -106,4 +108,23 @@ public sealed class WorkflowWorkspaceViewModel : ViewModelBase
     }
 
     private void OnHostStopping(object? sender, EventArgs eventArgs) => Monitor.StopLiveUpdates();
+
+    private void OnWorkflowChanged(object? sender, WorkflowChangedEventArgs eventArgs)
+    {
+        if (!eventArgs.IsFirstObservation) return;
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+        if (dispatcher is null) return;
+        _ = dispatcher.InvokeAsync(() => _ = SelectIncomingWorkflowAsync(eventArgs));
+    }
+
+    private async Task SelectIncomingWorkflowAsync(WorkflowChangedEventArgs eventArgs)
+    {
+        try
+        {
+            await Selection.SelectAsync(eventArgs.ProjectId, eventArgs.WorkflowId);
+            await RefreshMonitorAsync();
+            StatusMessage = $"새 그래프를 자동 선택했습니다: {eventArgs.ProjectId} / {eventArgs.WorkflowId}";
+        }
+        catch { StatusMessage = "새 그래프를 자동으로 불러오지 못했습니다."; }
+    }
 }

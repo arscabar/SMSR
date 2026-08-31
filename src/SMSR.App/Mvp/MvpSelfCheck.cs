@@ -38,12 +38,18 @@ public static class MvpSelfCheck
             if (!File.Exists(activityLog.PreviousPath) || !File.ReadAllText(activityLog.Path).Contains("rotated"))
                 throw new InvalidOperationException("활동 로그 회전이 실패했습니다.");
             var notifier = new WorkflowEventNotifier();
+            var observedWorkflows = new List<WorkflowChangedEventArgs>();
+            notifier.Changed += (_, eventArgs) => observedWorkflows.Add(eventArgs);
             using var notifierTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(1));
             var otherWorkflowChanged = notifier.WaitForChangeAsync("demo", "wf-other", notifier.Version("demo", "wf-other"), notifierTimeout.Token);
             notifier.Publish("demo", "wf-1");
             if (otherWorkflowChanged.IsCompleted) throw new InvalidOperationException("워크플로우별 SSE 분리가 실패했습니다.");
             notifier.Publish("demo", "wf-other");
             await otherWorkflowChanged;
+            notifier.Publish("demo", "wf-other");
+            if (observedWorkflows.Count != 3 || !observedWorkflows[0].IsFirstObservation
+                || !observedWorkflows[1].IsFirstObservation || observedWorkflows[2].IsFirstObservation)
+                throw new InvalidOperationException("새 워크플로우 감지 이벤트 검증이 실패했습니다.");
             var store = new EventStore(path);
             await store.InitializeAsync();
             var first = new RecordEventRequest("evt-1", "demo", "wf-1", "node-1", "agent-1", "NODE_STATUS_CHANGED", "IN_PROGRESS", "시작", null, null, ["result.txt"], "implementer", 25, 1, "검증");

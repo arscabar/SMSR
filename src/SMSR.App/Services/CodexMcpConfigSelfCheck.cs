@@ -41,6 +41,8 @@ internal static class CodexMcpConfigSelfCheck
             var context = CodexAutoTrackingContext.CreateOutput("{\"session_id\":\"session-1\",\"cwd\":\"C:\\\\work\\\\SMSR\",\"prompt\":\"SECRET\"}");
             if (!context.Contains("session-1", StringComparison.Ordinal) || !context.Contains("SMSR", StringComparison.Ordinal)
                 || !context.Contains("graph tracking is opt-in", StringComparison.Ordinal)
+                || !context.Contains("Ignore source_thread_id", StringComparison.Ordinal)
+                || !context.Contains("exact current task/session ID", StringComparison.Ordinal)
                 || !context.Contains("SUCCESS, FAILED, or BLOCKED", StringComparison.Ordinal)
                 || context.Contains("SECRET", StringComparison.Ordinal))
                 throw new InvalidOperationException("Codex 자동 추적 컨텍스트 검증이 실패했습니다.");

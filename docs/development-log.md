@@ -1282,3 +1282,32 @@
   - Windows 고대비 테마에서는 시스템 접근성 색상 정책이 사용자 지정 전경색보다 우선할 수 있다.
 - 다음 조치:
   - 실제 트레이 메뉴에서 현재 Windows 테마 대비를 확인한다.
+
+## 2026-08-31 - 다른 프로젝트의 새 그래프 자동 선택
+
+- 변경 파일:
+  - `src/SMSR.App/Mvp/WorkflowEventNotifier.cs`, `LocalServer.cs`
+  - `src/SMSR.App/Services/LocalServerHost.cs`, `CodexAutoTrackingContext.cs`, `CodexMcpConfigSelfCheck.cs`
+  - `src/SMSR.App/ViewModels/WorkflowSelectionViewModel.cs`, `WorkflowWorkspaceViewModel.cs`
+  - `src/SMSR.App/Mvp/MvpSelfCheck.cs`, `README.md`, 그래프·설치 안내 문서
+- 변경 사유:
+  - 다른 Codex 프로젝트에서 그래프가 생성돼도 SMSR 선택 목록과 이미 열린 이전 대시보드가 바뀌지 않아 새 그래프가 없는 것처럼 보였다.
+  - 위임 작업이 현재 task ID 대신 래퍼의 원본 `source_thread_id`를 workflow ID로 사용할 수 있었다.
+- 실행 명령:
+  - `dotnet build SMSR.slnx -c Release`
+  - Release 앱의 config·tracking·전체 self-check 실행
+  - 설치 프로그램 재빌드·무인 업그레이드, 설치 EXE와 publish EXE SHA-256 비교, 설치 앱 self-check 4종 실행
+  - 별도 Tetris Codex 작업에서 현재 task ID로 계획·최종 이벤트 재전송 후 자동 선택 파일 확인
+- 검증 결과:
+  - 서버가 처음 관찰한 프로젝트·workflow를 앱에 전달하고, 앱이 목록을 다시 읽어 해당 그래프와 실시간 모니터를 자동 선택하도록 했다.
+  - 훅 컨텍스트가 현재 session ID를 정확히 사용하고 원본·부모·위임 래퍼 ID를 무시하도록 계약과 회귀 검사를 보강했다.
+  - 백그라운드 트레이 프로세스가 업그레이드 파일 교체를 막지 않도록 설치 직전 `SMSR.App.exe` 프로세스 트리를 종료한다.
+  - Release 빌드 경고 0·오류 0, config·tracking·전체 self-check 종료 코드 0을 확인했다.
+  - 설치 EXE와 publish EXE 해시가 일치하고 설치 앱의 config·tracking·OAuth·전체 self-check가 모두 종료 코드 0으로 통과했다.
+  - `smsr-tetris-e2e / 01a0565c-d062-7912-9f47-bf1f21365a8f`의 15개 노드가 모두 SUCCESS이며 `%LocalAppData%\SMSR\last-workflow.json`이 해당 새 그래프로 자동 변경됨을 확인했다.
+  - 최종 Setup SHA-256은 `5716EF8E7C69FA47DBE232EFB3692BE667C5FE7B01BF335E6E06020CB4029287`이다.
+- 남은 위험:
+  - 특정 workflow가 들어 있는 기존 브라우저 URL은 사용자의 조회 문맥을 보존하기 위해 자동 이동하지 않는다. 앱 또는 트레이에서 현재 대시보드를 다시 열어야 한다.
+  - 수정 전 잘못된 원본 task ID로 저장된 기존 그래프는 복구 가능성을 위해 자동 삭제하지 않는다.
+- 다음 조치:
+  - 없음.

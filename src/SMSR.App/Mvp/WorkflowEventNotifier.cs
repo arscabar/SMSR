@@ -6,12 +6,17 @@ public sealed class WorkflowEventNotifier
 {
     // ponytail: one signal per observed workflow; add expiry only if observed workflow count becomes large.
     private readonly ConcurrentDictionary<(string ProjectId, string WorkflowId), Signal> _signals = [];
+    private readonly ConcurrentDictionary<(string ProjectId, string WorkflowId), byte> _observed = [];
+
+    public event EventHandler<WorkflowChangedEventArgs>? Changed;
 
     public long Version(string projectId, string workflowId) => Get(projectId, workflowId).Version;
 
     public void Publish(string projectId, string workflowId)
     {
-        if (_signals.TryGetValue((projectId, workflowId), out var signal)) signal.Publish();
+        var key = (projectId, workflowId);
+        Get(projectId, workflowId).Publish();
+        Changed?.Invoke(this, new(projectId, workflowId, _observed.TryAdd(key, 0)));
     }
 
     public Task WaitForChangeAsync(string projectId, string workflowId, long version, CancellationToken cancellationToken)
@@ -48,4 +53,11 @@ public sealed class WorkflowEventNotifier
 
         private static TaskCompletionSource NewSignal() => new(TaskCreationOptions.RunContinuationsAsynchronously);
     }
+}
+
+public sealed class WorkflowChangedEventArgs(string projectId, string workflowId, bool isFirstObservation) : EventArgs
+{
+    public string ProjectId { get; } = projectId;
+    public string WorkflowId { get; } = workflowId;
+    public bool IsFirstObservation { get; } = isFirstObservation;
 }

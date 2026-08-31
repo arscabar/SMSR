@@ -9,7 +9,8 @@ using ModelContextProtocol.Server;
 namespace SMSR.App.Mvp;
 
 public sealed class LocalServer(WebApplication app, EventStore events, WorkflowSummaryService summaries,
-    WorkflowExportService exports, LocalOAuthStore oauth, McpConnectionTracker connections) : IAsyncDisposable
+    WorkflowExportService exports, WorkflowEventNotifier notifier, LocalOAuthStore oauth,
+    McpConnectionTracker connections) : IAsyncDisposable
 {
     public const int Port = 49783;
     public string Address => app.Urls.Single();
@@ -25,6 +26,11 @@ public sealed class LocalServer(WebApplication app, EventStore events, WorkflowS
     {
         add => connections.Changed += value;
         remove => connections.Changed -= value;
+    }
+    public event EventHandler<WorkflowChangedEventArgs>? WorkflowChanged
+    {
+        add => notifier.Changed += value;
+        remove => notifier.Changed -= value;
     }
 
     public static async Task<LocalServer> StartAsync(string? dataPath = null, int port = Port,
@@ -56,7 +62,7 @@ public sealed class LocalServer(WebApplication app, EventStore events, WorkflowS
         var app = builder.Build();
         LocalServerEndpoints.Map(app, oauth, flows, oauthAudit, connections, dashboardTheme);
         await app.StartAsync();
-        return new(app, store, summaries, exports, oauth, connections);
+        return new(app, store, summaries, exports, notifier, oauth, connections);
     }
 
     public Task<IReadOnlyList<string>> GetProjectIdsAsync(CancellationToken cancellationToken = default)

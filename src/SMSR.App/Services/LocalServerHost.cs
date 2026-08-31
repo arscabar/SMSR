@@ -16,6 +16,7 @@ public sealed class LocalServerHost(string? dataPath = null, int port = LocalSer
     public event EventHandler? StateChanged;
     public event EventHandler? Stopping;
     public event EventHandler? AuthorizationChanged;
+    public event EventHandler<WorkflowChangedEventArgs>? WorkflowChanged;
     public bool IsRunning => _server is not null;
     public string Address => _server?.Address ?? "";
     public string LogPath => _log.Path;
@@ -34,6 +35,7 @@ public sealed class LocalServerHost(string? dataPath = null, int port = LocalSer
                 _server = await LocalServer.StartAsync(_dataPath, port, dashboardTheme);
                 _server.AuthorizationChanged += OnAuthorizationChanged;
                 _server.ConnectionChanged += OnConnectionChanged;
+                _server.WorkflowChanged += OnWorkflowChanged;
                 _isCodexAuthorized = _server.HasAuthorizedCodex;
                 UpdateConnectionState();
                 await WriteLogAsync("server started");
@@ -58,6 +60,7 @@ public sealed class LocalServerHost(string? dataPath = null, int port = LocalSer
                 Stopping?.Invoke(this, EventArgs.Empty);
                 _server.AuthorizationChanged -= OnAuthorizationChanged;
                 _server.ConnectionChanged -= OnConnectionChanged;
+                _server.WorkflowChanged -= OnWorkflowChanged;
                 await _server.DisposeAsync();
                 await WriteLogAsync("server stopped");
             }
@@ -86,6 +89,7 @@ public sealed class LocalServerHost(string? dataPath = null, int port = LocalSer
                 Stopping?.Invoke(this, EventArgs.Empty);
                 _server.AuthorizationChanged -= OnAuthorizationChanged;
                 _server.ConnectionChanged -= OnConnectionChanged;
+                _server.WorkflowChanged -= OnWorkflowChanged;
                 await _server.DisposeAsync().ConfigureAwait(false);
                 _server = null;
                 UpdateConnectionState();
@@ -115,6 +119,9 @@ public sealed class LocalServerHost(string? dataPath = null, int port = LocalSer
         UpdateConnectionState();
         AuthorizationChanged?.Invoke(this, EventArgs.Empty);
     }
+
+    private void OnWorkflowChanged(object? sender, WorkflowChangedEventArgs eventArgs)
+        => WorkflowChanged?.Invoke(this, eventArgs);
 
     private void UpdateConnectionState()
     {

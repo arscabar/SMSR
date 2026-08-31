@@ -55,6 +55,6 @@ OAuth 토큰 발급만으로 연결 완료를 추정하지 않는다. 서버 시
 
 ## MCP 지침과 요청형 그래프 추적
 
-SMSR MCP는 초기화 응답에서 요청형 그래프 규칙을 제공하고, 앱이 병합한 사용자 전역 `UserPromptSubmit` 훅은 매 요청에 프로젝트 폴더명과 Codex 세션 ID를 자동 주입하되 SMSR에는 저장하지 않는다. 에이전트는 사용자가 그래프 추적을 명시적으로 요청한 경우에만 계획·heartbeat·상태를 전송한다. 이전 그래프 요청에는 `list_workflows`, `get_plan`, `get_state`를 사용하며 요청 범위가 완료·실패·중단되면 최종 상태 후 추적을 끝낸다.
+SMSR MCP는 초기화 응답에서 요청형 그래프 규칙을 제공하고, 앱이 병합한 사용자 전역 `UserPromptSubmit` 훅은 매 요청에 프로젝트 폴더명과 현재 Codex 세션 ID를 자동 주입하되 SMSR에는 저장하지 않는다. 위임 래퍼의 원본·부모 ID는 새 workflow ID로 사용하지 않는다. 에이전트는 사용자가 그래프 추적을 명시적으로 요청한 경우에만 계획·heartbeat·상태를 전송한다. 이전 그래프 요청에는 `list_workflows`, `get_plan`, `get_state`를 사용하며 요청 범위가 완료·실패·중단되면 최종 상태 후 추적을 끝낸다.
 
 전역 훅은 기존 `~/.codex/hooks.json` 항목을 보존하고 SMSR 소유 항목만 병합한다. 저장소별 훅 복사, `$smsr-tracking` 지정, Node.js·npm·CLI 또는 마켓플레이스 설치는 필요 없다. `.agents/skills/smsr-tracking`은 에이전트가 자동으로 따를 세부 데이터 계약의 저장소 사본이다. 상세 동작은 [SMSR Codex 로컬 추적](smsr-codex-local.md)을 따른다.

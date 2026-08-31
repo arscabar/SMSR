@@ -46,6 +46,17 @@ public sealed class WorkflowSelectionViewModel(LocalServerHost server) : ViewMod
         if (string.IsNullOrWhiteSpace(WorkflowId) && WorkflowIds.Count > 0) WorkflowId = saved is not null && WorkflowIds.Contains(saved.WorkflowId) ? saved.WorkflowId : WorkflowIds[0];
     }
 
+    public async Task SelectAsync(string projectId, string workflowId)
+    {
+        var projects = await server.GetProjectIdsAsync();
+        ProjectIds.Clear();
+        foreach (var id in projects) ProjectIds.Add(id);
+        if (!ProjectIds.Contains(projectId)) return;
+        ProjectId = projectId;
+        foreach (var id in await server.GetWorkflowIdsAsync(projectId)) WorkflowIds.Add(id);
+        if (WorkflowIds.Contains(workflowId)) WorkflowId = workflowId;
+    }
+
     private LastWorkflow? LoadSaved()
     {
         try { return File.Exists(_selectionPath) ? JsonSerializer.Deserialize<LastWorkflow>(File.ReadAllText(_selectionPath)) : null; }
