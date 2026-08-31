@@ -1,3 +1,5 @@
+using System.Drawing;
+
 namespace SMSR.App.Infrastructure;
 
 internal sealed record TrayMenuState(
@@ -10,4 +12,7 @@ internal sealed record TrayMenuState(
     public string ToolTip => !IsServerRunning
         ? "SMSR · 서버 중지됨"
         : IsCodexConnected ? "SMSR · Codex 연결됨" : "SMSR · 연결 대기 중";
+
+    public Color StatusColor => !IsServerRunning
+        ? Color.Firebrick : IsCodexConnected ? Color.SeaGreen : Color.DarkOrange;
 }

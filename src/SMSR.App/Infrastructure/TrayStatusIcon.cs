@@ -8,7 +8,7 @@ internal sealed class TrayStatusIcon : IDisposable
 {
     private readonly NotifyIcon _icon = new() { Icon = AppIcon(), Text = "Show Me Status Report", Visible = true };
     private readonly Func<TrayMenuState> _state;
-    private readonly ToolStripMenuItem _status = new() { Enabled = false };
+    private readonly ToolStripLabel _status = new() { Font = new("Segoe UI", 9, FontStyle.Bold) };
     private readonly ToolStripMenuItem _dashboard;
     private readonly ToolStripMenuItem _startServer;
     private readonly ToolStripMenuItem _stopServer;
@@ -26,6 +26,8 @@ internal sealed class TrayStatusIcon : IDisposable
         menu.Items.Add(new ToolStripSeparator());
         _startServer = new("서버 시작", null, (_, _) => startServer());
         _stopServer = new("서버 중지", null, (_, _) => stopServer());
+        _startServer.ForeColor = Color.SeaGreen;
+        _stopServer.ForeColor = Color.Firebrick;
         menu.Items.Add(_startServer);
         menu.Items.Add(_stopServer);
         menu.Items.Add("설정 열기", null, (_, _) => openSettings());
@@ -41,6 +43,7 @@ internal sealed class TrayStatusIcon : IDisposable
     {
         var state = _state();
         _status.Text = state.StatusText;
+        _status.ForeColor = state.StatusColor;
         _dashboard.Enabled = state.CanOpenDashboard;
         _startServer.Enabled = !state.IsServerRunning;
         _stopServer.Enabled = state.IsServerRunning;

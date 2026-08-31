@@ -19,7 +19,9 @@ public static class MvpSelfCheck
         {
             var tray = new TrayMenuState(true, true, true);
             if (!tray.StatusText.Contains("Codex 연결됨") || !tray.ToolTip.Contains("Codex 연결됨")
-                || new TrayMenuState(false, false, false).StatusText != "● 서버 중지됨")
+                || tray.StatusColor != System.Drawing.Color.SeaGreen
+                || new TrayMenuState(true, false, false).StatusColor != System.Drawing.Color.DarkOrange
+                || new TrayMenuState(false, false, false).StatusColor != System.Drawing.Color.Firebrick)
                 throw new InvalidOperationException("트레이 상태 모델 검증이 실패했습니다.");
             CodexMcpConfigSelfCheck.Run();
             var connectionTracker = new McpConnectionTracker();

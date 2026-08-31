@@ -1263,3 +1263,22 @@
   - NotifyIcon 컨텍스트 메뉴의 실제 클릭 동작은 Windows 데스크톱 사용자 세션에서 최종 수동 확인이 필요하다.
 - 다음 조치:
   - 트레이 아이콘을 우클릭해 각 메뉴의 활성 상태와 창·대시보드 열기를 확인한다.
+
+## 2026-08-31 - 트레이 상태 의미 색상 적용
+
+- 변경 파일:
+  - `src/SMSR.App/Infrastructure/TrayMenuState.cs`, `TrayStatusIcon.cs`
+  - `src/SMSR.App/Mvp/MvpSelfCheck.cs`, `README.md`, `docs/installer-quickstart.md`
+- 변경 사유:
+  - 트레이 메뉴의 서버·Codex 상태와 시작·중지 동작을 텍스트만 읽지 않고 빠르게 구분할 필요가 있었다.
+- 실행 명령:
+  - Release 빌드와 self-check 4종, 설치 프로그램 재빌드·업그레이드, 설치 앱 self-check 4종 실행
+- 검증 결과:
+  - Codex 연결은 SeaGreen, 연결 대기는 DarkOrange, 서버 중지는 Firebrick으로 표시한다.
+  - 상태 줄을 굵게 표시하고 서버 시작·중지 메뉴에도 각각 녹색·빨간색을 적용했다.
+  - 빌드 경고 0·오류 0, 소스·설치 앱 self-check 4종 통과와 127.0.0.1:49783 수신을 확인했다.
+  - 최종 Setup SHA-256은 `B1D08609100D7CFB1E69CCE04BB75DDCDBC2B950FA1B31EABAE26156E050DE20`이다.
+- 남은 위험:
+  - Windows 고대비 테마에서는 시스템 접근성 색상 정책이 사용자 지정 전경색보다 우선할 수 있다.
+- 다음 조치:
+  - 실제 트레이 메뉴에서 현재 Windows 테마 대비를 확인한다.
