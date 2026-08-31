@@ -15,10 +15,11 @@ public partial class MainWindow : Window
         _minimizeToTray = minimizeToTray;
     }
 
-    public void ShowFromTray()
+    public void ShowFromTray(int? tabIndex = null)
     {
         Show();
         WindowState = WindowState.Normal;
+        if (tabIndex is >= 0 and < 4) MainTabs.SelectedIndex = tabIndex.Value;
         Activate();
     }
 

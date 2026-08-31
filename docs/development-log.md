@@ -1241,3 +1241,25 @@
   - 최초 계획서 본문의 과거 일정·구현 전략은 역사적 기록으로 유지한다.
 - 다음 조치:
   - 없음.
+
+## 2026-08-31 - 시스템 트레이 제어 메뉴 확장
+
+- 변경 파일:
+  - `src/SMSR.App/Infrastructure/TrayStatusIcon.cs`, `TrayMenuState.cs`
+  - `src/SMSR.App/App.xaml.cs`, `Views/MainWindow.xaml`, `MainWindow.xaml.cs`
+  - `src/SMSR.App/Mvp/MvpSelfCheck.cs`, `README.md`, 설치·설계 문서
+- 변경 사유:
+  - 트레이 아이콘에서 앱 열기와 종료 외에도 일상적인 서버·대시보드·설정 작업을 바로 수행할 필요가 있었다.
+- 실행 명령:
+  - Release 빌드와 config·tracking·OAuth·전체 self-check 실행
+  - 설치 프로그램 재빌드, 현재 사용자 무인 업그레이드, 설치 앱 self-check 4종 실행
+- 검증 결과:
+  - 트레이 메뉴에 서버·Codex 상태, SMSR 열기, 현재 대시보드 열기, 서버 시작·중지, 설정 열기, 완전 종료를 추가했다.
+  - 선택된 워크플로우와 서버 실행 상태에 맞춰 대시보드·시작·중지 메뉴의 활성 상태가 갱신된다.
+  - 설정 열기는 메인 창을 복원하고 설정 탭을 바로 선택하며 더블클릭은 기존처럼 창을 복원한다.
+  - 빌드 경고 0·오류 0, 소스와 설치 앱 self-check 4종 통과, 설치 앱의 127.0.0.1:49783 수신을 확인했다.
+  - 최종 Setup SHA-256은 `2D3C5B3EE1E6E15BB25F29D3ABFE9569664EFF2299E48B9BC0ED31E7E6F8C87F`이다.
+- 남은 위험:
+  - NotifyIcon 컨텍스트 메뉴의 실제 클릭 동작은 Windows 데스크톱 사용자 세션에서 최종 수동 확인이 필요하다.
+- 다음 조치:
+  - 트레이 아이콘을 우클릭해 각 메뉴의 활성 상태와 창·대시보드 열기를 확인한다.

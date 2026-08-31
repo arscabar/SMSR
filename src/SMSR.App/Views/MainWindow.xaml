@@ -18,7 +18,7 @@
                 <Button Grid.Column="4" Style="{StaticResource ChromeButton}" Click="CloseButton_Click" Content="×" />
             </Grid>
         </Border>
-        <TabControl Grid.Row="1" Margin="24,14,24,20">
+        <TabControl x:Name="MainTabs" Grid.Row="1" Margin="24,14,24,20">
             <TabItem>
                 <TabItem.Header><StackPanel Orientation="Horizontal"><TextBlock Margin="0,0,6,0" Text="▦" /><TextBlock Text="작업 현황" /></StackPanel></TabItem.Header>
                 <views:WorkflowPanel Margin="0,18,0,0" DataContext="{Binding Workspace}" />

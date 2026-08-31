@@ -89,7 +89,21 @@ public partial class App : WpfApplication
             var viewModel = new MainWindowViewModel(_server, new WindowsPlatformActions(), settings, ExitApplication);
             await viewModel.LoadAsync();
             MainWindow = new MainWindow(viewModel, () => settings.Current.MinimizeToTray);
-            _tray = new TrayStatusIcon(((MainWindow)MainWindow).ShowFromTray, ExitApplication);
+            var window = (MainWindow)MainWindow;
+            void Execute(System.Windows.Input.ICommand command)
+            {
+                if (command.CanExecute(null)) command.Execute(null);
+            }
+            _tray = new TrayStatusIcon(
+                () => Dispatcher.Invoke(() => window.ShowFromTray()),
+                () => Dispatcher.Invoke(() => Execute(viewModel.Workspace.OpenDashboardCommand)),
+                () => Dispatcher.Invoke(() => Execute(viewModel.Server.StartCommand)),
+                () => Dispatcher.Invoke(() => Execute(viewModel.Server.StopCommand)),
+                () => Dispatcher.Invoke(() => window.ShowFromTray(3)),
+                ExitApplication,
+                () => new(_server.IsRunning, viewModel.Server.IsCodexConnected,
+                    viewModel.Workspace.OpenDashboardCommand.CanExecute(null)));
+            _server.StateChanged += OnServerStateChanged;
             if (!startInBackground) MainWindow.Show();
         }
         catch (Exception exception)
@@ -101,6 +115,7 @@ public partial class App : WpfApplication
 
     protected override void OnExit(ExitEventArgs e)
     {
+        if (_server is not null) _server.StateChanged -= OnServerStateChanged;
         _tray?.Dispose();
         _server?.DisposeAsync().AsTask().GetAwaiter().GetResult();
         base.OnExit(e);
@@ -111,4 +126,7 @@ public partial class App : WpfApplication
         ((MainWindow?)MainWindow)?.AllowClose();
         Shutdown();
     }
+
+    private void OnServerStateChanged(object? sender, EventArgs eventArgs)
+        => _ = Dispatcher.BeginInvoke(() => _tray?.RefreshStatus());
 }

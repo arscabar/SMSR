@@ -17,6 +17,10 @@ public static class MvpSelfCheck
         var logPath = Path.Combine(Path.GetTempPath(), $"smsr-log-{Guid.NewGuid():N}");
         try
         {
+            var tray = new TrayMenuState(true, true, true);
+            if (!tray.StatusText.Contains("Codex 연결됨") || !tray.ToolTip.Contains("Codex 연결됨")
+                || new TrayMenuState(false, false, false).StatusText != "● 서버 중지됨")
+                throw new InvalidOperationException("트레이 상태 모델 검증이 실패했습니다.");
             CodexMcpConfigSelfCheck.Run();
             var connectionTracker = new McpConnectionTracker();
             var connectionChanges = 0;
