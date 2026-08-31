@@ -1125,7 +1125,8 @@
   - 그래프 텍스트 선택을 막고 `sessionStorage` 기반 600ms 중복 이동 잠금과 더블클릭 기본 동작 차단을 추가했다.
   - self-check에서 `meta refresh` 부재, `EventSource`와 중복 클릭 잠금 포함을 회귀 검사한다.
   - Release 빌드 경고 0·오류 0, 소스 및 설치 앱 self-check 4종이 모두 종료 코드 0을 반환했다.
-  - 최종 Setup SHA-256은 `84BAE90E55E7AAAD11AF777E8C0A675F49E911BA20125A77D2842AF345D657ED`이다.
+  - 첫 수정본에서 SVG `<a>`의 `href`를 일반 문자열로 취급해 `[object SVGAnimatedString]`으로 이동하는 회귀가 발견됐다. `getAttribute('href')`로 실제 URL을 읽도록 수정하고 self-check에 해당 계약을 추가했다.
+  - 최종 Setup SHA-256은 `61C7456074FDE5D1FD29BF89167ABE380D13EED26265B8C910E6CEFEC5279564`이다.
 - 남은 위험:
   - 설치본 교체 후 로컬 URL 재방문이 브라우저 안전 정책에 차단되어 새 설치본의 실제 더블클릭 자동화 재현은 수행하지 못했다. 기존 화면에서 원인과 잘못된 이동을 재현했고 변경된 HTML 계약은 설치 앱 self-check로 검증했다.
 - 다음 조치:

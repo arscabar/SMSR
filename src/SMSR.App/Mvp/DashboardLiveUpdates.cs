@@ -35,8 +35,10 @@ internal static class DashboardLiveUpdates
                 const now = Date.now();
                 const previous = Number(sessionStorage.getItem('smsr-graph-nav') || 0);
                 if (now - previous < 600) return;
+                const target = link.getAttribute('href');
+                if (!target) return;
                 sessionStorage.setItem('smsr-graph-nav', String(now));
-                location.assign(link.href);
+                location.assign(target);
               });
               document.addEventListener('dblclick', event => {
                 if (event.target.closest?.('.flow-svg')) event.preventDefault();
