@@ -1423,3 +1423,12 @@
 - 검증 결과: 최초 빌드는 새 게이트웨이의 `System.Net.Http` using 누락으로 실패해 수정했다. 테스트 서버가 검증 출력 EXE를 잠근 1회 실패는 정확한 PID·경로 확인 후 해당 테스트 프로세스만 종료해 해소했다. 이후 Release 빌드 경고·오류 0개, `dotnet test`와 자체 검사 4종이 모두 종료 코드 0을 반환했다. 소스·설치본 stdio에서 자동 연결 신호, 9개 도구와 기존 워크플로우 조회를 확인했다. 현재 Codex 설정은 설치된 `SMSR.App.exe --mcp-stdio`를 가리키며 OAuth 항목이 없고, publish·설치 EXE SHA-256은 `0F26E99D2E4905A0151C67CA4943A1DE1B4CEE651F5DD788F3F94F0AD549F504`로 일치한다. Setup SHA-256은 `32BD101CC02F5AC68C88D273AA2032D054BCF6BD9655A1CF4EC10CF51AD17FF4`이다.
 - 남은 위험: 실행 중인 Codex 프로세스는 시작 후 변경된 MCP 전송 설정을 다시 읽지 않으므로 이번 OAuth→stdio 마이그레이션에서 한 번 완전 재시작해야 한다. 이후에는 브리지가 시작 연결 신호까지 자동 전송하므로 인증·확인 호출이나 브라우저 승인이 필요 없다. HTTP OAuth endpoint는 기존 클라이언트 호환과 자체 진단을 위해 유지한다.
 - 다음 조치: Codex를 한 번 완전 재시작한 뒤 현재 작업에서 `list_workflows` 실호출을 확인한다.
+
+## 2026-09-01 - Codex 시작 시 SMSR 본체 자동 복구
+
+- 변경 파일: `src/SMSR.App/Services/DashboardProcessLauncher.cs`, `MainInstanceGuard.cs`, `src/SMSR.App/App.xaml.cs`, `Mvp/StdioMcpHost.cs`, `LocalServerEndpoints.cs`, 자체 검사, README와 연결·설치 문서
+- 변경 사유: Codex가 stdio 브리지만 실행하고 대시보드 본체는 실행하지 않아, Windows 자동 시작이 동작하지 않은 세션에서 MCP 도구와 화면을 사용할 수 없던 문제를 해결한다.
+- 실행 명령: Release 빌드, config·tracking·OAuth·전체 self-check, 변경 파일 whitespace 검사, 설치 프로그램 빌드·무인 업그레이드, 설치본 stdio `initialize`·`tools/list`, `/api/health`, 프로세스·해시 확인
+- 검증 결과: Release 빌드 경고·오류 0개와 자체 검사 4종을 통과했다. 본체와 49783 listener가 없는 상태에서 설치본 stdio를 실행하자 `--background --ensure-server` 본체가 하나 생성됐고, 브리지 종료 후에도 서버가 `ready`로 유지됐다. stdio protocol `2025-11-25` 초기화와 도구 9개를 확인했다. 중복 본체는 하나만 유지하며 시작 메뉴에서 SMSR을 다시 실행하자 같은 PID의 `Show Me Status Report` 창 핸들이 생성됐다. 설치·publish EXE SHA-256은 `5C4AE596FF9DE299DF52A3D0DD85E6E4E8BE39A27CA0890E26F6F9AA715FB32A`, Setup SHA-256은 `FA2D95BB38DAC47C93D1AABA7746FB244B23CDA93737D6E552744AA37E48BEA9`이다.
+- 남은 위험: 이미 실행 중인 SMSR에서 사용자가 서버를 수동 중지한 경우에는 그 명시적 선택을 존중하므로 다른 본체를 중복 실행하지 않는다. 복합 PowerShell 검증 명령 2개는 실행 정책이 차단해 같은 방식의 재시도를 중단하고 단순 명령과 임시 테스트 스크립트로 분리했다. 임시 스크립트의 Windows PowerShell 5.1 `ArgumentList` 미지원은 `Arguments`로 변경해 검증했고 스크립트는 제거했다.
+- 다음 조치: BeepleLunch는 당시 OAuth 실패로 `save_plan`이 실행되지 않아 SMSR DB에 워크플로우가 없다. 필요하면 기존 프로젝트 요구사항을 새 그래프로 명시적으로 저장한다.

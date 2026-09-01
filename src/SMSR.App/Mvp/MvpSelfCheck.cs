@@ -134,6 +134,7 @@ public static class MvpSelfCheck
             await using (var server = await LocalServer.StartAsync(serverPath, 0))
             using (var client = new HttpClient())
             {
+                var healthResponse = await client.GetAsync($"{server.Address}/api/health");
                 var denied = await client.GetAsync($"{server.Address}/mcp");
                 var bridgeAnnounced = await McpBridgeConnection.NotifyAsync(server.Address, serverPath);
                 var bridgeWorkflows = await new McpHttpGateway(server.Address, serverPath)
@@ -195,7 +196,7 @@ public static class MvpSelfCheck
                 using var sseTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
                 var changedEvent = await streamReader.ReadLineAsync(sseTimeout.Token);
                 if (!recordResponse.IsSuccessStatusCode) throw new InvalidOperationException($"MCP record_event 호출 실패: {recordJson}");
-                if (denied.StatusCode != HttpStatusCode.Unauthorized || !bridgeAnnounced || !server.HasActiveMcpClient
+                if (!healthResponse.IsSuccessStatusCode || denied.StatusCode != HttpStatusCode.Unauthorized || !bridgeAnnounced || !server.HasActiveMcpClient
                     || !bridgeWorkflows.Contains("wf-1") || !restartedBridgeWorkflows.Contains("wf-1")
                     || !stateResponse.IsSuccessStatusCode || !dashboardResponse.IsSuccessStatusCode || !streamResponse.IsSuccessStatusCode || initialEvent != "event: state" || initialData != "data: changed" || changedEvent != "event: state" || !activityResponse.IsSuccessStatusCode || !activityJson.Contains("TOOL_COMPLETED") || !recordResponse.IsSuccessStatusCode || !planResponse.IsSuccessStatusCode || !listResponse.IsSuccessStatusCode || !recordJson.Contains("evt-mcp-1") || !planJson.Contains("nodeCount") || !listJson.Contains("wf-1") || !listJson.Contains("ACTIVE") || !recordedState.Contains("mcp-node") || !recordedState.Contains("implementer") || !recordedPlan.Contains("MCP 계획 노드") || !recordedPlan.Contains("parentNodeId") || !recordedDashboard.Contains("계층형 작업 흐름") || !recordedDashboard.Contains("id=\"agents\"") || !recordedDashboard.Contains("실시간 활동") || !recordedDashboard.Contains("TOOL_COMPLETED") || !recordedDashboard.Contains("flow-svg") || !recordedDashboard.Contains("MCP 계획 노드") || recordedDashboard.Contains("http-equiv=\"refresh\"") || !recordedDashboard.Contains("new EventSource") || !recordedDashboard.Contains("smsr-graph-nav") || !recordedDashboard.Contains("getAttribute('href')"))
                     throw new InvalidOperationException("로컬 서버 검증이 실패했습니다.");

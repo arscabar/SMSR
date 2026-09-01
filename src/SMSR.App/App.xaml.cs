@@ -12,6 +12,7 @@ public partial class App : WpfApplication
 {
     private LocalServerHost? _server;
     private TrayStatusIcon? _tray;
+    private MainInstanceGuard? _mainInstance;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -82,14 +83,22 @@ public partial class App : WpfApplication
             Shutdown();
             return;
         }
+        var startInBackground = e.Args.Contains("--background", StringComparer.OrdinalIgnoreCase);
+        _mainInstance = MainInstanceGuard.TryAcquire();
+        if (_mainInstance is null)
+        {
+            if (!startInBackground) MainInstanceGuard.RequestActivation();
+            Shutdown();
+            return;
+        }
         try
         {
-            var startInBackground = e.Args.Contains("--background", StringComparer.OrdinalIgnoreCase);
+            var ensureServer = e.Args.Contains("--ensure-server", StringComparer.OrdinalIgnoreCase);
             var settings = new AppSettingsService();
             AppThemeService.Apply(settings.Current.DashboardTheme);
             settings.Changed += (_, _) => Dispatcher.Invoke(() => AppThemeService.Apply(settings.Current.DashboardTheme));
             _server = new LocalServerHost(dashboardTheme: () => settings.Current.DashboardTheme);
-            if (settings.Current.StartServerAutomatically) await _server.StartAsync();
+            if (ensureServer || settings.Current.StartServerAutomatically) await _server.StartAsync();
             if (settings.Current.AutomateCodexIntegration)
                 await new CodexConnectionService(_server, settings).SetupAsync();
             var viewModel = new MainWindowViewModel(_server, new WindowsPlatformActions(), settings, ExitApplication);
@@ -110,6 +119,7 @@ public partial class App : WpfApplication
                 () => new(_server.IsRunning, viewModel.Server.IsCodexConnected,
                     viewModel.Workspace.OpenDashboardCommand.CanExecute(null)));
             _server.StateChanged += OnServerStateChanged;
+            _mainInstance.Listen(() => Dispatcher.BeginInvoke(() => window.ShowFromTray()));
             if (!startInBackground) MainWindow.Show();
         }
         catch (Exception exception)
@@ -124,6 +134,7 @@ public partial class App : WpfApplication
         if (_server is not null) _server.StateChanged -= OnServerStateChanged;
         _tray?.Dispose();
         _server?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        _mainInstance?.Dispose();
         base.OnExit(e);
     }
 

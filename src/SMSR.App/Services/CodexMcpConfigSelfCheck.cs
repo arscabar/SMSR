@@ -68,6 +68,10 @@ internal static class CodexMcpConfigSelfCheck
             if (WindowsStartupRegistration.BuildCommand(@"C:\Program Files\SMSR\SMSR.App.exe")
                 != "\"C:\\Program Files\\SMSR\\SMSR.App.exe\" --background")
                 throw new InvalidOperationException("Windows 자동 시작 명령 검증이 실패했습니다.");
+            var launch = DashboardProcessLauncher.CreateStartInfo(@"C:\Program Files\SMSR\SMSR.App.exe");
+            if (launch.ArgumentList.Count != 2 || launch.ArgumentList[0] != "--background"
+                || launch.ArgumentList[1] != "--ensure-server" || launch.UseShellExecute || !launch.CreateNoWindow)
+                throw new InvalidOperationException("Codex 시작 시 대시보드 자동 실행 명령 검증이 실패했습니다.");
 
             CodexAutoTrackingHook.Unregister(path);
             var cleanedHooks = File.ReadAllText(hooksPath);

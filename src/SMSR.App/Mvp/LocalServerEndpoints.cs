@@ -28,6 +28,7 @@ internal static class LocalServerEndpoints
         });
         OAuthEndpoints.Map(app, oauth, flows, audit);
         ActivityEndpoints.Map(app, activity, activityToken, notifier);
+        app.MapGet("/api/health", () => Results.Ok(new { service = "SMSR", status = "ready" }));
         app.MapPost("/api/mcp-bridge/connected", (HttpRequest request) =>
         {
             if (!bridgeToken.Validate(request.Headers["X-SMSR-Bridge-Token"].ToString()))
