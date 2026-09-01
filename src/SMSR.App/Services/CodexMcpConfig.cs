@@ -7,23 +7,26 @@ namespace SMSR.App.Services;
 internal static partial class CodexMcpConfig
 {
     public const string Endpoint = "http://127.0.0.1:49783/mcp";
+    public const string ConnectionMode = "자동 로컬 브리지 (stdio · OAuth 인증창 없음)";
 
-    public static bool IsRegistered(string path)
+    public static bool IsRegistered(string path, string? executablePath = null)
     {
         if (!File.Exists(path)) return false;
+        var executable = ResolveExecutablePath(executablePath);
         var block = GetBlock(File.ReadAllText(path));
         return block is not null
-            && block.Contains($"url = {Quote(Endpoint)}", StringComparison.Ordinal)
-            && block.Contains("auth = \"oauth\"", StringComparison.Ordinal)
+            && block.Contains($"command = {Quote(executable)}", StringComparison.Ordinal)
+            && block.Contains("args = [\"--mcp-stdio\"]", StringComparison.Ordinal)
             && block.Contains("startup_timeout_sec = 30", StringComparison.Ordinal)
             && block.Contains("enabled = true", StringComparison.Ordinal);
     }
 
-    public static string? Register(string path)
+    public static string? Register(string path, string? executablePath = null)
     {
+        var executable = ResolveExecutablePath(executablePath);
         var original = File.Exists(path) ? File.ReadAllText(path) : string.Empty;
         var newline = original.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
-        var block = $"[mcp_servers.smsr]{newline}url = {Quote(Endpoint)}{newline}auth = \"oauth\"{newline}startup_timeout_sec = 30{newline}enabled = true{newline}";
+        var block = $"[mcp_servers.smsr]{newline}command = {Quote(executable)}{newline}args = [\"--mcp-stdio\"]{newline}startup_timeout_sec = 30{newline}tool_timeout_sec = 60{newline}enabled = true{newline}";
         var updated = ReplaceBlock(original, block, newline);
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
 
@@ -69,6 +72,9 @@ internal static partial class CodexMcpConfig
     }
 
     private static string Quote(string value) => $"\"{value.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"";
+    private static string ResolveExecutablePath(string? path)
+        => Path.GetFullPath(path ?? Environment.ProcessPath
+            ?? throw new InvalidOperationException("SMSR 실행 파일 경로를 확인할 수 없습니다."));
 
     [GeneratedRegex("(?<=\\n)")]
     private static partial Regex NewlineRegex();

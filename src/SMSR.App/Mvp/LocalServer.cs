@@ -41,6 +41,7 @@ public sealed class LocalServer(WebApplication app, EventStore events, WorkflowS
         var store = new EventStore(Path.Combine(dataPath, "smsr.db"));
         await store.InitializeAsync();
         var oauth = new LocalOAuthStore(Path.Combine(dataPath, "oauth-state.bin"));
+        var bridgeToken = new McpBridgeToken(dataPath);
         var flows = new OAuthFlowStore();
         var oauthAudit = new OAuthAuditLog(Path.Combine(dataPath, "logs"));
         var notifier = new WorkflowEventNotifier();
@@ -62,7 +63,7 @@ public sealed class LocalServer(WebApplication app, EventStore events, WorkflowS
             .WithTools<PlanTools>()
             .WithTools<AgentTools>();
         var app = builder.Build();
-        LocalServerEndpoints.Map(app, oauth, flows, oauthAudit, connections, notifier, activity, activityToken, dashboardTheme);
+        LocalServerEndpoints.Map(app, oauth, bridgeToken, flows, oauthAudit, connections, notifier, activity, activityToken, dashboardTheme);
         await app.StartAsync();
         return new(app, store, summaries, exports, notifier, oauth, connections);
     }

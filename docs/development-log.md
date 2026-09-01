@@ -1405,3 +1405,21 @@
 - 검증 결과: Release 빌드 경고 0·오류 0, 자체 검사 4종과 실제 훅 왕복 모두 종료 코드 0. 하위 작업 미완료 상위 `SUCCESS` 거부, 기존 조상 의존 그래프 호환, 활동 ID 중복 제거, 16개 동시 JSONL 기록과 잠금 내보내기, 하위 에이전트 매핑 제거와 30일 만료, 활동 기록 오류 격리, 원시 입력 미저장을 확인했다. 새 코드 파일의 whitespace 검증도 통과했다.
 - 남은 위험: 저장소 전체 포맷 검증은 이번 변경 밖의 기존 `AssemblyInfo.cs`, 이벤트 저장소, OAuth 자체 검사 압축 스타일을 보고한다. 호스팅 도구와 모델 내부 추론은 Codex 훅이 제공하지 않아 기록할 수 없다.
 - 다음 조치: 커밋 후 `origin/main`에 푸시한다.
+
+## 2026-09-01 - 현재 노드 하이라이트와 스크롤 유지
+
+- 변경 파일: `DashboardCurrentNode.cs`, `DashboardGraph.cs`, `DashboardGraphStyles.cs`, `DashboardLiveUpdates.cs`, `MvpSelfCheck.cs`
+- 변경 사유: 모든 진행 중 노드가 발광해 현재 작업을 구분하기 어렵고, SSE 화면 교체마다 흐름·그래프·상세 영역의 스크롤 위치가 초기화됐다.
+- 실행 명령: Release 빌드, `--self-test`, 변경 대시보드 파일 대상 whitespace 검증, 브라우저 격리 테스트 시도, 설치 프로그램 빌드·무인 업그레이드, 설치 앱 자체 검사 4종과 서버 상태 확인
+- 검증 결과: 최신 유효 노드 이벤트 또는 더 최근의 활성 heartbeat 한 개만 `current`로 선택하고, 드릴다운에서는 현재 노드의 보이는 가장 가까운 조상 하나만 강조한다. 다른 진행 노드는 상태 색상만 유지한다. SSE 교체 전후 `#flow`, `#graph`, `#details`의 가로·세로 위치를 저장·복원한다. Release 빌드 경고 0·오류 0, 전체 자체 검사와 변경 파일 whitespace 검증을 통과했다. Setup SHA-256은 `47FC1275DEB8EB2D01035D65BFC8EE0A11711055108A8F27F7C0FA5B3433E6FA`, 설치 앱 SHA-256은 publish와 동일한 `7E84BABAA07FF2CAEC8712EBE1003269DDCADA8D1FBF1DA12D88AF006566FD8A`다. 설치 앱 자체 검사 4종이 모두 통과했고 설치 경로 프로세스와 127.0.0.1:49783 HTTP 200을 확인했다.
+- 남은 위험: 브라우저의 `data:` URL 격리 테스트는 브라우저 보안 정책으로 차단되어 우회하지 않았다. 실제 제품 HTML 생성과 회귀 자체 검사로 동작 계약을 검증했다. 현재 Codex 프로세스는 시작 후 변경된 MCP·훅을 다시 읽지 않으므로 한 번 재시작해야 한다.
+- 다음 조치: Codex를 재시작하고 `/hooks`에서 이번에 추가된 `SessionEnd`, `PostToolUse` 정의를 한 번 신뢰한 뒤 실제 대시보드의 장시간 SSE 갱신을 확인한다.
+
+## 2026-09-01 - 인증 요청 없는 Codex stdio 자동 연결
+
+- 변경 파일: `McpBridgeToken.cs`, `McpHttpGateway.cs`, `McpHttpResponse.cs`, `StdioMcpHost.cs`, `StdioWorkflowTools.cs`, `StdioPlanTools.cs`, `StdioAgentTools.cs`, `LocalServer.cs`, `LocalServerEndpoints.cs`, `App.xaml.cs`, Codex 설정·연결 서비스와 자체 검사, 서버·설정 XAML, 설치 UI, README와 연결·설치 문서
+- 변경 사유: URL 기반 OAuth는 클라이언트 등록 상태가 어긋나면 MCP 호출 전에는 인증 화면을 열 수 없어 사용자가 에이전트에게 인증 호출을 반복 요청해야 했다. 설치된 SMSR 실행 파일을 Codex가 직접 구동하는 stdio 브리지로 기본 연결을 바꿔 재부팅·다른 프로젝트·다른 PC 설치에서 브라우저 인증 없이 자동 연결한다.
+- 실행 명령: Release 빌드, `dotnet test`, config·tracking·OAuth·전체 self-check, 실제 stdio `initialize`·`tools/list`·`list_workflows`, 대상 파일 whitespace 검사, 설치 프로그램 빌드·무인 업그레이드, 설치 앱 자체 검사와 stdio 왕복
+- 검증 결과: 최초 빌드는 새 게이트웨이의 `System.Net.Http` using 누락으로 실패해 수정했다. 테스트 서버가 검증 출력 EXE를 잠근 1회 실패는 정확한 PID·경로 확인 후 해당 테스트 프로세스만 종료해 해소했다. 이후 Release 빌드 경고·오류 0개, `dotnet test`와 자체 검사 4종이 모두 종료 코드 0을 반환했다. 소스·설치본 stdio에서 9개 도구와 기존 워크플로우 조회를 확인했다. 현재 Codex 설정은 설치된 `SMSR.App.exe --mcp-stdio`를 가리키며 OAuth 항목이 없고, publish·설치 EXE SHA-256은 `8FDAC5F8B0DCF05E4E6126A12386BB3A7C9C3A3AE6E76FE1BADC986BA644AC85`로 일치한다. Setup SHA-256은 `16A4EC74E9DE659E33AADF0B22F44302B898CAF970E77B81242C17C988D1AC6E`이다.
+- 남은 위험: 실행 중인 Codex 프로세스는 시작 후 변경된 MCP 전송 설정을 다시 읽지 않으므로 이번 OAuth→stdio 마이그레이션에서 한 번 완전 재시작해야 한다. 이후에는 인증 호출이나 브라우저 승인이 필요 없다. HTTP OAuth endpoint는 기존 클라이언트 호환과 자체 진단을 위해 유지한다.
+- 다음 조치: Codex를 한 번 완전 재시작한 뒤 현재 작업에서 `list_workflows` 실호출을 확인한다.

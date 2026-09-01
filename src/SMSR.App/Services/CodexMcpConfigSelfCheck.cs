@@ -12,23 +12,25 @@ internal static class CodexMcpConfigSelfCheck
         {
             Directory.CreateDirectory(directory);
             File.WriteAllText(path, "[mcp_servers.other]\ncommand = \"other.exe\"\nargs = []\n");
-            var backup = CodexMcpConfig.Register(path);
+            var fakeExecutable = Path.Combine(directory, "SMSR App.exe");
+            var backup = CodexMcpConfig.Register(path, fakeExecutable);
             var text = File.ReadAllText(path);
-            if (!CodexMcpConfig.IsRegistered(path)
+            if (!CodexMcpConfig.IsRegistered(path, fakeExecutable)
                 || !text.Contains("[mcp_servers.other]", StringComparison.Ordinal)
-                || !text.Contains("auth = \"oauth\"", StringComparison.Ordinal)
+                || !text.Contains("command = \"", StringComparison.Ordinal)
+                || !text.Contains("args = [\"--mcp-stdio\"]", StringComparison.Ordinal)
                 || !text.Contains("startup_timeout_sec = 30", StringComparison.Ordinal)
                 || !text.Contains("enabled = true", StringComparison.Ordinal)
-                || text.Contains("--mcp-stdio", StringComparison.Ordinal)
+                || text.Contains("auth = \"oauth\"", StringComparison.Ordinal)
+                || text.Contains("url = \"http://127.0.0.1:49783/mcp\"", StringComparison.Ordinal)
                 || backup is null || !File.Exists(backup))
                 throw new InvalidOperationException("Codex MCP 설정 등록·백업 검증이 실패했습니다.");
 
-            CodexMcpConfig.Register(path);
+            CodexMcpConfig.Register(path, fakeExecutable);
             if (File.ReadAllText(path).Split("[mcp_servers.smsr]", StringSplitOptions.None).Length != 2)
                 throw new InvalidOperationException("Codex MCP 설정 중복 방지가 실패했습니다.");
             var hooksPath = Path.Combine(directory, "hooks.json");
             File.WriteAllText(hooksPath, "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"other.exe\"}]}]}}");
-            var fakeExecutable = Path.Combine(directory, "SMSR App.exe");
             var hooksBackup = CodexAutoTrackingHook.Register(path, fakeExecutable);
             var hooksText = File.ReadAllText(hooksPath);
             if (!CodexAutoTrackingHook.IsRegistered(path, fakeExecutable)

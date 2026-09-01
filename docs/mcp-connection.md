@@ -5,22 +5,23 @@
 ## Codex 직접 연결
 
 1. SMSR을 실행한다. 앱이 서버·Windows 자동 시작·Codex 공유 MCP·사용자 전역 요청형 그래프 훅을 자동 구성한다.
-2. 처음 등록한 환경이면 Codex를 다시 열고 OAuth 인증과 `~/.codex/hooks.json` 신뢰를 한 번 승인한다.
+2. 처음 등록하거나 기존 OAuth 연결에서 업데이트한 환경이면 Codex를 한 번 다시 열고 `~/.codex/hooks.json` 신뢰만 승인한다.
 3. 이후 일반 작업은 기록하지 않고 계획 그래프는 사용자가 요청한 작업에만 적용된다.
 
-SMSR은 별도 Codex CLI, Node.js, npm을 사용하지 않는다. 현재 사용자의 Codex 공유 설정 `~/.codex/config.toml`에는 다음 Streamable HTTP 항목만 등록한다.
+SMSR은 별도 Codex CLI, Node.js, npm을 사용하지 않는다. 현재 사용자의 Codex 공유 설정 `~/.codex/config.toml`에는 설치된 SMSR 실행 파일의 stdio 브리지를 등록한다.
 
 ```toml
 [mcp_servers.smsr]
-url = "http://127.0.0.1:49783/mcp"
-auth = "oauth"
+command = "<현재 PC의 SMSR.App.exe 절대 경로>"
+args = ["--mcp-stdio"]
 startup_timeout_sec = 30
+tool_timeout_sec = 60
 enabled = true
 ```
 
-Codex는 인증되지 않은 `/mcp` 요청의 `401 WWW-Authenticate` 응답에서 OAuth 메타데이터를 찾는다. SMSR은 OAuth protected resource metadata, authorization server metadata, DCR, authorization code, PKCE S256, refresh token rotation을 제공한다. 승인 후 발급된 액세스 토큰으로만 MCP 요청을 처리한다.
+Codex가 `SMSR.App.exe --mcp-stdio`를 직접 실행하면 브리지가 9개 도구를 노출하고 내부 HTTP MCP로 요청을 전달한다. 서버와 브리지는 `%LocalAppData%\SMSR\mcp-bridge-token.bin`의 DPAPI 보호 토큰으로 상호 인증하며, 토큰 원문은 Codex 설정이나 로그에 기록하지 않는다. 서버가 Windows 로그인과 동시에 시작되는 동안 브리지는 최대 30초 재시도한다.
 
-서버는 `127.0.0.1`에만 bind한다. OAuth 상태 파일은 `%LocalAppData%\SMSR\oauth-state.bin`에 DPAPI로 암호화하며, 액세스·갱신 토큰 원문은 서버 저장소에 남기지 않고 SHA-256 해시만 보관한다. Codex가 받은 자격 증명은 Codex의 OAuth 저장소에서 관리한다.
+서버는 `127.0.0.1`에만 bind한다. 기존 Streamable HTTP 클라이언트와 진단을 위해 OAuth DCR·PKCE endpoint도 유지하지만 Codex 기본 연결은 이를 사용하지 않으므로 브라우저 인증이나 인증 화면을 먼저 만들기 위한 도구 호출이 필요 없다.
 
 ## 제공 도구
 
@@ -44,19 +45,20 @@ SMSR은 에이전트를 능동 호출하거나 polling하지 않는다. 그래�
 
 ## 운영 점검
 
+- Codex 설정 확인: `~/.codex/config.toml`의 `mcp_servers.smsr`가 현재 설치 실행 파일과 `--mcp-stdio`를 가리켜야 한다.
 - OAuth 검색 확인: `Invoke-RestMethod http://127.0.0.1:49783/.well-known/oauth-authorization-server`
-- 보호 상태 확인: 인증 없이 `/mcp`를 요청하면 `401`과 `resource_metadata`가 포함된 `WWW-Authenticate` 헤더가 반환되어야 한다.
-- 인증 또는 그래프 추적 훅이 없다면 `연결·그래프 추적 설정 복구`를 눌러 설정을 일괄 복구한 뒤 Codex를 다시 연다.
+- 보호 상태 확인: 브리지·OAuth 인증 없이 `/mcp`를 요청하면 `401`과 `resource_metadata`가 포함된 `WWW-Authenticate` 헤더가 반환되어야 한다.
+- MCP 또는 그래프 추적 훅이 없다면 `연결·그래프 추적 설정 복구`를 눌러 설정을 일괄 복구한 뒤 Codex를 한 번 다시 연다.
 - 실제 대화에서 `save_plan`과 `record_event`를 호출하고 SMSR 대시보드에서 계획·상태가 반영되는지 확인한다.
 - 포트 충돌은 `Get-NetTCPConnection -LocalPort 49783`으로 확인한다.
 
 SQLite 데이터와 마지막 선택 항목은 앱을 재시작해도 `%LocalAppData%\SMSR`에 유지된다. 기존 설정 파일은 등록 시 `config.toml.smsr.bak`으로 백업한다.
 
-OAuth 승인도 같은 Windows 사용자에서는 재부팅 후 유지된다. SMSR 서버는 DPAPI 보호 상태를 복원하고 Codex는 저장한 갱신 토큰을 회전한다. 다른 PC나 다른 Windows 사용자에게 이 자격 증명을 복사할 수는 없으므로 설치 환경마다 최초 한 번만 승인한다. 로그인 직후 Codex와 SMSR가 함께 시작되는 경우를 위해 MCP 초기화는 최대 30초 동안 대기한다. SMSR 화면의 `OAuth 인증 유지됨`은 재인증이 아니라 Codex의 첫 MCP 요청을 기다리는 상태다.
+같은 Windows 사용자에서는 재부팅 후 Windows 자동 시작, stdio 명령, DPAPI 브리지 토큰이 그대로 복원된다. 다른 PC에서는 설치된 실행 파일을 한 번 시작하면 그 PC의 실제 경로와 새 DPAPI 토큰을 자동 생성하므로 설정을 복사하거나 인증할 필요가 없다. 로그인 직후 Codex와 SMSR가 함께 시작되면 브리지가 서버를 최대 30초 기다린다.
 
-OAuth 토큰 발급만으로 연결 완료를 추정하지 않는다. 서버 시작 후 인증된 MCP 요청이 실제로 확인되면 설정 버튼이 숨겨지고 `Codex 연결됨 · 도구 9개` 상태로 전환된다.
+설정 파일 존재만으로 연결 완료를 추정하지 않는다. 서버 시작 후 브리지의 MCP 요청이 실제로 확인되면 설정 버튼이 숨겨지고 `Codex 연결됨 · 도구 9개` 상태로 전환된다.
 
-자동 설정은 현재 SMSR 실행 파일 경로를 Windows 자동 시작과 전역 훅 명령에 등록한다. 다른 컴퓨터에서는 그 컴퓨터의 실제 경로로 자동 재생성된다. OAuth 동의와 비관리 훅의 최초 신뢰는 Codex 보안 경계라 앱이 대신 승인하지 않는다.
+자동 설정은 현재 SMSR 실행 파일 경로를 MCP stdio 명령, Windows 자동 시작과 전역 훅 명령에 등록한다. 다른 컴퓨터에서는 그 컴퓨터의 실제 경로로 자동 재생성된다. 비관리 훅의 최초 신뢰는 Codex 보안 경계라 앱이 대신 승인하지 않는다.
 
 ## MCP 지침과 요청형 그래프 추적
 

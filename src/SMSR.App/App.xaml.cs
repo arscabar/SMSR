@@ -23,6 +23,12 @@ public partial class App : WpfApplication
             catch { Shutdown(-1); }
             return;
         }
+        if (e.Args.Contains("--mcp-stdio"))
+        {
+            try { await StdioMcpHost.RunAsync(); Shutdown(); }
+            catch { Shutdown(-1); }
+            return;
+        }
         if (e.Args.Contains("--uninstall-cleanup"))
         {
             try { CodexIntegrationCleanup.Run(); Shutdown(); }

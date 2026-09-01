@@ -15,6 +15,17 @@ internal static class DashboardLiveUpdates
               let connected = false;
               let refreshing = false;
               let queued = false;
+              const scrollIds = ['flow', 'graph', 'details'];
+              const captureScroll = () => new Map(scrollIds.map(id => {
+                const element = document.getElementById(id);
+                return [id, { top: element?.scrollTop || 0, left: element?.scrollLeft || 0 }];
+              }));
+              const restoreScroll = positions => positions.forEach((position, id) => {
+                const element = document.getElementById(id);
+                if (!element) return;
+                element.scrollTop = position.top;
+                element.scrollLeft = position.left;
+              });
               const refresh = async () => {
                 if (refreshing) { queued = true; return; }
                 refreshing = true;
@@ -24,8 +35,10 @@ internal static class DashboardLiveUpdates
                     const response = await fetch(location.href, { cache: 'no-store' });
                     if (!response.ok) continue;
                     const next = new DOMParser().parseFromString(await response.text(), 'text/html');
+                    const scroll = captureScroll();
                     document.querySelector('header')?.replaceWith(next.querySelector('header'));
                     document.querySelector('main')?.replaceWith(next.querySelector('main'));
+                    restoreScroll(scroll);
                     const currentAlert = document.querySelector('#alert');
                     const nextAlert = next.querySelector('#alert');
                     if (currentAlert && nextAlert) currentAlert.replaceWith(nextAlert);

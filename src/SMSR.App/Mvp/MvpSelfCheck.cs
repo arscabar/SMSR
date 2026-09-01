@@ -85,7 +85,9 @@ public static class MvpSelfCheck
             if (hierarchicalPlan.Nodes.Single(node => node.NodeId == "node-1").ParentNodeId != "group") throw new InvalidOperationException("계층 계획 저장이 실패했습니다.");
             var page = DashboardPage.Render(state with { Nodes = [state.Nodes[0] with { Summary = "<script>" }] }, hierarchicalPlan, [new RecentEvent("node-1", "agent-1", "SUCCESS", "<script>", null, DateTimeOffset.UtcNow)], null, "group", "node-1");
             if (!page.Contains("&lt;script&gt;") || !page.Contains("breadcrumb") || !page.Contains("검증 통과")
-                || !page.Contains("new EventSource") || !page.Contains("let queued = false") || !page.Contains("void refresh()"))
+                || !page.Contains("new EventSource") || !page.Contains("let queued = false") || !page.Contains("void refresh()")
+                || !page.Contains("const scrollIds = ['flow', 'graph', 'details']")
+                || !page.Contains("element.scrollTop = position.top"))
                 throw new InvalidOperationException("계층 대시보드와 이스케이프 검증이 실패했습니다.");
             var projectedPlan = new WorkflowPlan("demo", "wf-1", [
                 new("phase", "아주 긴 프로젝트 기반 구성 제목", 1, [], "SUCCESS", null, null, null, null, "01a05675-2be3-7011-8574-f7130ef83a35"),
@@ -96,6 +98,21 @@ public static class MvpSelfCheck
             if (!projectedGraph.Contains("class=\"edge SUCCESS\"") || !childGraph.Contains("class=\"edge SUCCESS\"")
                 || !projectedGraph.Contains("01a05675…3a35") || !projectedGraph.Contains("…"))
                 throw new InvalidOperationException("계층 의존선 투영과 SVG 텍스트 축약 검증이 실패했습니다.");
+            var highlightPlan = new WorkflowPlan("demo", "highlight", [
+                new("older", "이전 진행", 1, [], "IN_PROGRESS", null, null, DateTimeOffset.UtcNow.AddMinutes(-2)),
+                new("current", "현재 진행", 1, [], "IN_PROGRESS", null, null, DateTimeOffset.UtcNow.AddMinutes(-1))]);
+            var highlightState = new WorkflowState("demo", "highlight", [
+                new("older", "agent", "IN_PROGRESS", null, null, DateTimeOffset.UtcNow.AddMinutes(-2), ProgressPercentage: 50),
+                new("current", "agent", "IN_PROGRESS", null, null, DateTimeOffset.UtcNow.AddMinutes(-1), ProgressPercentage: 60)]);
+            var highlightGraph = DashboardGraph.Render(highlightPlan, highlightState);
+            if (highlightGraph.Split(" current\"", StringSplitOptions.None).Length != 2
+                || !highlightGraph.Contains("flow-node IN_PROGRESS current\"><title>현재 진행"))
+                throw new InvalidOperationException("현재 작업 단일 하이라이트 검증이 실패했습니다.");
+            var heartbeatGraph = DashboardGraph.Render(highlightPlan, highlightState with { Agents = [
+                new("agent", "worker", "ACTIVE", "older", null, 0, DateTimeOffset.UtcNow, false)] });
+            if (heartbeatGraph.Split(" current\"", StringSplitOptions.None).Length != 2
+                || !heartbeatGraph.Contains("flow-node IN_PROGRESS current\"><title>이전 진행"))
+                throw new InvalidOperationException("최신 heartbeat 작업 하이라이트 검증이 실패했습니다.");
             var gatedPlan = new WorkflowPlan("demo", "gated", [
                 new("first", "선행", 1, [], "IN_PROGRESS", null, null, null),
                 new("second", "후행", 1, ["first"], "IN_PROGRESS", null, null, null)]);
@@ -118,6 +135,10 @@ public static class MvpSelfCheck
             using (var client = new HttpClient())
             {
                 var denied = await client.GetAsync($"{server.Address}/mcp");
+                var bridgeWorkflows = await new McpHttpGateway(server.Address, serverPath)
+                    .CallAsync("list_workflows", new { projectId = "demo" });
+                var restartedBridgeWorkflows = await new McpHttpGateway(server.Address, serverPath)
+                    .CallAsync("list_workflows", new { projectId = "demo" });
                 var oauthToken = await OAuthSelfCheck.RunAsync(server.Address);
                 var stateResponse = await client.GetAsync($"{server.Address}/api/state?projectId=demo&workflowId=wf-1");
                 var dashboardResponse = await client.GetAsync($"{server.Address}/dashboard?projectId=demo&workflowId=wf-1");
@@ -173,7 +194,9 @@ public static class MvpSelfCheck
                 using var sseTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
                 var changedEvent = await streamReader.ReadLineAsync(sseTimeout.Token);
                 if (!recordResponse.IsSuccessStatusCode) throw new InvalidOperationException($"MCP record_event 호출 실패: {recordJson}");
-                if (denied.StatusCode != HttpStatusCode.Unauthorized || !stateResponse.IsSuccessStatusCode || !dashboardResponse.IsSuccessStatusCode || !streamResponse.IsSuccessStatusCode || initialEvent != "event: state" || initialData != "data: changed" || changedEvent != "event: state" || !activityResponse.IsSuccessStatusCode || !activityJson.Contains("TOOL_COMPLETED") || !recordResponse.IsSuccessStatusCode || !planResponse.IsSuccessStatusCode || !listResponse.IsSuccessStatusCode || !recordJson.Contains("evt-mcp-1") || !planJson.Contains("nodeCount") || !listJson.Contains("wf-1") || !listJson.Contains("ACTIVE") || !recordedState.Contains("mcp-node") || !recordedState.Contains("implementer") || !recordedPlan.Contains("MCP 계획 노드") || !recordedPlan.Contains("parentNodeId") || !recordedDashboard.Contains("계층형 작업 흐름") || !recordedDashboard.Contains("id=\"agents\"") || !recordedDashboard.Contains("실시간 활동") || !recordedDashboard.Contains("TOOL_COMPLETED") || !recordedDashboard.Contains("flow-svg") || !recordedDashboard.Contains("MCP 계획 노드") || recordedDashboard.Contains("http-equiv=\"refresh\"") || !recordedDashboard.Contains("new EventSource") || !recordedDashboard.Contains("smsr-graph-nav") || !recordedDashboard.Contains("getAttribute('href')"))
+                if (denied.StatusCode != HttpStatusCode.Unauthorized || !server.HasActiveMcpClient
+                    || !bridgeWorkflows.Contains("wf-1") || !restartedBridgeWorkflows.Contains("wf-1")
+                    || !stateResponse.IsSuccessStatusCode || !dashboardResponse.IsSuccessStatusCode || !streamResponse.IsSuccessStatusCode || initialEvent != "event: state" || initialData != "data: changed" || changedEvent != "event: state" || !activityResponse.IsSuccessStatusCode || !activityJson.Contains("TOOL_COMPLETED") || !recordResponse.IsSuccessStatusCode || !planResponse.IsSuccessStatusCode || !listResponse.IsSuccessStatusCode || !recordJson.Contains("evt-mcp-1") || !planJson.Contains("nodeCount") || !listJson.Contains("wf-1") || !listJson.Contains("ACTIVE") || !recordedState.Contains("mcp-node") || !recordedState.Contains("implementer") || !recordedPlan.Contains("MCP 계획 노드") || !recordedPlan.Contains("parentNodeId") || !recordedDashboard.Contains("계층형 작업 흐름") || !recordedDashboard.Contains("id=\"agents\"") || !recordedDashboard.Contains("실시간 활동") || !recordedDashboard.Contains("TOOL_COMPLETED") || !recordedDashboard.Contains("flow-svg") || !recordedDashboard.Contains("MCP 계획 노드") || recordedDashboard.Contains("http-equiv=\"refresh\"") || !recordedDashboard.Contains("new EventSource") || !recordedDashboard.Contains("smsr-graph-nav") || !recordedDashboard.Contains("getAttribute('href')"))
                     throw new InvalidOperationException("로컬 서버 검증이 실패했습니다.");
             }
             var settings = new AppSettingsService(serverPath);

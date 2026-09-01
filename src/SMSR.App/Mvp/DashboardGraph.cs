@@ -18,6 +18,7 @@ internal static class DashboardGraph
                 .Concat(context is null ? [] : [context.NodeId]).Distinct().ToArray()
         });
         var projected = (context is null ? projectedChildren : [context with { DependsOn = [] }, .. projectedChildren]).ToArray();
+        var currentNodeId = DashboardCurrentNode.Visible(plan, state, projected.Select(node => node.NodeId).ToHashSet());
         var layerPlan = new WorkflowPlan(plan.ProjectId, plan.WorkflowId, projected);
         var layout = DashboardGraphLayout.Create(layerPlan);
         var positions = layout.Positions;
@@ -50,7 +51,8 @@ internal static class DashboardGraph
                 ? 0 : WorkflowProgress.Value(stateNode?.Status ?? node.Status, stateNode?.ProgressPercentage);
             var drill = isContext ? "현재 상위 작업" : children > 0 ? $"↳ 하위 작업 {children}개" : $"진행 {effectiveProgress}%";
             var meta = $"{Trim(node.NodeId, 12)} · {ShortId(agent)} · {displayStatus}";
-            svg.Append($"<a href=\"{Encode(target)}\"><g class=\"flow-node {Status(displayStatus)}\"><title>{Encode(node.Title)} · {Encode(node.NodeId)} · {Encode(agent)} · {Encode(displayStatus)}</title><rect x=\"{position.X}\" y=\"{position.Y}\" width=\"{DashboardGraphLayout.NodeWidth}\" height=\"{DashboardGraphLayout.NodeHeight}\" rx=\"12\"/><text x=\"{center}\" y=\"{position.Y + 23}\"><tspan class=\"node-title\">{Encode(Trim(node.Title, 15))}</tspan><tspan class=\"node-meta\" x=\"{center}\" dy=\"20\">{Encode(meta)}</tspan><tspan class=\"node-drill\" x=\"{center}\" dy=\"18\">{Encode(drill)}</tspan></text></g></a>");
+            var current = node.NodeId == currentNodeId ? " current" : string.Empty;
+            svg.Append($"<a href=\"{Encode(target)}\"><g class=\"flow-node {Status(displayStatus)}{current}\"><title>{Encode(node.Title)} · {Encode(node.NodeId)} · {Encode(agent)} · {Encode(displayStatus)}</title><rect x=\"{position.X}\" y=\"{position.Y}\" width=\"{DashboardGraphLayout.NodeWidth}\" height=\"{DashboardGraphLayout.NodeHeight}\" rx=\"12\"/><text x=\"{center}\" y=\"{position.Y + 23}\"><tspan class=\"node-title\">{Encode(Trim(node.Title, 15))}</tspan><tspan class=\"node-meta\" x=\"{center}\" dy=\"20\">{Encode(meta)}</tspan><tspan class=\"node-drill\" x=\"{center}\" dy=\"18\">{Encode(drill)}</tspan></text></g></a>");
         }
         return svg.Append("</svg>").ToString();
     }

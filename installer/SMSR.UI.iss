@@ -7,8 +7,8 @@ korean.WelcomeBody=에이전트 계획과 실행 상태를 로컬에서 안전�
 english.WelcomeBody=Track agent plans and execution locally and securely.%n%nChoose Next to continue.
 korean.FinishedTitle=SMSR 설치가 완료되었습니다
 english.FinishedTitle=SMSR is ready
-korean.FinishedBody=SMSR을 실행한 뒤 Codex를 다시 열면 로컬 MCP 연결을 시작할 수 있습니다.
-english.FinishedBody=Launch SMSR, then reopen Codex to start the local MCP connection.
+korean.FinishedBody=SMSR을 실행한 뒤 Codex를 한 번 다시 열면 인증창 없이 로컬 MCP 연결이 시작됩니다.
+english.FinishedBody=Launch SMSR, then reopen Codex once to start the local MCP connection without browser authentication.
 korean.UninstallTitle=SMSR 제거
 english.UninstallTitle=Uninstall SMSR
 

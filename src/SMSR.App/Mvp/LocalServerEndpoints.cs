@@ -6,7 +6,7 @@ namespace SMSR.App.Mvp;
 
 internal static class LocalServerEndpoints
 {
-    public static void Map(WebApplication app, LocalOAuthStore oauth, OAuthFlowStore flows,
+    public static void Map(WebApplication app, LocalOAuthStore oauth, McpBridgeToken bridgeToken, OAuthFlowStore flows,
         OAuthAuditLog audit, McpConnectionTracker connections, WorkflowEventNotifier notifier, ActivityJsonlStore activity,
         ActivityHookToken activityToken, Func<string>? dashboardTheme)
     {
@@ -17,7 +17,7 @@ internal static class LocalServerEndpoints
                 context.Response.StatusCode = StatusCodes.Status400BadRequest;
                 return;
             }
-            if (context.Request.Path.StartsWithSegments("/mcp") && !IsAuthorized(context.Request, oauth))
+            if (context.Request.Path.StartsWithSegments("/mcp") && !IsAuthorized(context.Request, oauth, bridgeToken))
             {
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                 context.Response.Headers.WWWAuthenticate = $"Bearer resource_metadata=\"{OAuthUris.Metadata(context.Request)}\", scope=\"{OAuthUris.Scope}\"";
@@ -53,11 +53,12 @@ internal static class LocalServerEndpoints
         app.MapMcp("/mcp");
     }
 
-    private static bool IsAuthorized(HttpRequest request, LocalOAuthStore oauth)
+    private static bool IsAuthorized(HttpRequest request, LocalOAuthStore oauth, McpBridgeToken bridgeToken)
     {
         var value = request.Headers.Authorization.ToString();
         if (!value.StartsWith("Bearer ", StringComparison.Ordinal)) return false;
-        return oauth.ValidateAccess(value[7..], OAuthUris.Resource(request));
+        var token = value[7..];
+        return bridgeToken.Validate(token) || oauth.ValidateAccess(token, OAuthUris.Resource(request));
     }
 
     private static async Task<IResult> GetStateAsync(string? projectId, string? workflowId, EventStore events, CancellationToken ct)

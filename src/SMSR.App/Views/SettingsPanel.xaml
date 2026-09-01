@@ -20,9 +20,11 @@
             <Border Margin="0,14,0,0" Padding="18" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10">
                 <StackPanel>
                     <TextBlock FontSize="16" FontWeight="SemiBold" Text="MCP" />
-                    <TextBlock Margin="0,14,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="고정 로컬 endpoint" />
+                    <TextBlock Margin="0,14,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="Codex 연결 방식" />
+                    <TextBlock Margin="0,4,0,0" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" Text="{Binding McpConnectionMode}" TextWrapping="Wrap" />
+                    <TextBlock Margin="0,12,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="내부 로컬 endpoint" />
                     <TextBlock Margin="0,4,0,0" FontFamily="Consolas" Text="{Binding McpEndpoint}" />
-                    <TextBlock Margin="0,12,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="127.0.0.1에서만 연결됩니다." />
+                    <TextBlock Margin="0,12,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="Codex가 설치된 SMSR 브리지를 직접 실행합니다. 브라우저 인증이나 별도 Codex CLI가 필요 없으며 127.0.0.1에서만 통신합니다." TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
             <TextBlock Margin="0,14,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="{Binding StatusMessage}" TextWrapping="Wrap" />

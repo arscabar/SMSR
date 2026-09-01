@@ -49,6 +49,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
     public string DataPath { get; }
     public string LogPath { get; }
     public string McpEndpoint => CodexMcpConfig.Endpoint;
+    public string McpConnectionMode => CodexMcpConfig.ConnectionMode;
     public IReadOnlyList<string> DashboardThemeOptions { get; } = [DashboardThemes.Dark, DashboardThemes.Light];
     public string StatusMessage { get => _statusMessage; private set => SetField(ref _statusMessage, value); }
     public ICommand OpenDataFolderCommand { get; }
