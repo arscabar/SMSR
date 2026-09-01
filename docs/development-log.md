@@ -1417,9 +1417,9 @@
 
 ## 2026-09-01 - 인증 요청 없는 Codex stdio 자동 연결
 
-- 변경 파일: `McpBridgeToken.cs`, `McpHttpGateway.cs`, `McpHttpResponse.cs`, `StdioMcpHost.cs`, `StdioWorkflowTools.cs`, `StdioPlanTools.cs`, `StdioAgentTools.cs`, `LocalServer.cs`, `LocalServerEndpoints.cs`, `App.xaml.cs`, Codex 설정·연결 서비스와 자체 검사, 서버·설정 XAML, 설치 UI, README와 연결·설치 문서
+- 변경 파일: `McpBridgeToken.cs`, `McpBridgeConnection.cs`, `McpHttpGateway.cs`, `McpHttpResponse.cs`, `StdioMcpHost.cs`, `StdioWorkflowTools.cs`, `StdioPlanTools.cs`, `StdioAgentTools.cs`, `LocalServer.cs`, `LocalServerEndpoints.cs`, `App.xaml.cs`, Codex 설정·연결 서비스와 자체 검사, 서버·설정 XAML, 설치 UI, README와 연결·설치 문서
 - 변경 사유: URL 기반 OAuth는 클라이언트 등록 상태가 어긋나면 MCP 호출 전에는 인증 화면을 열 수 없어 사용자가 에이전트에게 인증 호출을 반복 요청해야 했다. 설치된 SMSR 실행 파일을 Codex가 직접 구동하는 stdio 브리지로 기본 연결을 바꿔 재부팅·다른 프로젝트·다른 PC 설치에서 브라우저 인증 없이 자동 연결한다.
 - 실행 명령: Release 빌드, `dotnet test`, config·tracking·OAuth·전체 self-check, 실제 stdio `initialize`·`tools/list`·`list_workflows`, 대상 파일 whitespace 검사, 설치 프로그램 빌드·무인 업그레이드, 설치 앱 자체 검사와 stdio 왕복
-- 검증 결과: 최초 빌드는 새 게이트웨이의 `System.Net.Http` using 누락으로 실패해 수정했다. 테스트 서버가 검증 출력 EXE를 잠근 1회 실패는 정확한 PID·경로 확인 후 해당 테스트 프로세스만 종료해 해소했다. 이후 Release 빌드 경고·오류 0개, `dotnet test`와 자체 검사 4종이 모두 종료 코드 0을 반환했다. 소스·설치본 stdio에서 9개 도구와 기존 워크플로우 조회를 확인했다. 현재 Codex 설정은 설치된 `SMSR.App.exe --mcp-stdio`를 가리키며 OAuth 항목이 없고, publish·설치 EXE SHA-256은 `8FDAC5F8B0DCF05E4E6126A12386BB3A7C9C3A3AE6E76FE1BADC986BA644AC85`로 일치한다. Setup SHA-256은 `16A4EC74E9DE659E33AADF0B22F44302B898CAF970E77B81242C17C988D1AC6E`이다.
-- 남은 위험: 실행 중인 Codex 프로세스는 시작 후 변경된 MCP 전송 설정을 다시 읽지 않으므로 이번 OAuth→stdio 마이그레이션에서 한 번 완전 재시작해야 한다. 이후에는 인증 호출이나 브라우저 승인이 필요 없다. HTTP OAuth endpoint는 기존 클라이언트 호환과 자체 진단을 위해 유지한다.
+- 검증 결과: 최초 빌드는 새 게이트웨이의 `System.Net.Http` using 누락으로 실패해 수정했다. 테스트 서버가 검증 출력 EXE를 잠근 1회 실패는 정확한 PID·경로 확인 후 해당 테스트 프로세스만 종료해 해소했다. 이후 Release 빌드 경고·오류 0개, `dotnet test`와 자체 검사 4종이 모두 종료 코드 0을 반환했다. 소스·설치본 stdio에서 자동 연결 신호, 9개 도구와 기존 워크플로우 조회를 확인했다. 현재 Codex 설정은 설치된 `SMSR.App.exe --mcp-stdio`를 가리키며 OAuth 항목이 없고, publish·설치 EXE SHA-256은 `0F26E99D2E4905A0151C67CA4943A1DE1B4CEE651F5DD788F3F94F0AD549F504`로 일치한다. Setup SHA-256은 `32BD101CC02F5AC68C88D273AA2032D054BCF6BD9655A1CF4EC10CF51AD17FF4`이다.
+- 남은 위험: 실행 중인 Codex 프로세스는 시작 후 변경된 MCP 전송 설정을 다시 읽지 않으므로 이번 OAuth→stdio 마이그레이션에서 한 번 완전 재시작해야 한다. 이후에는 브리지가 시작 연결 신호까지 자동 전송하므로 인증·확인 호출이나 브라우저 승인이 필요 없다. HTTP OAuth endpoint는 기존 클라이언트 호환과 자체 진단을 위해 유지한다.
 - 다음 조치: Codex를 한 번 완전 재시작한 뒤 현재 작업에서 `list_workflows` 실호출을 확인한다.

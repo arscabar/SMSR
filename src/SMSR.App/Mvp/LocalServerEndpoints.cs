@@ -28,6 +28,13 @@ internal static class LocalServerEndpoints
         });
         OAuthEndpoints.Map(app, oauth, flows, audit);
         ActivityEndpoints.Map(app, activity, activityToken, notifier);
+        app.MapPost("/api/mcp-bridge/connected", (HttpRequest request) =>
+        {
+            if (!bridgeToken.Validate(request.Headers["X-SMSR-Bridge-Token"].ToString()))
+                return Results.Unauthorized();
+            connections.MarkActivity();
+            return Results.NoContent();
+        });
         app.MapGet("/api/state", (string? projectId, string? workflowId, EventStore events, CancellationToken ct) => GetStateAsync(projectId, workflowId, events, ct));
         app.MapGet("/api/plan", (string? projectId, string? workflowId, EventStore events, CancellationToken ct) => GetPlanAsync(projectId, workflowId, events, ct));
         app.MapGet("/api/summary", (string? projectId, string? workflowId, EventStore events, CancellationToken ct) => GetSummaryAsync(projectId, workflowId, events, ct));

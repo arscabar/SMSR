@@ -19,7 +19,7 @@ tool_timeout_sec = 60
 enabled = true
 ```
 
-Codex가 `SMSR.App.exe --mcp-stdio`를 직접 실행하면 브리지가 9개 도구를 노출하고 내부 HTTP MCP로 요청을 전달한다. 서버와 브리지는 `%LocalAppData%\SMSR\mcp-bridge-token.bin`의 DPAPI 보호 토큰으로 상호 인증하며, 토큰 원문은 Codex 설정이나 로그에 기록하지 않는다. 서버가 Windows 로그인과 동시에 시작되는 동안 브리지는 최대 30초 재시도한다.
+Codex가 `SMSR.App.exe --mcp-stdio`를 직접 실행하면 브리지가 9개 도구를 노출하고 내부 HTTP MCP로 요청을 전달한다. 서버와 브리지는 `%LocalAppData%\SMSR\mcp-bridge-token.bin`의 DPAPI 보호 토큰으로 상호 인증하며, 토큰 원문은 Codex 설정이나 로그에 기록하지 않는다. 브리지는 시작 즉시 보호된 연결 신호를 보내며 서버가 Windows 로그인과 동시에 시작되는 동안 최대 30초 재시도한다.
 
 서버는 `127.0.0.1`에만 bind한다. 기존 Streamable HTTP 클라이언트와 진단을 위해 OAuth DCR·PKCE endpoint도 유지하지만 Codex 기본 연결은 이를 사용하지 않으므로 브라우저 인증이나 인증 화면을 먼저 만들기 위한 도구 호출이 필요 없다.
 
@@ -56,7 +56,7 @@ SQLite 데이터와 마지막 선택 항목은 앱을 재시작해도 `%LocalApp
 
 같은 Windows 사용자에서는 재부팅 후 Windows 자동 시작, stdio 명령, DPAPI 브리지 토큰이 그대로 복원된다. 다른 PC에서는 설치된 실행 파일을 한 번 시작하면 그 PC의 실제 경로와 새 DPAPI 토큰을 자동 생성하므로 설정을 복사하거나 인증할 필요가 없다. 로그인 직후 Codex와 SMSR가 함께 시작되면 브리지가 서버를 최대 30초 기다린다.
 
-설정 파일 존재만으로 연결 완료를 추정하지 않는다. 서버 시작 후 브리지의 MCP 요청이 실제로 확인되면 설정 버튼이 숨겨지고 `Codex 연결됨 · 도구 9개` 상태로 전환된다.
+설정 파일 존재만으로 연결 완료를 추정하지 않는다. Codex가 stdio 브리지를 시작해 보호된 연결 신호를 보내면 설정 버튼이 숨겨지고 `Codex 연결됨 · 도구 9개` 상태로 전환된다. 확인을 위한 별도 에이전트 도구 호출은 필요 없다.
 
 자동 설정은 현재 SMSR 실행 파일 경로를 MCP stdio 명령, Windows 자동 시작과 전역 훅 명령에 등록한다. 다른 컴퓨터에서는 그 컴퓨터의 실제 경로로 자동 재생성된다. 비관리 훅의 최초 신뢰는 Codex 보안 경계라 앱이 대신 승인하지 않는다.
 

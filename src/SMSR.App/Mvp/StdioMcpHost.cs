@@ -7,6 +7,7 @@ public static class StdioMcpHost
 {
     public static async Task RunAsync()
     {
+        _ = McpBridgeConnection.NotifyAsync();
         var services = new ServiceCollection();
         services.AddSingleton<McpHttpGateway>();
         services.AddMcpServer(options => options.ServerInstructions = SmsrMcpInstructions.Text)
