@@ -7,7 +7,8 @@ namespace SMSR.App.Mvp;
 internal static class LocalServerEndpoints
 {
     public static void Map(WebApplication app, LocalOAuthStore oauth, OAuthFlowStore flows,
-        OAuthAuditLog audit, McpConnectionTracker connections, Func<string>? dashboardTheme)
+        OAuthAuditLog audit, McpConnectionTracker connections, WorkflowEventNotifier notifier, ActivityJsonlStore activity,
+        ActivityHookToken activityToken, Func<string>? dashboardTheme)
     {
         app.Use(async (context, next) =>
         {
@@ -26,6 +27,7 @@ internal static class LocalServerEndpoints
             await next();
         });
         OAuthEndpoints.Map(app, oauth, flows, audit);
+        ActivityEndpoints.Map(app, activity, activityToken, notifier);
         app.MapGet("/api/state", (string? projectId, string? workflowId, EventStore events, CancellationToken ct) => GetStateAsync(projectId, workflowId, events, ct));
         app.MapGet("/api/plan", (string? projectId, string? workflowId, EventStore events, CancellationToken ct) => GetPlanAsync(projectId, workflowId, events, ct));
         app.MapGet("/api/summary", (string? projectId, string? workflowId, EventStore events, CancellationToken ct) => GetSummaryAsync(projectId, workflowId, events, ct));
@@ -45,7 +47,8 @@ internal static class LocalServerEndpoints
             var state = await events.GetStateAsync(projectId, workflowId, ct);
             var plan = await events.GetPlanAsync(projectId, workflowId, ct);
             var recent = await events.GetRecentEventsAsync(projectId, workflowId, ct);
-            return Results.Content(DashboardPage.Render(state, plan, recent, dashboardTheme?.Invoke(), parentNodeId, selectedNodeId), "text/html; charset=utf-8");
+            return Results.Content(DashboardPage.Render(state, plan, recent, dashboardTheme?.Invoke(), parentNodeId,
+                selectedNodeId, activity.ReadLatest(projectId, workflowId)), "text/html; charset=utf-8");
         });
         app.MapMcp("/mcp");
     }

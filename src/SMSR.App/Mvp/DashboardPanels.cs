@@ -41,5 +41,18 @@ internal static class DashboardPanels
         return html.Append("</ul>").ToString();
     }
 
+    public static string RenderActivities(IReadOnlyList<ActivityRecord> activities)
+    {
+        if (activities.Count == 0) return "<p class=\"empty\">활성 그래프의 에이전트 활동이 없습니다.</p>";
+        var html = new StringBuilder("<ul class=\"history activity\">");
+        foreach (var item in activities.Take(12))
+        {
+            var subject = item.NodeId ?? item.AgentId ?? item.SessionId;
+            var detail = item.ToolName is null ? item.Category : $"{item.Category} · {item.ToolName}";
+            html.Append($"<li><b>{Encode(subject)}</b> {Encode(item.Event)}<br>{Encode(detail)} · {item.TimestampUtc.ToLocalTime():HH:mm:ss}</li>");
+        }
+        return html.Append("</ul>").ToString();
+    }
+
     public static string Encode(string value) => WebUtility.HtmlEncode(value);
 }

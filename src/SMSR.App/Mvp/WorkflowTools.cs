@@ -7,7 +7,7 @@ namespace SMSR.App.Mvp;
 [McpServerToolType]
 public sealed class WorkflowTools(EventStore events, WorkflowEventNotifier notifier, WorkflowSummaryService summaries, WorkflowExportService exports)
 {
-    [McpServerTool(Name = "record_event"), Description("호출한 에이전트 자신의 노드 상태, 진행률, 재시도, 다음 작업과 산출물을 중복 없이 기록합니다.")]
+    [McpServerTool(Name = "record_event"), Description("노드 시작과 상태·진행률·검증·재시도·다음 작업·산출물 변경 즉시 호출하여 진행을 실시간 기록합니다. 작업 종료 시 몰아서 보내지 마세요.")]
     public async Task<string> RecordEvent(
         string eventId, string projectId, string workflowId, string nodeId, string agentId,
         string eventType, string status, string? summary = null, string? error = null,
@@ -18,6 +18,9 @@ public sealed class WorkflowTools(EventStore events, WorkflowEventNotifier notif
         var request = new RecordEventRequest(eventId, projectId, workflowId, nodeId, agentId, eventType, status, summary, error, commands, artifacts, agentRole, progressPercentage, retryCount, nextAction);
         var validationError = EventValidation.Validate(request);
         if (validationError is not null) return JsonSerializer.Serialize(new { error = validationError });
+        var plan = await events.GetPlanAsync(projectId, workflowId);
+        if (WorkflowDependencyGate.Validate(request, plan) is { } dependencyError)
+            return JsonSerializer.Serialize(new { error = dependencyError });
         var inserted = await events.RecordAsync(request);
         if (inserted) notifier.Publish(projectId, workflowId);
         return JsonSerializer.Serialize(new { eventId, duplicate = !inserted });

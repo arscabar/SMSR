@@ -19,7 +19,7 @@ public partial class App : WpfApplication
         ShutdownMode = ShutdownMode.OnMainWindowClose;
         if (e.Args.Contains("--smsr-auto-track-hook"))
         {
-            try { await CodexAutoTrackingContext.RunAsync(); Shutdown(); }
+            try { await CodexHookRunner.RunAsync(); Shutdown(); }
             catch { Shutdown(-1); }
             return;
         }

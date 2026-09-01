@@ -1,6 +1,7 @@
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Json;
 using System.Text;
 using SMSR.App.Infrastructure;
 using SMSR.App.Services;
@@ -24,6 +25,8 @@ public static class MvpSelfCheck
                 || new TrayMenuState(false, false, false).StatusColor != System.Drawing.Color.Firebrick)
                 throw new InvalidOperationException("트레이 상태 모델 검증이 실패했습니다.");
             CodexMcpConfigSelfCheck.Run();
+            OAuthPersistenceSelfCheck.Run(serverPath);
+            await ActivitySelfCheck.RunAsync(serverPath);
             var connectionTracker = new McpConnectionTracker();
             var connectionChanges = 0;
             connectionTracker.Changed += (_, _) => connectionChanges++;
@@ -81,7 +84,8 @@ public static class MvpSelfCheck
             var hierarchicalPlan = await store.GetPlanAsync("demo", "wf-1");
             if (hierarchicalPlan.Nodes.Single(node => node.NodeId == "node-1").ParentNodeId != "group") throw new InvalidOperationException("계층 계획 저장이 실패했습니다.");
             var page = DashboardPage.Render(state with { Nodes = [state.Nodes[0] with { Summary = "<script>" }] }, hierarchicalPlan, [new RecentEvent("node-1", "agent-1", "SUCCESS", "<script>", null, DateTimeOffset.UtcNow)], null, "group", "node-1");
-            if (!page.Contains("&lt;script&gt;") || !page.Contains("breadcrumb") || !page.Contains("검증 통과") || !page.Contains("new EventSource"))
+            if (!page.Contains("&lt;script&gt;") || !page.Contains("breadcrumb") || !page.Contains("검증 통과")
+                || !page.Contains("new EventSource") || !page.Contains("let queued = false") || !page.Contains("void refresh()"))
                 throw new InvalidOperationException("계층 대시보드와 이스케이프 검증이 실패했습니다.");
             var projectedPlan = new WorkflowPlan("demo", "wf-1", [
                 new("phase", "아주 긴 프로젝트 기반 구성 제목", 1, [], "SUCCESS", null, null, null, null, "01a05675-2be3-7011-8574-f7130ef83a35"),
@@ -92,6 +96,24 @@ public static class MvpSelfCheck
             if (!projectedGraph.Contains("class=\"edge SUCCESS\"") || !childGraph.Contains("class=\"edge SUCCESS\"")
                 || !projectedGraph.Contains("01a05675…3a35") || !projectedGraph.Contains("…"))
                 throw new InvalidOperationException("계층 의존선 투영과 SVG 텍스트 축약 검증이 실패했습니다.");
+            var gatedPlan = new WorkflowPlan("demo", "gated", [
+                new("first", "선행", 1, [], "IN_PROGRESS", null, null, null),
+                new("second", "후행", 1, ["first"], "IN_PROGRESS", null, null, null)]);
+            var gatedRequest = first with { WorkflowId = "gated", NodeId = "second", ProgressPercentage = 5 };
+            if (WorkflowDependencyGate.Validate(gatedRequest, gatedPlan) is null
+                || DashboardHierarchy.DisplayStatus(gatedPlan.Nodes[1], gatedPlan.Nodes) != "PENDING")
+                throw new InvalidOperationException("선행 작업 완료 게이트 검증이 실패했습니다.");
+            var completedGate = gatedPlan with { Nodes = [gatedPlan.Nodes[0] with { Status = "SUCCESS" }, gatedPlan.Nodes[1]] };
+            if (WorkflowDependencyGate.Validate(gatedRequest, completedGate) is not null
+                || DashboardHierarchy.DisplayStatus(completedGate.Nodes[1], completedGate.Nodes) != "IN_PROGRESS")
+                throw new InvalidOperationException("선행 작업 완료 후 진행 허용 검증이 실패했습니다.");
+            var parentGate = new WorkflowPlan("demo", "parent-gated", [
+                new("parent", "상위", 1, [], "SUCCESS", null, null, null),
+                new("child", "하위", 1, [], "PENDING", null, null, null, "parent")]);
+            var parentRequest = first with { WorkflowId = "parent-gated", NodeId = "parent", Status = "SUCCESS" };
+            if (DashboardHierarchy.DisplayStatus(parentGate.Nodes[0], parentGate.Nodes) != "PENDING"
+                || WorkflowDependencyGate.Validate(parentRequest, parentGate) is null)
+                throw new InvalidOperationException("하위 작업 미완료 상위 성공 차단 검증이 실패했습니다.");
             await using (var server = await LocalServer.StartAsync(serverPath, 0))
             using (var client = new HttpClient())
             {
@@ -104,6 +126,14 @@ public static class MvpSelfCheck
                 var initialEvent = await streamReader.ReadLineAsync();
                 var initialData = await streamReader.ReadLineAsync();
                 await streamReader.ReadLineAsync();
+                using var activityRequest = new HttpRequestMessage(HttpMethod.Post, $"{server.Address}/api/activity")
+                {
+                    Content = JsonContent.Create(new ActivityRecord(DateTimeOffset.UtcNow, "demo", "wf-1",
+                        "session-activity", "TOOL_COMPLETED", "FILE_EDIT", "turn-1", "agent-1", "node-1", "apply_patch", "tool-1", "activity-http-1"))
+                };
+                activityRequest.Headers.Add("X-SMSR-Hook-Token", new ActivityHookToken(serverPath).Value);
+                using var activityResponse = await client.SendAsync(activityRequest);
+                var activityJson = await client.GetStringAsync($"{server.Address}/api/activity?projectId=demo&workflowId=wf-1");
                 using var recordEvent = new HttpRequestMessage(HttpMethod.Post, $"{server.Address}/mcp")
                 {
                     Content = new StringContent("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"record_event\",\"arguments\":{\"eventId\":\"evt-mcp-1\",\"projectId\":\"demo\",\"workflowId\":\"wf-1\",\"nodeId\":\"mcp-node\",\"agentId\":\"agent-1\",\"agentRole\":\"implementer\",\"eventType\":\"NODE_STATUS_CHANGED\",\"status\":\"IN_PROGRESS\",\"progressPercentage\":40,\"retryCount\":2,\"artifacts\":[\"build.log\"]},\"_meta\":{\"io.modelcontextprotocol/protocolVersion\":\"2026-07-28\",\"io.modelcontextprotocol/clientInfo\":{\"name\":\"self-test\",\"version\":\"1.0\"},\"io.modelcontextprotocol/clientCapabilities\":{}}}}", Encoding.UTF8, "application/json")
@@ -143,7 +173,7 @@ public static class MvpSelfCheck
                 using var sseTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
                 var changedEvent = await streamReader.ReadLineAsync(sseTimeout.Token);
                 if (!recordResponse.IsSuccessStatusCode) throw new InvalidOperationException($"MCP record_event 호출 실패: {recordJson}");
-                if (denied.StatusCode != HttpStatusCode.Unauthorized || !stateResponse.IsSuccessStatusCode || !dashboardResponse.IsSuccessStatusCode || !streamResponse.IsSuccessStatusCode || initialEvent != "event: state" || initialData != "data: changed" || changedEvent != "event: state" || !recordResponse.IsSuccessStatusCode || !planResponse.IsSuccessStatusCode || !listResponse.IsSuccessStatusCode || !recordJson.Contains("evt-mcp-1") || !planJson.Contains("nodeCount") || !listJson.Contains("wf-1") || !listJson.Contains("ACTIVE") || !recordedState.Contains("mcp-node") || !recordedState.Contains("implementer") || !recordedPlan.Contains("MCP 계획 노드") || !recordedPlan.Contains("parentNodeId") || !recordedDashboard.Contains("계층형 작업 흐름") || !recordedDashboard.Contains("id=\"agents\"") || !recordedDashboard.Contains("flow-svg") || !recordedDashboard.Contains("MCP 계획 노드") || recordedDashboard.Contains("http-equiv=\"refresh\"") || !recordedDashboard.Contains("new EventSource") || !recordedDashboard.Contains("smsr-graph-nav") || !recordedDashboard.Contains("getAttribute('href')"))
+                if (denied.StatusCode != HttpStatusCode.Unauthorized || !stateResponse.IsSuccessStatusCode || !dashboardResponse.IsSuccessStatusCode || !streamResponse.IsSuccessStatusCode || initialEvent != "event: state" || initialData != "data: changed" || changedEvent != "event: state" || !activityResponse.IsSuccessStatusCode || !activityJson.Contains("TOOL_COMPLETED") || !recordResponse.IsSuccessStatusCode || !planResponse.IsSuccessStatusCode || !listResponse.IsSuccessStatusCode || !recordJson.Contains("evt-mcp-1") || !planJson.Contains("nodeCount") || !listJson.Contains("wf-1") || !listJson.Contains("ACTIVE") || !recordedState.Contains("mcp-node") || !recordedState.Contains("implementer") || !recordedPlan.Contains("MCP 계획 노드") || !recordedPlan.Contains("parentNodeId") || !recordedDashboard.Contains("계층형 작업 흐름") || !recordedDashboard.Contains("id=\"agents\"") || !recordedDashboard.Contains("실시간 활동") || !recordedDashboard.Contains("TOOL_COMPLETED") || !recordedDashboard.Contains("flow-svg") || !recordedDashboard.Contains("MCP 계획 노드") || recordedDashboard.Contains("http-equiv=\"refresh\"") || !recordedDashboard.Contains("new EventSource") || !recordedDashboard.Contains("smsr-graph-nav") || !recordedDashboard.Contains("getAttribute('href')"))
                     throw new InvalidOperationException("로컬 서버 검증이 실패했습니다.");
             }
             var settings = new AppSettingsService(serverPath);
@@ -187,7 +217,7 @@ public static class MvpSelfCheck
                 using var dashboardClient = new HttpClient();
                 var themedDashboard = await dashboardClient.GetStringAsync($"{host.Address}/dashboard?projectId=demo&workflowId=wf-1");
                 var exportedDashboard = File.ReadAllText(Path.Combine(export.DirectoryPath, "dashboard.html"));
-                if (!platform.OpenedUrl.Contains("projectId=demo") || viewModel.Workspace.Monitor.Nodes.Count == 0 || summary.Content.Length == 0 || !File.Exists(export.ZipPath) || !File.ReadAllText(Path.Combine(export.DirectoryPath, "events.jsonl")).Contains("evt-mcp-1") || !themedDashboard.Contains("color-scheme:light") || !exportedDashboard.Contains("color-scheme:light") || !exportedDashboard.Contains("flow-svg"))
+                if (!platform.OpenedUrl.Contains("projectId=demo") || viewModel.Workspace.Monitor.Nodes.Count == 0 || summary.Content.Length == 0 || !File.Exists(export.ZipPath) || !File.ReadAllText(Path.Combine(export.DirectoryPath, "events.jsonl")).Contains("evt-mcp-1") || !File.ReadAllText(Path.Combine(export.DirectoryPath, "activity.jsonl")).Contains("TOOL_COMPLETED") || !themedDashboard.Contains("color-scheme:light") || !exportedDashboard.Contains("color-scheme:light") || !exportedDashboard.Contains("flow-svg"))
                     throw new InvalidOperationException("WPF 서버 제어·요약·내보내기 검증이 실패했습니다.");
                 await host.StopAsync().WaitAsync(TimeSpan.FromSeconds(5));
                 if (host.IsRunning || viewModel.Workspace.ExportCommand.CanExecute(null) || !File.ReadAllText(host.LogPath).Contains("server started") || !File.ReadAllText(host.LogPath).Contains("server stopped"))

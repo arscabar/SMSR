@@ -17,6 +17,7 @@ internal static class CodexMcpConfigSelfCheck
             if (!CodexMcpConfig.IsRegistered(path)
                 || !text.Contains("[mcp_servers.other]", StringComparison.Ordinal)
                 || !text.Contains("auth = \"oauth\"", StringComparison.Ordinal)
+                || !text.Contains("startup_timeout_sec = 30", StringComparison.Ordinal)
                 || !text.Contains("enabled = true", StringComparison.Ordinal)
                 || text.Contains("--mcp-stdio", StringComparison.Ordinal)
                 || backup is null || !File.Exists(backup))
@@ -32,7 +33,10 @@ internal static class CodexMcpConfigSelfCheck
             var hooksText = File.ReadAllText(hooksPath);
             if (!CodexAutoTrackingHook.IsRegistered(path, fakeExecutable)
                 || !hooksText.Contains("other.exe", StringComparison.Ordinal)
-                || hooksText.Split("SMSR automatic tracking", StringSplitOptions.None).Length != 2
+                || hooksText.Split("SMSR automatic tracking", StringSplitOptions.None).Length != 8
+                || !hooksText.Contains("PostToolUse", StringComparison.Ordinal)
+                || !hooksText.Contains("SubagentStart", StringComparison.Ordinal)
+                || !hooksText.Contains("SessionEnd", StringComparison.Ordinal)
                 || hooksText.Contains("record_lifecycle", StringComparison.Ordinal)
                 || hooksBackup is null || !File.Exists(hooksBackup))
                 throw new InvalidOperationException("Codex 요청형 그래프 훅 병합 검증이 실패했습니다.");
@@ -47,6 +51,8 @@ internal static class CodexMcpConfigSelfCheck
                 || !context.Contains("omit workflowId in the first save_plan", StringComparison.Ordinal)
                 || !context.Contains("projectName__yyyyMMdd-HHmmssfff", StringComparison.Ordinal)
                 || !context.Contains("SUCCESS, FAILED, or BLOCKED", StringComparison.Ordinal)
+                || !context.Contains("never batch updates at the end", StringComparison.Ordinal)
+                || !context.Contains("within 30 seconds only", StringComparison.Ordinal)
                 || !context.Contains("PLAN SMSR session-1", StringComparison.Ordinal)
                 || context.Contains("SECRET", StringComparison.Ordinal))
                 throw new InvalidOperationException("Codex 자동 추적 컨텍스트 검증이 실패했습니다.");

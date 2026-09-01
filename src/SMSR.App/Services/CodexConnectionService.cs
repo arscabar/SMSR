@@ -56,8 +56,8 @@ internal sealed class CodexConnectionService
         if (!registered || !tracking) return $"{name}의 연결과 그래프 추적 훅을 자동 구성합니다.";
         if (!StartsWithWindows()) return "MCP는 등록됐지만 자동 시작이 꺼져 있습니다. 한 번에 설정으로 복구하세요.";
         return _host.IsCodexAuthorized
-            ? "자동 설정 완료 · Codex를 다시 열고 새 그래프 추적 훅을 한 번 신뢰하세요."
-            : "자동 설정 완료 · Codex를 다시 연 뒤 OAuth와 그래프 추적 훅을 한 번 승인하세요.";
+            ? "OAuth 인증 유지됨 · 재인증할 필요가 없습니다. Codex의 첫 SMSR 요청을 기다리는 중입니다."
+            : "최초 연결 대기 · Codex를 다시 연 뒤 SMSR OAuth를 한 번만 승인하세요.";
     }
 
     private Task<CodexConnectionState> Result(bool found, bool registered, bool tracking, bool startup, string message)

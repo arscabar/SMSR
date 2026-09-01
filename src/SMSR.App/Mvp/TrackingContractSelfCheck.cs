@@ -10,6 +10,8 @@ internal static class TrackingContractSelfCheck
             || !SmsrMcpInstructions.Text.Contains("일반 작업은 어떤 SMSR 기록도", StringComparison.Ordinal)
             || !SmsrMcpInstructions.Text.Contains("workflowId를 생략", StringComparison.Ordinal)
             || !SmsrMcpInstructions.Text.Contains("yyyyMMdd-HHmmssfff", StringComparison.Ordinal)
+            || !SmsrMcpInstructions.Text.Contains("즉시 record_event", StringComparison.Ordinal)
+            || !SmsrMcpInstructions.Text.Contains("몰아서 보내지", StringComparison.Ordinal)
             || !SmsrMcpInstructions.Text.Contains("list_workflows", StringComparison.Ordinal)
             || !SmsrMcpInstructions.Text.Contains("최종 record_event", StringComparison.Ordinal))
             Fail("요청형 그래프 지침");

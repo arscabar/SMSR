@@ -13,20 +13,31 @@ internal static class DashboardLiveUpdates
             (() => {
               const stream = new EventSource('/api/events/stream?projectId={{project}}&workflowId={{workflow}}');
               let connected = false;
-              stream.addEventListener('state', async () => {
+              let refreshing = false;
+              let queued = false;
+              const refresh = async () => {
+                if (refreshing) { queued = true; return; }
+                refreshing = true;
+                do {
+                  queued = false;
+                  try {
+                    const response = await fetch(location.href, { cache: 'no-store' });
+                    if (!response.ok) continue;
+                    const next = new DOMParser().parseFromString(await response.text(), 'text/html');
+                    document.querySelector('header')?.replaceWith(next.querySelector('header'));
+                    document.querySelector('main')?.replaceWith(next.querySelector('main'));
+                    const currentAlert = document.querySelector('#alert');
+                    const nextAlert = next.querySelector('#alert');
+                    if (currentAlert && nextAlert) currentAlert.replaceWith(nextAlert);
+                    else if (currentAlert) currentAlert.remove();
+                    else if (nextAlert) document.querySelector('main')?.before(nextAlert);
+                  } catch { }
+                } while (queued);
+                refreshing = false;
+              };
+              stream.addEventListener('state', () => {
                 if (!connected) { connected = true; return; }
-                try {
-                  const response = await fetch(location.href, { cache: 'no-store' });
-                  if (!response.ok) return;
-                  const next = new DOMParser().parseFromString(await response.text(), 'text/html');
-                  document.querySelector('header')?.replaceWith(next.querySelector('header'));
-                  document.querySelector('main')?.replaceWith(next.querySelector('main'));
-                  const currentAlert = document.querySelector('#alert');
-                  const nextAlert = next.querySelector('#alert');
-                  if (currentAlert && nextAlert) currentAlert.replaceWith(nextAlert);
-                  else if (currentAlert) currentAlert.remove();
-                  else if (nextAlert) document.querySelector('main')?.before(nextAlert);
-                } catch { }
+                void refresh();
               });
               document.addEventListener('click', event => {
                 const link = event.target.closest?.('.flow-svg a');

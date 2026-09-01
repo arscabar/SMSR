@@ -6,7 +6,8 @@ public static class DashboardPage
         => Render(state, new WorkflowPlan(state.ProjectId, state.WorkflowId, []), events);
 
     public static string Render(WorkflowState state, WorkflowPlan plan, IReadOnlyList<RecentEvent> events,
-        string? theme = null, string? parentNodeId = null, string? selectedNodeId = null)
+        string? theme = null, string? parentNodeId = null, string? selectedNodeId = null,
+        IReadOnlyList<ActivityRecord>? activities = null)
     {
         var parentIds = plan.Nodes.Where(node => node.ParentNodeId is not null).Select(node => node.ParentNodeId).ToHashSet();
         var progressNodes = plan.Nodes.Where(node => !parentIds.Contains(node.NodeId)).ToArray();
@@ -15,6 +16,8 @@ public static class DashboardPage
         var progress = totalWeight == 0 ? 0 : progressNodes.Sum(node =>
         {
             var stateNode = states.GetValueOrDefault(node.NodeId);
+            if (DashboardHierarchy.DisplayStatus(node, plan.Nodes) == "PENDING"
+                && (stateNode?.Status ?? node.Status) != "PENDING") return 0;
             return node.Weight * WorkflowProgress.Value(stateNode?.Status ?? node.Status, stateNode?.ProgressPercentage);
         }) / totalWeight;
         var completed = plan.Nodes.Count(node => DashboardHierarchy.DisplayStatus(node, plan.Nodes) == "SUCCESS");
@@ -29,7 +32,7 @@ public static class DashboardPage
             <div class="summary"><span class="chip">완료 {{completed}} / {{plan.Nodes.Count}}</span><span class="chip">전체 진행률 {{progress}}%</span></div></header>
             {{alert}}<main><aside id="agents"><h2>에이전트</h2>{{DashboardPanels.RenderAgents(state, plan)}}</aside>
             <section id="flow"><div class="flow-heading"><div><h2>계층형 작업 흐름</h2>{{DashboardNavigation.Breadcrumb(state.ProjectId, state.WorkflowId, plan, parentNodeId)}}</div></div><div id="graph">{{DashboardGraph.Render(plan, state, parentNodeId)}}</div></section>
-            <aside id="details"><h2>작업 상세</h2>{{DashboardPanels.RenderDetails(state, plan, selectedNodeId, parentNodeId)}}<h2 class="history-title">최근 기록</h2>{{DashboardPanels.RenderHistory(events)}}</aside></main>
+            <aside id="details"><h2>작업 상세</h2>{{DashboardPanels.RenderDetails(state, plan, selectedNodeId, parentNodeId)}}<h2 class="history-title">실시간 활동</h2>{{DashboardPanels.RenderActivities(activities ?? [])}}<h2 class="history-title">상태 기록</h2>{{DashboardPanels.RenderHistory(events)}}</aside></main>
             {{DashboardLiveUpdates.Render(state.ProjectId, state.WorkflowId)}}
             </body></html>
             """;

@@ -44,9 +44,11 @@ public sealed class LocalServer(WebApplication app, EventStore events, WorkflowS
         var flows = new OAuthFlowStore();
         var oauthAudit = new OAuthAuditLog(Path.Combine(dataPath, "logs"));
         var notifier = new WorkflowEventNotifier();
+        var activity = new ActivityJsonlStore(dataPath);
+        var activityToken = new ActivityHookToken(dataPath);
         var connections = new McpConnectionTracker();
         var summaries = new WorkflowSummaryService(store);
-        var exports = new WorkflowExportService(store, Path.Combine(dataPath, "exports"), dashboardTheme);
+        var exports = new WorkflowExportService(store, activity, Path.Combine(dataPath, "exports"), dashboardTheme);
         var builder = WebApplication.CreateSlimBuilder();
         builder.WebHost.ConfigureKestrel(options => options.Listen(IPAddress.Loopback, port));
         builder.Services.AddSingleton(store);
@@ -60,7 +62,7 @@ public sealed class LocalServer(WebApplication app, EventStore events, WorkflowS
             .WithTools<PlanTools>()
             .WithTools<AgentTools>();
         var app = builder.Build();
-        LocalServerEndpoints.Map(app, oauth, flows, oauthAudit, connections, dashboardTheme);
+        LocalServerEndpoints.Map(app, oauth, flows, oauthAudit, connections, notifier, activity, activityToken, dashboardTheme);
         await app.StartAsync();
         return new(app, store, summaries, exports, notifier, oauth, connections);
     }

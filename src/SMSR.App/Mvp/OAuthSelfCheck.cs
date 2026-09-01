@@ -52,7 +52,17 @@ internal static partial class OAuthSelfCheck
             ["redirect_uri"] = redirect, ["code_verifier"] = verifier, ["resource"] = resource
         }));
         var tokenJson = await token.Content.ReadAsStringAsync();
-        var access = JsonDocument.Parse(tokenJson).RootElement.GetProperty("access_token").GetString()!;
+        var tokenRoot = JsonDocument.Parse(tokenJson).RootElement;
+        var access = tokenRoot.GetProperty("access_token").GetString()!;
+        var refresh = tokenRoot.GetProperty("refresh_token").GetString()!;
+        using var refreshed = await client.PostAsync($"{address}/oauth/token", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["grant_type"] = "refresh_token", ["client_id"] = clientId,
+            ["refresh_token"] = refresh, ["resource"] = resource
+        }));
+        var refreshedJson = await refreshed.Content.ReadAsStringAsync();
+        if (refreshed.IsSuccessStatusCode)
+            access = JsonDocument.Parse(refreshedJson).RootElement.GetProperty("access_token").GetString()!;
         using var initialize = new HttpRequestMessage(HttpMethod.Post, resource) { Content = Json(new
         {
             jsonrpc = "2.0", id = 1, method = "initialize", @params = new
@@ -75,6 +85,7 @@ internal static partial class OAuthSelfCheck
             "record_heartbeat", "get_state", "generate_summary", "save_summary", "export_workflow"];
         if (!registration.IsSuccessStatusCode || approval.StatusCode != HttpStatusCode.Redirect
             || !token.IsSuccessStatusCode || !initialized.IsSuccessStatusCode
+            || !refreshed.IsSuccessStatusCode || !refreshedJson.Contains("refresh_token", StringComparison.Ordinal)
             || !toolsResponse.IsSuccessStatusCode || expectedTools.Any(tool => !toolsJson.Contains($"\"{tool}\"")))
             Fail("OAuth 전체 흐름과 MCP 도구 목록");
         return access;

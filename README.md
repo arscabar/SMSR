@@ -45,7 +45,7 @@ enabled = true
 
 SMSR은 OAuth DCR과 PKCE를 지원하며 Codex에 15분 액세스 토큰과 회전형 갱신 토큰을 발급합니다. 등록 클라이언트와 토큰 해시는 현재 Windows 사용자만 복호화할 수 있는 DPAPI 파일에 저장합니다. Codex 설정에는 토큰을 기록하지 않습니다. SMSR 서버가 실행 중이어야 인증과 MCP 연결이 가능합니다.
 
-추적 규칙은 MCP `instructions`와 전역 `UserPromptSubmit` 훅으로 제공됩니다. 새 그래프의 첫 `save_plan`은 workflow ID를 생략하며 SMSR이 `프로젝트명__yyyyMMdd-HHmmssfff` 형식으로 생성합니다. 에이전트는 반환된 ID를 그래프가 끝날 때까지 그대로 사용합니다. 훅은 프로젝트와 현재 작업 ID만 개발자 컨텍스트에 추가하며 프롬프트 원문이나 활동 정보를 SMSR에 보내지 않습니다. SMSR은 에이전트를 호출하지 않고 그래프 요청 중인 메인·하위 에이전트만 `save_plan`, `record_heartbeat`, `record_event`로 상태를 직접 전송합니다. 이전 그래프는 `list_workflows`로 찾고 `get_plan`·`get_state`로 불러올 수 있습니다.
+추적 규칙은 MCP `instructions`와 사용자 전역 Codex 훅으로 제공됩니다. 새 그래프의 첫 `save_plan`은 workflow ID를 생략하며 SMSR이 `프로젝트명__yyyyMMdd-HHmmssfff` 형식으로 생성합니다. 에이전트는 반환된 ID를 그래프가 끝날 때까지 그대로 사용합니다. 그래프가 활성화된 동안 훅은 지원되는 로컬 도구 완료와 에이전트 lifecycle을 정규화해 `activity.jsonl`에 자동 추가하고 대시보드에 즉시 표시합니다. 프롬프트, 명령 원문, 도구 입력·출력은 저장하지 않으며 일반 작업은 기록하지 않습니다. 의미 기반 진행 상태는 메인·하위 에이전트가 `save_plan`, `record_heartbeat`, `record_event`로 직접 전송합니다. 이전 그래프는 `list_workflows`로 찾고 `get_plan`·`get_state`로 불러올 수 있습니다.
 
 `--self-test`는 DPAPI 사용자 프로필이 로드된 일반 사용자 세션에서 실행해야 합니다. 조건이 맞지 않으면 앱이 충돌하지 않고 상세 오류를 표시합니다.
 

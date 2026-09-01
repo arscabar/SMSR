@@ -1363,3 +1363,45 @@
 - 검증 결과: Release 빌드 경고 0·오류 0, 소스와 설치본의 config·tracking·OAuth·전체 self-check가 모두 종료 코드 0을 반환했다. 설치 UI의 515자 기본 문구에서 계층 작업, 선행 작업, 완료 기준, 3회 실패와 요청형 그래프 제한을 확인했다. 설치 프로그램 SHA-256은 `E41479A14D690B5E302CAFE141EEB5FFD2C63D4A6564E6AE524833558BC5F920`이다.
 - 남은 위험: 사용자가 직접 작성한 사용자 정의 프롬프트는 자동 교체하지 않는다.
 - 다음 조치: 설치본 검증 후 `main` 커밋과 푸시.
+## 2026-09-01 - 재부팅 후 MCP OAuth 연결 복구 검증
+
+- 변경 파일: `src/SMSR.App/Services/CodexMcpConfig.cs`, `CodexConnectionService.cs`, `CodexMcpConfigSelfCheck.cs`, `src/SMSR.App/Mvp/OAuthSelfCheck.cs`, `OAuthPersistenceSelfCheck.cs`, `MvpSelfCheck.cs`, `docs/mcp-connection.md`, `docs/installer-quickstart.md`
+- 변경 사유: PC 재부팅 후 서버 시작과 Codex MCP 초기화 경합을 줄이고, 인증 유지 상태를 재인증 필요 상태로 잘못 안내하지 않도록 한다.
+- 실행 명령: `dotnet build src/SMSR.App/SMSR.App.csproj -c Release`; Release 실행 파일의 `--self-test`, `--oauth-self-test`, `--codex-config-self-test`
+- 검증 결과: Release 빌드 경고·오류 0개. `--codex-config-self-test`, `--oauth-self-test`, `--self-test` 모두 종료 코드 0. OAuth 발급·갱신, DPAPI 상태 재로딩·토큰 회전, MCP 설정 초기화 대기값을 통과했다.
+- 남은 위험: 다른 Windows 사용자나 PC에는 DPAPI 및 Codex 보안 저장소를 복사할 수 없어 환경별 최초 OAuth 승인이 필요하다.
+- 다음 조치: Release 빌드와 자체 검증 후 설치본 재생성 시 변경을 포함한다.
+## 2026-09-01 - 순차 작업 진행률과 의존성 게이트
+
+- 변경 파일: `src/SMSR.App/Mvp/DashboardHierarchy.cs`, `DashboardGraph.cs`, `DashboardPage.cs`, `WorkflowDependencyGate.cs`, `WorkflowTools.cs`, `SmsrMcpInstructions.cs`, `MvpSelfCheck.cs`, `docs/mcp-connection.md`
+- 변경 사유: 선행 작업이 완료되지 않았는데 후행 노드가 동시에 `IN_PROGRESS`로 표시되는 문제를 방지한다.
+- 실행 명령: `dotnet build src/SMSR.App/SMSR.App.csproj -c Release`; Release 실행 파일의 `--self-test`, `--tracking-self-test`
+- 검증 결과: Release 빌드 경고·오류 0개. `--self-test`, `--tracking-self-test` 모두 종료 코드 0. 선행 `SUCCESS(100%)` 전 후행 상태 거부와 과거 잘못된 상태의 `PENDING 0%` 화면 보정을 통과했다.
+- 남은 위험: 의존성이 없는 노드는 의도된 병렬 작업으로 간주한다.
+- 다음 조치: 빌드와 자체 검증 후 설치본에 포함한다.
+## 2026-09-01 - 이벤트 기반 즉시 진행 갱신
+
+- 변경 파일: `src/SMSR.App/Mvp/SmsrMcpInstructions.cs`, `WorkflowTools.cs`, `DashboardLiveUpdates.cs`, `TrackingContractSelfCheck.cs`, `src/SMSR.App/Services/CodexAutoTrackingContext.cs`, `CodexMcpConfigSelfCheck.cs`, `.agents/skills/smsr-tracking/SKILL.md`, `docs/graph-tracking-guide.md`, `docs/mcp-connection.md`
+- 변경 사유: 에이전트가 계획과 한 번의 상태만 전송하고 작업 중 진행 변화를 누락하는 문제를 막고, 연속 이벤트를 브라우저가 순서대로 즉시 반영하도록 한다.
+- 실행 명령: `dotnet build src/SMSR.App/SMSR.App.csproj -c Release`; Release 실행 파일의 `--self-test`, `--tracking-self-test`, `--codex-config-self-test`
+- 검증 결과: Release 빌드 경고·오류 0개. `--self-test`, `--tracking-self-test`, `--codex-config-self-test` 모두 종료 코드 0. 즉시 이벤트 송신 계약, 30초 heartbeat 보완 규칙, 연속 SSE 화면 갱신 코드를 통과했다.
+- 남은 위험: SMSR은 수동 수신 서버이므로 에이전트가 보내지 않은 내부 작업 진행률을 임의로 추측하지 않는다.
+- 다음 조치: 빌드와 자체 검증 후 새 설치본에 포함한다.
+
+## 2026-09-01 - 활성 그래프 Codex 활동 JSONL 자동 기록
+
+- 변경 파일: `src/SMSR.App/Mvp/Activity*.cs`, `LocalServer.cs`, `LocalServerEndpoints.cs`, `DashboardPage.cs`, `DashboardPanels.cs`, `WorkflowExportService.cs`, `MvpSelfCheck.cs`, `src/SMSR.App/Services/ActivityHookClient.cs`, `CodexActivity*.cs`, `CodexHookRunner.cs`, `CodexTrackingResolver.cs`, `HookJson.cs`, `TrackingSessionStore.cs`, Codex 훅 등록 파일, 추적·설치 문서
+- 변경 사유: 그래프가 활성화된 동안 에이전트 lifecycle과 지원되는 로컬 도구 완료를 매번 정규화된 JSONL로 남기고 대시보드에 즉시 표시한다.
+- 실행 명령: `dotnet build src/SMSR.App/SMSR.App.csproj -c Release`; Release 실행 파일의 `--self-test`, `--codex-config-self-test`, `--tracking-self-test`
+- 검증 결과: 1차 Release 빌드는 새 파일의 명시적 `System.IO`·`System.Net.Http` using 누락으로 실패했고 이를 수정했다. 이후 빌드 경고·오류 0개, config·tracking·OAuth·전체 자체 검증 모두 종료 코드 0을 반환했다. 활성 세션 생성, 하위 에이전트 상속, 비활성 세션 무기록, 원시 도구 입력 제외, 보호된 활동 API, SSE 알림, 대시보드·내보내기 JSONL을 확인했다. Release 실행 파일의 실제 훅 stdin 왕복도 종료 코드 0이며 개발자 컨텍스트 반환과 프롬프트 원문 미노출을 확인했다.
+- 남은 위험: 호스팅 웹 검색과 모델 내부 추론은 Codex 훅 범위 밖이므로 기록하지 않는다. 훅 정의가 변경된 이번 업데이트는 Codex `/hooks`에서 한 번 다시 신뢰해야 한다.
+- 다음 조치: 실제 설치 실행 파일로 훅 stdin 왕복과 브라우저 연속 갱신을 최종 확인한다.
+
+## 2026-09-01 - 진행 집계와 활동 기록 코드 검토
+
+- 변경 파일: `DashboardHierarchy.cs`, `WorkflowDependencyGate.cs`, `ActivityJsonlStore.cs`, `ActivityFileLock.cs`, `ActivityEndpoints.cs`, `CodexActivityHook.cs`, `CodexActivityClassifier.cs`, `CodexHookRunner.cs`, `TrackingSessionStore.cs`, 활동·MVP 자체 검사
+- 변경 사유: 하위 작업 미완료 상위 노드의 조기 성공, 훅 재전송 중복, JSONL 기록과 내보내기의 동시 접근, 종료된 하위 에이전트와 오래된 세션 매핑 잔존 가능성을 제거하고 활동 기록 장애를 Codex 본 작업과 격리한다.
+- 실행 명령: Release `dotnet build`; `dotnet test`; Release 실행 파일의 config·tracking·OAuth·전체 self-check; 실제 `--smsr-auto-track-hook` stdin/stdout 왕복; 변경·비밀·절대경로 정적 검색; 새 코드 파일 대상 `dotnet format whitespace --verify-no-changes`
+- 검증 결과: Release 빌드 경고 0·오류 0, 자체 검사 4종과 실제 훅 왕복 모두 종료 코드 0. 하위 작업 미완료 상위 `SUCCESS` 거부, 기존 조상 의존 그래프 호환, 활동 ID 중복 제거, 16개 동시 JSONL 기록과 잠금 내보내기, 하위 에이전트 매핑 제거와 30일 만료, 활동 기록 오류 격리, 원시 입력 미저장을 확인했다. 새 코드 파일의 whitespace 검증도 통과했다.
+- 남은 위험: 저장소 전체 포맷 검증은 이번 변경 밖의 기존 `AssemblyInfo.cs`, 이벤트 저장소, OAuth 자체 검사 압축 스타일을 보고한다. 호스팅 도구와 모델 내부 추론은 Codex 훅이 제공하지 않아 기록할 수 없다.
+- 다음 조치: 커밋 후 `origin/main`에 푸시한다.
