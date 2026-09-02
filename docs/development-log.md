@@ -1441,3 +1441,12 @@
 - 검증 결과: 새 workflow ID는 `yyyyMMdd-HHmmssfff__프로젝트명__대표작업명`으로 생성되고, 존재하지 않는 UUID를 첫 `save_plan`에 전달해도 읽기 쉬운 ID로 교체된다. 기존 UUID 데이터는 ID를 변경하지 않고 WPF 목록과 대시보드에 최상위 작업 제목을 함께 표시한다. 활성 계획 재저장 시 기존 노드 진행률 유지, 새 노드 `PENDING`, 입력 순서 반영, 제거 노드 현재 상태 정리와 SSE 알림을 확인했다. `SUCCESS` 노드 재개·변경·하위 작업 추가와 종료 그래프 변경은 거부된다. 빌드 경고·오류 0개, 자체 검사 4종과 설치본 stdio 도구 9개·서버 `ready`를 확인했다. 설치·publish EXE SHA-256은 `FFA3AC4C7088DABCA7A3916737EE1EC75F159BA976B65FE7D24C27023DA4D81D`, Setup SHA-256은 `6A1FF34134E6B87ABD90091455007A4872D33431397A4B6C62774F389207AFE5`이다.
 - 남은 위험: 기존 UUID는 이벤트·JSONL·외부 링크 참조를 깨지 않기 위해 물리적으로 이름을 바꾸지 않는다. `skill-creator`의 `quick_validate.py`는 번들 Python에 PyYAML이 없어 실행되지 않았으며, 동일 검사항목인 frontmatter 구분자·허용 이름·description·TODO 부재를 수동 확인했다.
 - 다음 조치: 실제 새 그래프 요청에서 생성 ID와 동적 계획 갱신 표시를 사용자 흐름으로 확인한다.
+
+## 2026-09-02 - 워크플로우 계획 경계 회귀 테스트 보고
+
+- 변경 파일: `src/SMSR.App/Mvp/TrackingContractSelfCheck.cs`, `src/SMSR.App/Mvp/MvpSelfCheck.cs`, `docs/test-report-2026-09-02-workflow-plan.md`, `README.md`, `docs/development-log.md`
+- 변경 사유: 읽기 쉬운 workflow ID, 동적 계획 변경, 완료 노드 불변 처리의 실제 테스트 경과와 결과를 재현 가능하게 남기고, 직렬화 문자열·서버 DB 경계에 의존하던 자체 검사 오판을 제거한다.
+- 실행 명령: Release `dotnet build`, `dotnet test`, config·tracking·OAuth·전체 self-check, 소스와 설치 EXE stdio `initialize`·`tools/list`, 설치 프로그램 빌드·무인 업그레이드, 설치본 자체 검사 4종, `/api/health`, 해시 확인
+- 검증 결과: 최초 tracking 검사 3회와 종합 검사 3회에서 테스트 판정 오류가 이어지자 재실행을 중단하고 원인·시도·새 계획을 테스트 보고서에 기록했다. 실패 원인은 한글 JSON·HTML 원문 비교, 동적 계획 하위 노드 수 기대값, 별도 서버 DB의 초기 목록 기대값이었다. 구조화 판정과 테스트 데이터 경계를 수정한 뒤 Release 빌드 경고 0·오류 0, 자체 검사 4종, stdio protocol `2025-11-25`와 도구 9개, 설치본 자체 검사 4종, 서버 `ready`를 모두 확인했다. Setup SHA-256은 `3D9352C32BB9D3C9662207370F2FEC9943B325818E3AC6E31A2B2A84FF09FD03`, publish·설치 EXE SHA-256은 `A6F43FBC1727D0AEB80929634B707C6BD13A1BADA03328905880192F18C69884`로 일치한다.
+- 남은 위험: 별도 단위 테스트 프로젝트가 없고 현재 PC·사용자에서만 설치를 확인했다. 다른 PC의 최초 설치·DPAPI 설정과 다양한 DPI의 시각 검증은 별도 수행이 필요하다.
+- 다음 조치: 실제 새 그래프 작업에서 100% 완료 노드 이후 후속 작업이 새 노드 또는 새 그래프로 생성되는 사용자 흐름을 확인한다.

@@ -79,6 +79,7 @@ Self-check는 MCP `save_plan`·`record_event`·`record_heartbeat`·`list_workflo
 - [Windows 설치 프로그램](docs/installer-quickstart.md)
 - [MCP 연결 및 이벤트 기록](docs/mcp-connection.md)
 - [선택형 SMSR Codex 로컬 추적](docs/smsr-codex-local.md)
+- [워크플로우 식별·동적 계획 경계 테스트 보고서](docs/test-report-2026-09-02-workflow-plan.md)
 - [개발 이력](docs/development-log.md)
 - [WPF MCP 작업 관제 앱 계획서](docs/wpf-mcp-dashboard-project-plan.md)
 - [WPF MCP 작업 관제 앱 HTML 계획서](docs/wpf-mcp-dashboard-project-plan.html)

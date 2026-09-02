@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text.Json;
 
 namespace SMSR.App.Mvp;
 
@@ -26,9 +27,13 @@ internal static class TrackingContractSelfCheck
             if (generatedId != "20260831-154207123__Apple-Game__점심-추천-웹서버") Fail("workflow ID 자동 생성");
             var opaqueResult = await new PlanTools(store, new()).SavePlan("Apple Game",
                 [new("root", "점심 추천 웹서버")], "01a05b48-d586-7052-bb7c-eb258bf3f06d");
-            if (!opaqueResult.Contains("replacedOpaqueId\":true", StringComparison.Ordinal)
-                || opaqueResult.Contains("01a05b48-d586-7052-bb7c-eb258bf3f06d", StringComparison.Ordinal)
-                || !opaqueResult.Contains("Apple-Game__점심-추천-웹서버", StringComparison.Ordinal))
+            using var opaqueDocument = JsonDocument.Parse(opaqueResult);
+            var opaqueRoot = opaqueDocument.RootElement;
+            var opaqueWorkflowId = opaqueRoot.GetProperty("workflowId").GetString();
+            if (!opaqueRoot.GetProperty("replacedOpaqueId").GetBoolean()
+                || opaqueWorkflowId == "01a05b48-d586-7052-bb7c-eb258bf3f06d"
+                || opaqueWorkflowId is null
+                || !opaqueWorkflowId.EndsWith("Apple-Game__점심-추천-웹서버", StringComparison.Ordinal))
                 Fail("불투명 session ID 교체");
             await store.SavePlanAsync("SMSR", "task-1",
             [
@@ -86,14 +91,14 @@ internal static class TrackingContractSelfCheck
                 [.. completedDefinitions, new("late", "완료 후 추가")], "task-1");
             var childUpdate = await planTools.SavePlan("SMSR",
                 [.. completedDefinitions, new("late-child", "완료 노드 하위 추가", ParentNodeId: "contract")], "task-1");
-            if (!lateUpdate.Contains("완료된 그래프", StringComparison.Ordinal)
-                || !childUpdate.Contains("완료된 노드 아래", StringComparison.Ordinal)
+            if (!ReadError(lateUpdate).Contains("완료된 그래프", StringComparison.Ordinal)
+                || !ReadError(childUpdate).Contains("완료된 노드 아래", StringComparison.Ordinal)
                 || WorkflowDependencyGate.Validate(request with { EventId = "reopen", Status = "IN_PROGRESS" }, completedPlan) is null)
                 Fail("완료 노드·그래프 불변 처리");
 
             var root = DashboardPage.Render(state, plan, recent);
             var child = DashboardPage.Render(state, plan, recent, null, "implementation", "contract");
-            if (!root.Contains("하위 작업 1개") || !root.Contains("parentNodeId=implementation") || !root.Contains("implementation · lead · IN_PROGRESS")
+            if (!root.Contains("하위 작업 2개") || !root.Contains("parentNodeId=implementation") || !root.Contains("implementation · lead · IN_PROGRESS")
                 || !child.Contains("계약 검사 통과") || !child.Contains("src/SMSR.App/Mvp/Contracts.cs"))
                 Fail("계층 드릴다운 렌더링");
         }
@@ -103,6 +108,9 @@ internal static class TrackingContractSelfCheck
                 if (File.Exists(file)) File.Delete(file);
         }
     }
+
+    private static string ReadError(string json)
+        => JsonDocument.Parse(json).RootElement.GetProperty("error").GetString() ?? string.Empty;
 
     private static void Fail(string step) => throw new InvalidOperationException($"{step} 검증이 실패했습니다.");
 }

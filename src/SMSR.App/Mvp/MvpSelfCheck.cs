@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
 using SMSR.App.Infrastructure;
 using SMSR.App.Services;
 using SMSR.App.ViewModels;
@@ -85,7 +86,7 @@ public static class MvpSelfCheck
             await store.SavePlanAsync("demo", opaqueWorkflow, [new("readable", "사람이 읽는 기존 작업")]);
             var opaquePlan = await store.GetPlanAsync("demo", opaqueWorkflow);
             var opaquePage = DashboardPage.Render(new("demo", opaqueWorkflow, []), opaquePlan, []);
-            if (!opaquePage.Contains($"사람이 읽는 기존 작업 · {opaqueWorkflow}", StringComparison.Ordinal))
+            if (!WebUtility.HtmlDecode(opaquePage).Contains($"사람이 읽는 기존 작업 · {opaqueWorkflow}", StringComparison.Ordinal))
                 throw new InvalidOperationException("기존 UUID 대시보드 표시명 검증이 실패했습니다.");
             var hierarchicalPlan = await store.GetPlanAsync("demo", "wf-1");
             if (hierarchicalPlan.Nodes.Single(node => node.NodeId == "node-1").ParentNodeId != "group") throw new InvalidOperationException("계층 계획 저장이 실패했습니다.");
@@ -147,6 +148,12 @@ public static class MvpSelfCheck
                     .CallAsync("list_workflows", new { projectId = "demo" });
                 var restartedBridgeWorkflows = await new McpHttpGateway(server.Address, serverPath)
                     .CallAsync("list_workflows", new { projectId = "demo" });
+                using var bridgeDocument = JsonDocument.Parse(bridgeWorkflows);
+                using var restartedBridgeDocument = JsonDocument.Parse(restartedBridgeWorkflows);
+                var bridgeCatalogRead = bridgeDocument.RootElement.GetProperty("projectId").GetString() == "demo"
+                    && bridgeDocument.RootElement.GetProperty("workflows").GetArrayLength() == 0
+                    && restartedBridgeDocument.RootElement.GetProperty("projectId").GetString() == "demo"
+                    && restartedBridgeDocument.RootElement.GetProperty("workflows").GetArrayLength() == 0;
                 var oauthToken = await OAuthSelfCheck.RunAsync(server.Address);
                 var stateResponse = await client.GetAsync($"{server.Address}/api/state?projectId=demo&workflowId=wf-1");
                 var dashboardResponse = await client.GetAsync($"{server.Address}/dashboard?projectId=demo&workflowId=wf-1");
@@ -199,18 +206,42 @@ public static class MvpSelfCheck
                 var recordedState = await client.GetStringAsync($"{server.Address}/api/state?projectId=demo&workflowId=wf-1");
                 var recordedPlan = await client.GetStringAsync($"{server.Address}/api/plan?projectId=demo&workflowId=wf-1");
                 var recordedDashboard = await client.GetStringAsync($"{server.Address}/dashboard?projectId=demo&workflowId=wf-1");
+                using var stateDocument = JsonDocument.Parse(recordedState);
+                using var planDocument = JsonDocument.Parse(recordedPlan);
+                var stateRecorded = stateDocument.RootElement.GetProperty("nodes").EnumerateArray().Any(node =>
+                    node.GetProperty("nodeId").GetString() == "mcp-node" && node.GetProperty("agentRole").GetString() == "implementer");
+                var planRecorded = planDocument.RootElement.GetProperty("nodes").EnumerateArray().Any(node =>
+                    node.GetProperty("title").GetString() == "MCP 계획 노드")
+                    && planDocument.RootElement.GetProperty("nodes").EnumerateArray().Any(node =>
+                        node.GetProperty("nodeId").GetString() == "mcp-final" && node.GetProperty("parentNodeId").GetString() == "mcp-node");
+                var decodedDashboard = WebUtility.HtmlDecode(recordedDashboard);
                 using var sseTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
                 var changedEvent = await streamReader.ReadLineAsync(sseTimeout.Token);
                 if (!recordResponse.IsSuccessStatusCode) throw new InvalidOperationException($"MCP record_event 호출 실패: {recordJson}");
-                if (!healthResponse.IsSuccessStatusCode || denied.StatusCode != HttpStatusCode.Unauthorized || !bridgeAnnounced || !server.HasActiveMcpClient
-                    || !bridgeWorkflows.Contains("wf-1") || !restartedBridgeWorkflows.Contains("wf-1")
-                    || !stateResponse.IsSuccessStatusCode || !dashboardResponse.IsSuccessStatusCode || !streamResponse.IsSuccessStatusCode || initialEvent != "event: state" || initialData != "data: changed" || changedEvent != "event: state" || !activityResponse.IsSuccessStatusCode || !activityJson.Contains("TOOL_COMPLETED") || !recordResponse.IsSuccessStatusCode || !planResponse.IsSuccessStatusCode || !listResponse.IsSuccessStatusCode || !recordJson.Contains("evt-mcp-1") || !planJson.Contains("nodeCount") || !listJson.Contains("wf-1") || !listJson.Contains("ACTIVE") || !recordedState.Contains("mcp-node") || !recordedState.Contains("implementer") || !recordedPlan.Contains("MCP 계획 노드") || !recordedPlan.Contains("parentNodeId") || !recordedDashboard.Contains("계층형 작업 흐름") || !recordedDashboard.Contains("id=\"agents\"") || !recordedDashboard.Contains("실시간 활동") || !recordedDashboard.Contains("TOOL_COMPLETED") || !recordedDashboard.Contains("flow-svg") || !recordedDashboard.Contains("MCP 계획 노드") || recordedDashboard.Contains("http-equiv=\"refresh\"") || !recordedDashboard.Contains("new EventSource") || !recordedDashboard.Contains("smsr-graph-nav") || !recordedDashboard.Contains("getAttribute('href')"))
-                    throw new InvalidOperationException("로컬 서버 검증이 실패했습니다.");
+                var localChecks = new (string Name, bool Passed)[]
+                {
+                    ("health-auth", healthResponse.IsSuccessStatusCode && denied.StatusCode == HttpStatusCode.Unauthorized),
+                    ("bridge", bridgeAnnounced && server.HasActiveMcpClient && bridgeCatalogRead),
+                    ("initial-http-sse", stateResponse.IsSuccessStatusCode && dashboardResponse.IsSuccessStatusCode && streamResponse.IsSuccessStatusCode && initialEvent == "event: state" && initialData == "data: changed" && changedEvent == "event: state"),
+                    ("activity", activityResponse.IsSuccessStatusCode && activityJson.Contains("TOOL_COMPLETED") && recordedDashboard.Contains("TOOL_COMPLETED")),
+                    ("mcp-http", recordResponse.IsSuccessStatusCode && planResponse.IsSuccessStatusCode && listResponse.IsSuccessStatusCode),
+                    ("mcp-payload", recordJson.Contains("evt-mcp-1") && planJson.Contains("nodeCount") && listJson.Contains("wf-1") && listJson.Contains("ACTIVE")),
+                    ("state", stateRecorded),
+                    ("plan", planRecorded),
+                    ("dashboard-content", decodedDashboard.Contains("계층형 작업 흐름") && recordedDashboard.Contains("id=\"agents\"") && decodedDashboard.Contains("실시간 활동") && recordedDashboard.Contains("flow-svg") && decodedDashboard.Contains("MCP 계획 노드")),
+                    ("dashboard-live", !recordedDashboard.Contains("http-equiv=\"refresh\"") && recordedDashboard.Contains("new EventSource") && recordedDashboard.Contains("smsr-graph-nav") && recordedDashboard.Contains("getAttribute('href')"))
+                };
+                var failedChecks = localChecks.Where(check => !check.Passed).Select(check => check.Name).ToArray();
+                if (failedChecks.Length > 0)
+                    throw new InvalidOperationException($"로컬 서버 검증 실패: {string.Join(", ", failedChecks)}. plan={planJson}; event={recordJson}; list={listJson}");
             }
             var settings = new AppSettingsService(serverPath);
             await using (var host = new LocalServerHost(serverPath, 0, () => settings.Current.DashboardTheme))
             {
                 await host.StartAsync();
+                var legacyStore = new EventStore(Path.Combine(serverPath, "smsr.db"));
+                await legacyStore.InitializeAsync();
+                await legacyStore.SavePlanAsync("demo", opaqueWorkflow, [new("readable", "사람이 읽는 기존 작업")]);
                 await OAuthSelfCheck.RunAsync(host.Address);
                 var platform = new TestPlatformActions();
                 var viewModel = new MainWindowViewModel(host, platform, settings);
