@@ -1459,3 +1459,12 @@
 - 검증 결과: 앱·설치 버전 `1.1.0.0`, 빌드 경고 0·오류 0, 소스와 설치본 자체 검사 4종 종료 코드 0, 설치본 stdio protocol `2025-11-25`와 도구 9개, `127.0.0.1:49783` 서버 `ready`를 확인했다. Setup SHA-256은 `FFB3EFDB6C51C95D2F14D56E67AF5196451C745D77705B4882ADD8F1C7F8D374`, publish·설치 EXE SHA-256은 `4F03D9BEF975F5EA2227BCBE72F0B98BE755CE074BB386688170661A44DF9B6A`로 일치한다.
 - 남은 위험: 다른 Windows PC·사용자의 최초 설치와 DPAPI 설정 생성은 대상 환경에서 확인해야 한다.
 - 다음 조치: 버전 커밋과 `v1.1.0` 태그를 푸시하고 GitHub 릴리즈에 설치 파일을 첨부한다.
+
+## 2026-09-02 - 완료 그래프의 관련 후속 작업 반영
+
+- 변경 파일: `WorkflowPlanUpdate.cs`, `PlanTools.cs`, `TrackingContractSelfCheck.cs`, `SmsrMcpInstructions.cs`, `CodexAutoTrackingContext.cs`, `CodexMcpConfigSelfCheck.cs`, `.agents/skills/smsr-tracking/SKILL.md`, README와 그래프·MCP·로컬 추적·테스트 문서
+- 변경 사유: 그래프의 모든 노드가 100% 완료된 뒤 에이전트가 같은 요청의 보완 작업을 계속해도 서버가 계획 갱신을 거부해, 화면이 완료 상태에 머무는 불일치를 해소한다.
+- 실행 명령: `dotnet build SMSR.slnx -c Release`; `dotnet test SMSR.slnx -c Release --no-build --verbosity:minimal`; Release DLL의 `--codex-config-self-test`, `--tracking-self-test`, `--oauth-self-test`, `--self-test`; 변경 C# 파일 대상 `dotnet format whitespace --verify-no-changes`; `git diff --check`
+- 검증 결과: 빌드 경고 0·오류 0, 테스트와 자체 검사 4종, 포맷·diff 검사가 모두 종료 코드 0을 반환했다. 완료 노드를 보존하면서 연결된 후속 노드를 추가하면 workflow가 다시 `ACTIVE`가 되고 시작 이벤트 후 대시보드는 `완료 3 / 4`와 100% 미만 진행률을 표시한다. 완료 노드 재개·변경·하위 삽입과 연결 없는 별도 작업은 거부되며 새 그래프 자동 생성은 유지된다.
+- 남은 위험: 관련 작업과 별도 작업의 의미 판단은 에이전트가 수행한다. SMSR은 연결 관계와 완료 이력 불변성은 검증하지만 도구 활동만 보고 업무 제목을 임의 생성하지 않는다. 실행 중인 설치본에는 다음 배포 버전을 설치해야 변경 계약이 반영된다.
+- 다음 조치: 커밋 후 `origin/main`에 푸시하고 다음 패치 설치본에 포함한다.

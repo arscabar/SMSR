@@ -53,6 +53,8 @@ internal static class CodexMcpConfigSelfCheck
                 || !context.Contains("omit workflowId in the first save_plan", StringComparison.Ordinal)
                 || !context.Contains("yyyyMMdd-HHmmssfff__project__task", StringComparison.Ordinal)
                 || !context.Contains("Never reopen, edit, or add children to a SUCCESS node", StringComparison.Ordinal)
+                || !context.Contains("Start an unrelated request as a new graph", StringComparison.Ordinal)
+                || !context.Contains("before any other tool call", StringComparison.Ordinal)
                 || !context.Contains("SUCCESS, FAILED, or BLOCKED", StringComparison.Ordinal)
                 || !context.Contains("never batch updates at the end", StringComparison.Ordinal)
                 || !context.Contains("within 30 seconds only", StringComparison.Ordinal)

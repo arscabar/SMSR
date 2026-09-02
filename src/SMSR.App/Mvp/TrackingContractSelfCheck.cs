@@ -14,7 +14,9 @@ internal static class TrackingContractSelfCheck
             || !SmsrMcpInstructions.Text.Contains("즉시 record_event", StringComparison.Ordinal)
             || !SmsrMcpInstructions.Text.Contains("몰아서 보내지", StringComparison.Ordinal)
             || !SmsrMcpInstructions.Text.Contains("list_workflows", StringComparison.Ordinal)
-            || !SmsrMcpInstructions.Text.Contains("최종 record_event", StringComparison.Ordinal))
+            || !SmsrMcpInstructions.Text.Contains("최종 record_event", StringComparison.Ordinal)
+            || !SmsrMcpInstructions.Text.Contains("모든 노드가 완료된 뒤", StringComparison.Ordinal)
+            || !SmsrMcpInstructions.Text.Contains("무관한 별도 요청", StringComparison.Ordinal))
             Fail("요청형 그래프 지침");
 
         var path = Path.Combine(Path.GetTempPath(), $"smsr-tracking-{Guid.NewGuid():N}.db");
@@ -87,14 +89,32 @@ internal static class TrackingContractSelfCheck
             var completedDefinitions = completedPlan.Nodes.Select(node => new PlanNodeDefinition(node.NodeId,
                 node.Title, node.Weight, node.DependsOn, node.ParentNodeId, node.AssignedAgentId,
                 node.AgentRole, node.CompletionCriteria)).ToArray();
-            var lateUpdate = await planTools.SavePlan("SMSR",
-                [.. completedDefinitions, new("late", "완료 후 추가")], "task-1");
             var childUpdate = await planTools.SavePlan("SMSR",
                 [.. completedDefinitions, new("late-child", "완료 노드 하위 추가", ParentNodeId: "contract")], "task-1");
-            if (!ReadError(lateUpdate).Contains("완료된 그래프", StringComparison.Ordinal)
-                || !ReadError(childUpdate).Contains("완료된 노드 아래", StringComparison.Ordinal)
-                || WorkflowDependencyGate.Validate(request with { EventId = "reopen", Status = "IN_PROGRESS" }, completedPlan) is null)
-                Fail("완료 노드·그래프 불변 처리");
+            var disconnected = await planTools.SavePlan("SMSR",
+                [.. completedDefinitions, new("unrelated", "별도 작업")], "task-1");
+            var lateUpdate = await planTools.SavePlan("SMSR",
+                [.. completedDefinitions, new("late", "관련 후속 작업", DependsOn: ["implementation"])], "task-1");
+            var followUpPlan = await store.GetPlanAsync("SMSR", "task-1");
+            var followUpCatalog = (await store.GetWorkflowCatalogAsync("SMSR")).Single(item => item.WorkflowId == "task-1");
+            var lateRequest = request with { EventId = "late-start", NodeId = "late", Status = "IN_PROGRESS", ProgressPercentage = 5 };
+            if (!ReadError(childUpdate).Contains("완료된 노드 아래", StringComparison.Ordinal)
+                || !ReadError(disconnected).Contains("별도 작업", StringComparison.Ordinal)
+                || lateUpdate.Contains("error", StringComparison.OrdinalIgnoreCase)
+                || followUpPlan.Nodes.Count != completedPlan.Nodes.Count + 1
+                || followUpPlan.Nodes.Single(node => node.NodeId == "late").Status != "PENDING"
+                || followUpCatalog.Status != "ACTIVE"
+                || WorkflowDependencyGate.Validate(lateRequest, followUpPlan) is not null
+                || WorkflowDependencyGate.Validate(request with { EventId = "reopen", Status = "IN_PROGRESS" }, followUpPlan) is null)
+                Fail("완료 이력 보호·관련 후속 노드 추가");
+            if (!await store.RecordAsync(lateRequest)) Fail("후속 노드 시작 기록");
+            var followUpState = await store.GetStateAsync("SMSR", "task-1");
+            var followUpPage = DashboardPage.Render(followUpState, followUpPlan,
+                await store.GetRecentEventsAsync("SMSR", "task-1"));
+            if (followUpState.Nodes.Single(node => node.NodeId == "late").Status != "IN_PROGRESS"
+                || followUpPage.Contains("전체 진행률 100%", StringComparison.Ordinal)
+                || !followUpPage.Contains("완료 3 / 4", StringComparison.Ordinal))
+                Fail("완료 그래프 후속 진행 표시");
 
             var root = DashboardPage.Render(state, plan, recent);
             var child = DashboardPage.Render(state, plan, recent, null, "implementation", "contract");

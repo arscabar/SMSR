@@ -7,7 +7,7 @@ namespace SMSR.App.Mvp;
 [McpServerToolType]
 public sealed class PlanTools(EventStore events, WorkflowEventNotifier notifier)
 {
-    [McpServerTool(Name = "save_plan"), Description("새 그래프에서는 workflowId를 생략하면 날짜시간·프로젝트·작업명으로 ID를 생성합니다. 진행 중인 같은 workflowId로 다시 호출하면 입력 순서와 노드 추가·변경을 반영합니다.")]
+    [McpServerTool(Name = "save_plan"), Description("새 그래프에서는 workflowId를 생략하면 날짜시간·프로젝트·작업명으로 ID를 생성합니다. 같은 작업의 계획 변경이나 완료 후 관련 후속 작업은 같은 workflowId로 호출해 입력 순서와 새 노드를 반영합니다.")]
     public async Task<string> SavePlan(string projectId, IReadOnlyList<PlanNodeDefinition> nodes, string? workflowId = null)
     {
         var opaqueNewId = Guid.TryParse(workflowId, out _) && !await events.WorkflowExistsAsync(projectId, workflowId!);
