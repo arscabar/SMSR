@@ -1450,3 +1450,12 @@
 - 검증 결과: 최초 tracking 검사 3회와 종합 검사 3회에서 테스트 판정 오류가 이어지자 재실행을 중단하고 원인·시도·새 계획을 테스트 보고서에 기록했다. 실패 원인은 한글 JSON·HTML 원문 비교, 동적 계획 하위 노드 수 기대값, 별도 서버 DB의 초기 목록 기대값이었다. 구조화 판정과 테스트 데이터 경계를 수정한 뒤 Release 빌드 경고 0·오류 0, 자체 검사 4종, stdio protocol `2025-11-25`와 도구 9개, 설치본 자체 검사 4종, 서버 `ready`를 모두 확인했다. Setup SHA-256은 `3D9352C32BB9D3C9662207370F2FEC9943B325818E3AC6E31A2B2A84FF09FD03`, publish·설치 EXE SHA-256은 `A6F43FBC1727D0AEB80929634B707C6BD13A1BADA03328905880192F18C69884`로 일치한다.
 - 남은 위험: 별도 단위 테스트 프로젝트가 없고 현재 PC·사용자에서만 설치를 확인했다. 다른 PC의 최초 설치·DPAPI 설정과 다양한 DPI의 시각 검증은 별도 수행이 필요하다.
 - 다음 조치: 실제 새 그래프 작업에서 100% 완료 노드 이후 후속 작업이 새 노드 또는 새 그래프로 생성되는 사용자 흐름을 확인한다.
+
+## 2026-09-02 - SMSR v1.1.0 릴리즈 준비
+
+- 변경 파일: `src/SMSR.App/SMSR.App.csproj`, `docs/installer-quickstart.md`, `docs/releases/v1.1.0.md`, `README.md`, `docs/development-log.md`
+- 변경 사유: `v1.0.0` 이후 stdio 자동 연결·서버 복구·활동 추적·읽기 쉬운 workflow ID·동적 계획 경계 변경을 하나의 설치 릴리즈로 배포한다.
+- 실행 명령: Release 빌드, config·tracking·OAuth·전체 self-check, 설치 프로그램 빌드, 무인 업그레이드, 설치 실행 파일 자체 검사 4종, stdio `initialize`·`tools/list`, `/api/health`, 버전·해시 확인
+- 검증 결과: 앱·설치 버전 `1.1.0.0`, 빌드 경고 0·오류 0, 소스와 설치본 자체 검사 4종 종료 코드 0, 설치본 stdio protocol `2025-11-25`와 도구 9개, `127.0.0.1:49783` 서버 `ready`를 확인했다. Setup SHA-256은 `FFB3EFDB6C51C95D2F14D56E67AF5196451C745D77705B4882ADD8F1C7F8D374`, publish·설치 EXE SHA-256은 `4F03D9BEF975F5EA2227BCBE72F0B98BE755CE074BB386688170661A44DF9B6A`로 일치한다.
+- 남은 위험: 다른 Windows PC·사용자의 최초 설치와 DPAPI 설정 생성은 대상 환경에서 확인해야 한다.
+- 다음 조치: 버전 커밋과 `v1.1.0` 태그를 푸시하고 GitHub 릴리즈에 설치 파일을 첨부한다.

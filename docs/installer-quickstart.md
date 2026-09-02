@@ -32,7 +32,7 @@ Windows `설정 > 앱 > 설치된 앱 > SMSR > 제거`에서 삭제할 수 있�
 ## 무인 설치
 
 ```powershell
-SMSR-Setup-1.0.0.0-win-x64.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
+SMSR-Setup-1.1.0.0-win-x64.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
 ```
 
 설치 로그가 필요하면 `/LOG`를 추가합니다. 현재 배포본은 코드 서명되지 않았으므로 다른 PC에서 Windows SmartScreen 경고가 나타날 수 있습니다.
