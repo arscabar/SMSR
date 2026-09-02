@@ -7,15 +7,21 @@ namespace SMSR.App.Mvp;
 [McpServerToolType]
 public sealed class PlanTools(EventStore events, WorkflowEventNotifier notifier)
 {
-    [McpServerTool(Name = "save_plan"), Description("새 그래프에서는 workflowId를 생략하면 프로젝트명과 현재 날짜시간으로 자동 생성합니다. 계층형 계획, 의존성, 담당 에이전트 역할과 완료 조건을 저장합니다.")]
+    [McpServerTool(Name = "save_plan"), Description("새 그래프에서는 workflowId를 생략하면 날짜시간·프로젝트·작업명으로 ID를 생성합니다. 진행 중인 같은 workflowId로 다시 호출하면 입력 순서와 노드 추가·변경을 반영합니다.")]
     public async Task<string> SavePlan(string projectId, IReadOnlyList<PlanNodeDefinition> nodes, string? workflowId = null)
     {
-        var generated = string.IsNullOrWhiteSpace(workflowId);
-        var resolvedWorkflowId = generated ? WorkflowIdGenerator.Create(projectId) : workflowId!;
+        var opaqueNewId = Guid.TryParse(workflowId, out _) && !await events.WorkflowExistsAsync(projectId, workflowId!);
+        var generated = string.IsNullOrWhiteSpace(workflowId) || opaqueNewId;
+        var title = nodes.FirstOrDefault(node => string.IsNullOrWhiteSpace(node.ParentNodeId))?.Title
+            ?? nodes.FirstOrDefault()?.Title;
+        var resolvedWorkflowId = generated ? WorkflowIdGenerator.Create(projectId, title) : workflowId!;
         if (PlanValidation.Validate(projectId, resolvedWorkflowId, nodes) is { } error) return JsonSerializer.Serialize(new { error });
+        var existing = await events.GetPlanAsync(projectId, resolvedWorkflowId);
+        if (WorkflowPlanUpdate.Validate(existing, nodes) is { } updateError)
+            return JsonSerializer.Serialize(new { error = updateError });
         await events.SavePlanAsync(projectId, resolvedWorkflowId, nodes);
         notifier.Publish(projectId, resolvedWorkflowId);
-        return JsonSerializer.Serialize(new { projectId, workflowId = resolvedWorkflowId, generated, nodeCount = nodes.Count });
+        return JsonSerializer.Serialize(new { projectId, workflowId = resolvedWorkflowId, generated, replacedOpaqueId = opaqueNewId, nodeCount = nodes.Count });
     }
 
     [McpServerTool(Name = "get_plan"), Description("계획 노드와 최신 적용 상태를 조회합니다.")]

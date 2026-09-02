@@ -19,7 +19,7 @@ public sealed record PlanNodeState(
 public sealed record WorkflowPlan(string ProjectId, string WorkflowId, IReadOnlyList<PlanNodeState> Nodes);
 
 public sealed record WorkflowCatalogEntry(
-    string WorkflowId, int NodeCount, string Status, DateTimeOffset? UpdatedAtUtc);
+    string WorkflowId, string? Title, int NodeCount, string Status, DateTimeOffset? UpdatedAtUtc);
 
 public static class PlanValidation
 {

@@ -73,6 +73,7 @@ public sealed class LocalServerHost(string? dataPath = null, int port = LocalSer
 
     public Task<IReadOnlyList<string>> GetProjectIdsAsync() => Server.GetProjectIdsAsync();
     public Task<IReadOnlyList<string>> GetWorkflowIdsAsync(string projectId) => Server.GetWorkflowIdsAsync(projectId);
+    public Task<IReadOnlyList<WorkflowCatalogEntry>> GetWorkflowCatalogAsync(string projectId) => Server.GetWorkflowCatalogAsync(projectId);
     public Task<WorkflowState> GetStateAsync(string projectId, string workflowId) => Server.GetStateAsync(projectId, workflowId);
     public Task<IReadOnlyList<RecentEvent>> GetRecentEventsAsync(string projectId, string workflowId) => Server.GetRecentEventsAsync(projectId, workflowId);
     public Task<WorkflowSummary?> GetLatestSummaryAsync(string projectId, string workflowId) => Server.GetLatestSummaryAsync(projectId, workflowId);

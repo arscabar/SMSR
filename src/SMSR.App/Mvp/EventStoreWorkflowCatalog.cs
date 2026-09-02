@@ -23,23 +23,26 @@ public sealed partial class EventStore
               ) GROUP BY workflow_id
             )
             SELECT w.workflow_id,
+              (SELECT p.title FROM plan_nodes p WHERE p.project_id=$projectId AND p.workflow_id=w.workflow_id
+                ORDER BY json_extract(p.metadata_json, '$.ParentNodeId') IS NOT NULL, p.rowid LIMIT 1),
               (SELECT COUNT(*) FROM plan_nodes p WHERE p.project_id=$projectId AND p.workflow_id=w.workflow_id),
-              (SELECT COUNT(*) FROM current_state s WHERE s.project_id=$projectId AND s.workflow_id=w.workflow_id
-                AND s.status IN ('SUCCESS','FAILED','BLOCKED')),
+              (SELECT COUNT(*) FROM plan_nodes p JOIN current_state s ON s.project_id=p.project_id
+                AND s.workflow_id=p.workflow_id AND s.node_id=p.node_id WHERE p.project_id=$projectId
+                AND p.workflow_id=w.workflow_id AND s.status IN ('SUCCESS','FAILED','BLOCKED')),
               a.updated_at
             FROM workflows w LEFT JOIN activity a ON a.workflow_id=w.workflow_id
-            ORDER BY a.updated_at IS NULL, a.updated_at DESC, w.workflow_id LIMIT 200;
+            ORDER BY a.updated_at IS NULL, a.updated_at DESC, w.workflow_id DESC LIMIT 200;
             """;
         command.Parameters.AddWithValue("$projectId", projectId);
         var result = new List<WorkflowCatalogEntry>();
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
         {
-            var nodes = reader.GetInt32(1);
-            var terminal = reader.GetInt32(2);
+            var nodes = reader.GetInt32(2);
+            var terminal = reader.GetInt32(3);
             var status = nodes == 0 ? "NO_PLAN" : terminal == nodes ? "TERMINAL" : "ACTIVE";
-            result.Add(new(reader.GetString(0), nodes, status,
-                reader.IsDBNull(3) ? null : DateTimeOffset.Parse(reader.GetString(3))));
+            result.Add(new(reader.GetString(0), reader.IsDBNull(1) ? null : reader.GetString(1), nodes, status,
+                reader.IsDBNull(4) ? null : DateTimeOffset.Parse(reader.GetString(4))));
         }
         return result;
     }

@@ -27,7 +27,7 @@ Codex가 `SMSR.App.exe --mcp-stdio`를 직접 실행하면 브리지가 9개 도
 
 | 도구 | 입력 | 결과 |
 |---|---|---|
-| `save_plan` | 프로젝트 ID, 선택형 workflow ID, 제목·가중치·의존성, 부모 노드, 담당 에이전트·역할, 완료 조건 | 새 그래프는 workflow ID 생략 시 `프로젝트명__날짜시간`으로 생성하고 계층형 계획 저장 |
+| `save_plan` | 프로젝트 ID, 선택형 workflow ID, 제목·가중치·의존성, 부모 노드, 담당 에이전트·역할, 완료 조건 | 새 그래프는 ID 생략 시 `날짜시간__프로젝트명__작업명`으로 생성하며, 활성 그래프 재호출은 노드 순서·추가·변경을 반영 |
 | `get_plan` | 프로젝트 ID, 워크플로우 ID | 계획 노드에 적용된 최신 상태 |
 | `list_workflows` | 프로젝트 ID | 기존 그래프를 최근 활동 순서와 상태로 조회 |
 | `record_event` | 이벤트·노드·에이전트 ID, 상태, 진행률, 재시도, 다음 작업, 산출물 | 저장 결과와 중복 여부 |
@@ -39,7 +39,7 @@ Codex가 `SMSR.App.exe --mcp-stdio`를 직접 실행하면 브리지가 9개 도
 
 `eventType`은 `NODE_STATUS_CHANGED`만 가능하며 `status`는 `PENDING`, `IN_PROGRESS`, `VALIDATING`, `SUCCESS`, `FAILED`, `RETRYING`, `BLOCKED` 중 하나여야 한다. 같은 `eventId`는 다시 저장하지 않고 `duplicate: true`를 반환한다.
 
-`dependsOn`으로 연결된 순차 작업은 모든 선행 노드가 `SUCCESS`가 된 뒤에만 후행 노드를 `IN_PROGRESS`, `VALIDATING`, `RETRYING`, `SUCCESS`로 기록할 수 있다. `SUCCESS`는 진행률 100%로 정규화된다. 선행 작업이 끝나기 전에 전달된 후행 상태는 저장하지 않으며, 과거의 잘못된 병렬 상태도 대시보드에서는 `PENDING 0%`로 보정한다. 의존성이 없는 노드는 병렬 진행할 수 있다.
+`dependsOn`으로 연결된 순차 작업은 모든 선행 노드가 `SUCCESS`가 된 뒤에만 후행 노드를 `IN_PROGRESS`, `VALIDATING`, `RETRYING`, `SUCCESS`로 기록할 수 있다. `SUCCESS`는 진행률 100%로 정규화되고 다시 진행 상태로 열 수 없다. 후속 작업은 새 노드로 추가하며 전체가 종료된 그래프는 변경하지 않는다. 활성 계획을 재저장하면 같은 ID의 상태는 유지되고 새 노드는 `PENDING`으로 시작한다. 선행 작업이 끝나기 전에 전달된 후행 상태는 저장하지 않으며, 과거의 잘못된 병렬 상태도 대시보드에서는 `PENDING 0%`로 보정한다. 의존성이 없는 노드는 병렬 진행할 수 있다.
 
 SMSR은 에이전트를 능동 호출하거나 polling하지 않는다. 그래프 추적이 요청된 동안 각 에이전트는 계획 직후 첫 노드 시작과 상태·진행률·검증·재시도·다음 작업·산출물 변경을 `record_event`로 즉시 전송한다. 의미 있는 변경 없이 작업이 계속될 때만 30초 이내 간격으로 `record_heartbeat`를 호출한다. 활성 heartbeat가 90초 넘게 갱신되지 않으면 대시보드에서 `STALE`로 표시한다. 수신된 이벤트는 별도 새로 고침 주기 없이 SSE로 즉시 앱과 브라우저에 전달된다.
 

@@ -5,7 +5,7 @@ using SMSR.App.Services;
 
 namespace SMSR.App.ViewModels;
 
-public sealed class WorkflowSelectionViewModel(LocalServerHost server) : ViewModelBase
+public sealed partial class WorkflowSelectionViewModel(LocalServerHost server) : ViewModelBase
 {
     private readonly string _selectionPath = Path.Combine(server.DataPath, "last-workflow.json");
     private string _projectId = "";
@@ -13,6 +13,7 @@ public sealed class WorkflowSelectionViewModel(LocalServerHost server) : ViewMod
 
     public ObservableCollection<string> ProjectIds { get; } = [];
     public ObservableCollection<string> WorkflowIds { get; } = [];
+    public ObservableCollection<WorkflowChoice> Workflows { get; } = [];
 
     public string ProjectId
     {
@@ -21,6 +22,7 @@ public sealed class WorkflowSelectionViewModel(LocalServerHost server) : ViewMod
         {
             if (!SetField(ref _projectId, value)) return;
             WorkflowIds.Clear();
+            Workflows.Clear();
             WorkflowId = "";
         }
     }
@@ -42,7 +44,7 @@ public sealed class WorkflowSelectionViewModel(LocalServerHost server) : ViewMod
         if (string.IsNullOrWhiteSpace(ProjectId) && ProjectIds.Count > 0) ProjectId = saved is not null && ProjectIds.Contains(saved.ProjectId) ? saved.ProjectId : ProjectIds[0];
         WorkflowIds.Clear();
         if (string.IsNullOrWhiteSpace(ProjectId)) return;
-        foreach (var id in await server.GetWorkflowIdsAsync(ProjectId)) WorkflowIds.Add(id);
+        await LoadWorkflowsAsync(ProjectId);
         if (string.IsNullOrWhiteSpace(WorkflowId) && WorkflowIds.Count > 0) WorkflowId = saved is not null && WorkflowIds.Contains(saved.WorkflowId) ? saved.WorkflowId : WorkflowIds[0];
     }
 
@@ -53,7 +55,7 @@ public sealed class WorkflowSelectionViewModel(LocalServerHost server) : ViewMod
         foreach (var id in projects) ProjectIds.Add(id);
         if (!ProjectIds.Contains(projectId)) return;
         ProjectId = projectId;
-        foreach (var id in await server.GetWorkflowIdsAsync(projectId)) WorkflowIds.Add(id);
+        await LoadWorkflowsAsync(projectId);
         if (WorkflowIds.Contains(workflowId)) WorkflowId = workflowId;
     }
 

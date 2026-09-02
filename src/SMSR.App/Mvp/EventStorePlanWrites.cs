@@ -32,6 +32,7 @@ public sealed partial class EventStore
                 command.Parameters.AddWithValue("$metadata", JsonSerializer.Serialize(PlanNodeMetadata.From(node)));
                 await command.ExecuteNonQueryAsync(cancellationToken);
             }
+            await CleanupRemovedPlanNodesAsync(connection, transaction, projectId, workflowId, cancellationToken);
             await transaction.CommitAsync(cancellationToken);
         }
         finally { _writeGate.Release(); }

@@ -80,7 +80,13 @@ public static class MvpSelfCheck
                 throw new InvalidOperationException("입력 크기 검증이 실패했습니다.");
             if (PlanValidation.Validate("demo", "wf-1", [new("node-a", "A", 1, ["node-a"])]) is null)
                 throw new InvalidOperationException("계획 의존성 검증이 실패했습니다.");
-            await store.SavePlanAsync("demo", "wf-1", [new("group", "구현", 1, null, null, "agent-1", "coordinator", "하위 작업 완료"), new("node-1", "코드 변경", 1, null, "group", "agent-1", "implementer", "검증 통과")]);
+            await store.SavePlanAsync("demo", "wf-1", [new("group", "구현", 1, null, null, "agent-1", "coordinator", "하위 작업 완료"), new("node-1", "코드 변경", 1, null, "group", "agent-1", "implementer", "검증 통과"), new("future", "후속 검사", 1, null, "group")]);
+            const string opaqueWorkflow = "01a05b48-d586-7052-bb7c-eb258bf3f06d";
+            await store.SavePlanAsync("demo", opaqueWorkflow, [new("readable", "사람이 읽는 기존 작업")]);
+            var opaquePlan = await store.GetPlanAsync("demo", opaqueWorkflow);
+            var opaquePage = DashboardPage.Render(new("demo", opaqueWorkflow, []), opaquePlan, []);
+            if (!opaquePage.Contains($"사람이 읽는 기존 작업 · {opaqueWorkflow}", StringComparison.Ordinal))
+                throw new InvalidOperationException("기존 UUID 대시보드 표시명 검증이 실패했습니다.");
             var hierarchicalPlan = await store.GetPlanAsync("demo", "wf-1");
             if (hierarchicalPlan.Nodes.Single(node => node.NodeId == "node-1").ParentNodeId != "group") throw new InvalidOperationException("계층 계획 저장이 실패했습니다.");
             var page = DashboardPage.Render(state with { Nodes = [state.Nodes[0] with { Summary = "<script>" }] }, hierarchicalPlan, [new RecentEvent("node-1", "agent-1", "SUCCESS", "<script>", null, DateTimeOffset.UtcNow)], null, "group", "node-1");
@@ -166,8 +172,6 @@ public static class MvpSelfCheck
                 recordEvent.Headers.Add("MCP-Protocol-Version", "2026-07-28");
                 recordEvent.Headers.Add("MCP-Method", "tools/call");
                 recordEvent.Headers.Add("MCP-Name", "record_event");
-                var recordResponse = await client.SendAsync(recordEvent);
-                var recordJson = await recordResponse.Content.ReadAsStringAsync();
                 using var savePlan = new HttpRequestMessage(HttpMethod.Post, $"{server.Address}/mcp")
                 {
                     Content = new StringContent("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"save_plan\",\"arguments\":{\"projectId\":\"demo\",\"workflowId\":\"wf-1\",\"nodes\":[{\"nodeId\":\"mcp-node\",\"title\":\"MCP 계획 노드\",\"weight\":2,\"assignedAgentId\":\"agent-1\",\"agentRole\":\"coordinator\"},{\"nodeId\":\"mcp-final\",\"title\":\"완료 노드\",\"parentNodeId\":\"mcp-node\",\"completionCriteria\":\"테스트 통과\"}]},\"_meta\":{\"io.modelcontextprotocol/protocolVersion\":\"2026-07-28\",\"io.modelcontextprotocol/clientInfo\":{\"name\":\"self-test\",\"version\":\"1.0\"},\"io.modelcontextprotocol/clientCapabilities\":{}}}}", Encoding.UTF8, "application/json")
@@ -179,6 +183,8 @@ public static class MvpSelfCheck
                 savePlan.Headers.Add("MCP-Name", "save_plan");
                 var planResponse = await client.SendAsync(savePlan);
                 var planJson = await planResponse.Content.ReadAsStringAsync();
+                var recordResponse = await client.SendAsync(recordEvent);
+                var recordJson = await recordResponse.Content.ReadAsStringAsync();
                 using var listWorkflows = new HttpRequestMessage(HttpMethod.Post, $"{server.Address}/mcp")
                 {
                     Content = new StringContent("{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"list_workflows\",\"arguments\":{\"projectId\":\"demo\"},\"_meta\":{\"io.modelcontextprotocol/protocolVersion\":\"2026-07-28\",\"io.modelcontextprotocol/clientInfo\":{\"name\":\"self-test\",\"version\":\"1.0\"},\"io.modelcontextprotocol/clientCapabilities\":{}}}}", Encoding.UTF8, "application/json")
@@ -224,6 +230,9 @@ public static class MvpSelfCheck
                     throw new InvalidOperationException("사용자 설정 저장 검증이 실패했습니다.");
                 viewModel.Workspace.Selection.ProjectId = "demo";
                 await viewModel.Workspace.Selection.LoadAsync();
+                if (!viewModel.Workspace.Selection.Workflows.Any(item => item.WorkflowId == opaqueWorkflow
+                    && item.DisplayName.Contains("사람이 읽는 기존 작업", StringComparison.Ordinal)))
+                    throw new InvalidOperationException("기존 UUID 워크플로우 표시명 검증이 실패했습니다.");
                 viewModel.Workspace.Selection.WorkflowId = "wf-1";
                 await host.StopAsync().WaitAsync(TimeSpan.FromSeconds(5));
                 await host.StartAsync();

@@ -8,7 +8,7 @@
                 <TextBlock Margin="0,16,0,6" Text="프로젝트 ID" />
                 <ComboBox IsEditable="True" ItemsSource="{Binding Selection.ProjectIds}" Text="{Binding Selection.ProjectId, UpdateSourceTrigger=PropertyChanged}" />
                 <TextBlock Margin="0,12,0,6" Text="워크플로우 ID" />
-                <ComboBox IsEditable="True" ItemsSource="{Binding Selection.WorkflowIds}" Text="{Binding Selection.WorkflowId, UpdateSourceTrigger=PropertyChanged}" />
+                <ComboBox ItemsSource="{Binding Selection.Workflows}" DisplayMemberPath="DisplayName" SelectedValuePath="WorkflowId" SelectedValue="{Binding Selection.WorkflowId, Mode=TwoWay}" />
                 <StackPanel Margin="0,16,0,0" Orientation="Horizontal">
                     <Button Command="{Binding RefreshSelectionCommand}" Content="목록 새로 고침" />
                     <Button Margin="8,0,0,0" Command="{Binding RefreshMonitorCommand}" Content="상태 새로 고침" />

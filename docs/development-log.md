@@ -1432,3 +1432,12 @@
 - 검증 결과: Release 빌드 경고·오류 0개와 자체 검사 4종을 통과했다. 본체와 49783 listener가 없는 상태에서 설치본 stdio를 실행하자 `--background --ensure-server` 본체가 하나 생성됐고, 브리지 종료 후에도 서버가 `ready`로 유지됐다. stdio protocol `2025-11-25` 초기화와 도구 9개를 확인했다. 중복 본체는 하나만 유지하며 시작 메뉴에서 SMSR을 다시 실행하자 같은 PID의 `Show Me Status Report` 창 핸들이 생성됐다. 설치·publish EXE SHA-256은 `5C4AE596FF9DE299DF52A3D0DD85E6E4E8BE39A27CA0890E26F6F9AA715FB32A`, Setup SHA-256은 `FA2D95BB38DAC47C93D1AABA7746FB244B23CDA93737D6E552744AA37E48BEA9`이다.
 - 남은 위험: 이미 실행 중인 SMSR에서 사용자가 서버를 수동 중지한 경우에는 그 명시적 선택을 존중하므로 다른 본체를 중복 실행하지 않는다. 복합 PowerShell 검증 명령 2개는 실행 정책이 차단해 같은 방식의 재시도를 중단하고 단순 명령과 임시 테스트 스크립트로 분리했다. 임시 스크립트의 Windows PowerShell 5.1 `ArgumentList` 미지원은 `Arguments`로 변경해 검증했고 스크립트는 제거했다.
 - 다음 조치: BeepleLunch는 당시 OAuth 실패로 `save_plan`이 실행되지 않아 SMSR DB에 워크플로우가 없다. 필요하면 기존 프로젝트 요구사항을 새 그래프로 명시적으로 저장한다.
+
+## 2026-09-02 - 읽기 쉬운 워크플로우와 동적 계획 경계
+
+- 변경 파일: workflow ID 생성기, 계획·카탈로그 저장소, WPF 워크플로우 선택, 대시보드 헤더, 계획·상태 게이트, MCP·훅 지침, `smsr-tracking` 스킬, 추적·연결 문서와 자체 검사
+- 변경 사유: Codex session UUID가 workflow ID로 저장돼 작업을 식별하기 어렵고, 완료된 100% 노드에 후속 작업을 덧붙이면 완료와 진행 중 상태를 구분하기 어려웠다. 작업 중 계획의 노드 추가·정렬도 명시적인 보존 계약과 검증이 필요했다.
+- 실행 명령: Release 빌드, `dotnet test`, config·tracking·OAuth·전체 self-check, 변경 파일 whitespace 검사, 스킬 frontmatter 수동 검사, 설치 프로그램 빌드·무인 업그레이드, 설치본 stdio `initialize`·`tools/list`와 `/api/health`
+- 검증 결과: 새 workflow ID는 `yyyyMMdd-HHmmssfff__프로젝트명__대표작업명`으로 생성되고, 존재하지 않는 UUID를 첫 `save_plan`에 전달해도 읽기 쉬운 ID로 교체된다. 기존 UUID 데이터는 ID를 변경하지 않고 WPF 목록과 대시보드에 최상위 작업 제목을 함께 표시한다. 활성 계획 재저장 시 기존 노드 진행률 유지, 새 노드 `PENDING`, 입력 순서 반영, 제거 노드 현재 상태 정리와 SSE 알림을 확인했다. `SUCCESS` 노드 재개·변경·하위 작업 추가와 종료 그래프 변경은 거부된다. 빌드 경고·오류 0개, 자체 검사 4종과 설치본 stdio 도구 9개·서버 `ready`를 확인했다. 설치·publish EXE SHA-256은 `FFA3AC4C7088DABCA7A3916737EE1EC75F159BA976B65FE7D24C27023DA4D81D`, Setup SHA-256은 `6A1FF34134E6B87ABD90091455007A4872D33431397A4B6C62774F389207AFE5`이다.
+- 남은 위험: 기존 UUID는 이벤트·JSONL·외부 링크 참조를 깨지 않기 위해 물리적으로 이름을 바꾸지 않는다. `skill-creator`의 `quick_validate.py`는 번들 Python에 PyYAML이 없어 실행되지 않았으며, 동일 검사항목인 frontmatter 구분자·허용 이름·description·TODO 부재를 수동 확인했다.
+- 다음 조치: 실제 새 그래프 요청에서 생성 ID와 동적 계획 갱신 표시를 사용자 흐름으로 확인한다.

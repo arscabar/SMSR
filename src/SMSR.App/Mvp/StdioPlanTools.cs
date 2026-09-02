@@ -6,7 +6,7 @@ namespace SMSR.App.Mvp;
 [McpServerToolType]
 public sealed class StdioPlanTools(McpHttpGateway gateway)
 {
-    [McpServerTool(Name = "save_plan"), Description("새 그래프에서는 workflowId를 생략하면 프로젝트명과 현재 날짜시간으로 자동 생성합니다. 계층형 계획, 의존성, 담당 에이전트 역할과 완료 조건을 저장합니다.")]
+    [McpServerTool(Name = "save_plan"), Description("새 그래프에서는 workflowId를 생략하면 날짜시간·프로젝트·작업명으로 ID를 생성합니다. 진행 중인 같은 workflowId로 다시 호출하면 입력 순서와 노드 추가·변경을 반영합니다.")]
     public Task<string> SavePlan(string projectId, IReadOnlyList<PlanNodeDefinition> nodes, string? workflowId = null)
         => gateway.CallAsync("save_plan", new { projectId, nodes, workflowId });
 

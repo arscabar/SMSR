@@ -74,6 +74,9 @@ public sealed class LocalServer(WebApplication app, EventStore events, WorkflowS
     public Task<IReadOnlyList<string>> GetWorkflowIdsAsync(string projectId, CancellationToken cancellationToken = default)
         => events.GetWorkflowIdsAsync(projectId, cancellationToken);
 
+    public Task<IReadOnlyList<WorkflowCatalogEntry>> GetWorkflowCatalogAsync(string projectId, CancellationToken cancellationToken = default)
+        => events.GetWorkflowCatalogAsync(projectId, cancellationToken);
+
     public Task<WorkflowState> GetStateAsync(string projectId, string workflowId, CancellationToken cancellationToken = default)
         => events.GetStateAsync(projectId, workflowId, cancellationToken);
 
