@@ -1468,3 +1468,12 @@
 - 검증 결과: 빌드 경고 0·오류 0, 테스트와 자체 검사 4종, 포맷·diff 검사가 모두 종료 코드 0을 반환했다. 완료 노드를 보존하면서 연결된 후속 노드를 추가하면 workflow가 다시 `ACTIVE`가 되고 시작 이벤트 후 대시보드는 `완료 3 / 4`와 100% 미만 진행률을 표시한다. 완료 노드 재개·변경·하위 삽입과 연결 없는 별도 작업은 거부되며 새 그래프 자동 생성은 유지된다.
 - 남은 위험: 관련 작업과 별도 작업의 의미 판단은 에이전트가 수행한다. SMSR은 연결 관계와 완료 이력 불변성은 검증하지만 도구 활동만 보고 업무 제목을 임의 생성하지 않는다. 실행 중인 설치본에는 다음 배포 버전을 설치해야 변경 계약이 반영된다.
 - 다음 조치: 커밋 후 `origin/main`에 푸시하고 다음 패치 설치본에 포함한다.
+
+## 2026-09-02 - SMSR v1.1.1 패치 릴리즈
+
+- 변경 파일: `src/SMSR.App/SMSR.App.csproj`, `README.md`, `docs/installer-quickstart.md`, `docs/releases/v1.1.1.md`, `docs/development-log.md`, 생성 설치 파일
+- 변경 사유: 완료 그래프에 관련 후속 노드를 안전하게 추가하고 실제 에이전트 작업과 100% 화면이 어긋나지 않게 한 변경을 Windows 설치본으로 배포한다.
+- 실행 명령: Release 빌드·테스트, `scripts/build-installer.ps1`, 무인 업그레이드, 설치본 config·tracking·OAuth·전체 자체 검사, stdio `initialize`·`tools/list`, 설치 서버 `/api/health`, 버전·SHA-256 확인
+- 검증 결과: 앱·설치 버전 `1.1.1.0`, Release 빌드 경고 0·오류 0, 소스와 설치본 자체 검사 4종 종료 코드 0, stdio protocol `2025-11-25`와 도구 9개를 확인했다. 설치 경로 서버는 `127.0.0.1:49783`에서 `ready`이며 publish·설치 EXE SHA-256은 `4EC3328FC704068A989D61496AF5205F4A2EE2C337F60DED58CE6992D57BC10F`, Setup SHA-256은 `6E2CB683831E4278164A2CA1C78E48D4591CCC59C2C12772448D58E672CFBC8B`다.
+- 남은 위험: 코드 서명이 없어 다른 PC에서 Windows SmartScreen 경고가 표시될 수 있다. 설치 후 실행 중인 Codex는 MCP·훅 지침을 다시 읽도록 한 번 완전히 재시작해야 한다.
+- 다음 조치: 릴리즈 커밋과 `v1.1.1` 태그를 `origin/main`에 푸시하고 GitHub 릴리즈에 설치 파일을 첨부한다.
