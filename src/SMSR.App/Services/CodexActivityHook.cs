@@ -14,7 +14,7 @@ internal static class CodexActivityHook
         var sessions = new TrackingSessionStore(dataPath);
         var tool = HookJson.String(input, "tool_name");
         var toolInput = HookJson.Object(input, "tool_input");
-        var tracking = sessions.Load(sessionId) ?? CodexTrackingResolver.Resolve(input, toolInput, tool);
+        var tracking = CodexTrackingResolver.Resolve(input, toolInput, tool) ?? sessions.Load(sessionId);
         if (tracking is null) return;
 
         var nodeId = toolInput is { } arguments && HookJson.String(arguments, "nodeId") is { Length: > 0 } node

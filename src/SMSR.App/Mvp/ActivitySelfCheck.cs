@@ -40,11 +40,25 @@ internal static class ActivitySelfCheck
             throw new InvalidOperationException("Codex 훅 활동 중복 방지가 실패했습니다.");
 
         await CodexActivityHook.ProcessAsync(HookJsonDocument.Parse("""
+            {"session_id":"activity-session","turn_id":"turn-2","hook_event_name":"PostToolUse",
+             "tool_name":"mcp__smsr__save_plan","tool_use_id":"tool-3","tool_input":{"projectId":"project-b"},
+             "tool_response":{"content":[{"type":"text","text":"{\"workflowId\":\"workflow-b\"}"}]}}
+            """), dataPath);
+        await CodexActivityHook.ProcessAsync(HookJsonDocument.Parse("""
+            {"session_id":"activity-session","turn_id":"turn-2","hook_event_name":"PostToolUse",
+             "tool_name":"apply_patch","tool_use_id":"tool-4","tool_input":{}}
+            """), dataPath);
+        if (store.ReadLatest("project-b", "workflow-b", 10).Count != 2
+            || new TrackingSessionStore(dataPath).Load(session)?.ProjectId != "project-b")
+            throw new InvalidOperationException("같은 Codex 세션의 다중 프로젝트 전환 검증이 실패했습니다.");
+
+        await CodexActivityHook.ProcessAsync(HookJsonDocument.Parse("""
             {"session_id":"activity-session","turn_id":"turn-1","hook_event_name":"SubagentStop",
              "agent_id":"agent-child","agent_type":"worker"}
             """), dataPath);
         if (new TrackingSessionStore(dataPath).Load("agent-child") is not null
-            || store.ReadLatest("demo", "activity-wf", 10).Count != 4)
+            || store.ReadLatest("demo", "activity-wf", 10).Count != 3
+            || store.ReadLatest("project-b", "workflow-b", 10).Count != 3)
             throw new InvalidOperationException("하위 에이전트 활동 매핑 정리가 실패했습니다.");
         var isolated = await CodexHookRunner.ProcessAsync("""
             {"session_id":"isolated","cwd":"C:\\projects\\demo","hook_event_name":"UserPromptSubmit",

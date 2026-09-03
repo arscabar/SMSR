@@ -4,9 +4,10 @@ internal static class WorkflowDependencyGate
 {
     public static string? Validate(RecordEventRequest request, WorkflowPlan plan)
     {
+        if (plan.Nodes.Count == 0)
+            return "계획이 없습니다. save_plan으로 그래프를 먼저 만든 뒤 이벤트를 기록하세요.";
         var node = plan.Nodes.FirstOrDefault(item => item.NodeId == request.NodeId);
-        if (node is null) return plan.Nodes.Count == 0 ? null
-            : "계획에 없는 노드입니다. 같은 workflowId로 save_plan을 먼저 갱신하세요.";
+        if (node is null) return "계획에 없는 노드입니다. 같은 workflowId로 save_plan을 먼저 갱신하세요.";
         if (node.Status == "SUCCESS" && request.Status != "SUCCESS")
             return "이미 완료된 노드는 다시 진행 상태로 변경할 수 없습니다. 후속 작업을 새 nodeId로 계획에 추가하세요.";
         if (request.Status is not ("IN_PROGRESS" or "VALIDATING" or "RETRYING" or "SUCCESS")) return null;

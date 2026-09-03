@@ -21,7 +21,7 @@ public sealed class WorkflowMonitorViewModel : ViewModelBase
     }
 
     public ObservableCollection<StateNode> Nodes { get; } = [];
-    public ObservableCollection<RecentEvent> RecentEvents { get; } = [];
+    public ObservableCollection<WorkflowEventItem> RecentEvents { get; } = [];
     public string Summary { get => _summary; private set => SetField(ref _summary, value); }
     public string UpdateMode { get => _updateMode; private set => SetField(ref _updateMode, value); }
 
@@ -34,7 +34,7 @@ public sealed class WorkflowMonitorViewModel : ViewModelBase
         Nodes.Clear();
         RecentEvents.Clear();
         foreach (var node in state.Nodes) Nodes.Add(node);
-        foreach (var item in events) RecentEvents.Add(item);
+        foreach (var item in events) RecentEvents.Add(new(item));
         Summary = (await _host.GetLatestSummaryAsync(projectId, workflowId))?.Content ?? "저장된 요약이 없습니다.";
     }
 
@@ -61,6 +61,14 @@ public sealed class WorkflowMonitorViewModel : ViewModelBase
         _streamCancellation = null;
         _pollTimer.Stop();
         UpdateMode = "수동 새로 고침";
+    }
+
+    public void Clear()
+    {
+        StopLiveUpdates();
+        Nodes.Clear();
+        RecentEvents.Clear();
+        Summary = "워크플로우를 선택하세요.";
     }
 
     private async Task ListenAsync(string projectId, string workflowId, CancellationTokenSource cancellation)

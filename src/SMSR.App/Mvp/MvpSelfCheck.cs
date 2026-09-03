@@ -115,8 +115,11 @@ public static class MvpSelfCheck
             if (highlightGraph.Split(" current\"", StringSplitOptions.None).Length != 2
                 || !highlightGraph.Contains("flow-node IN_PROGRESS current\"><title>현재 진행"))
                 throw new InvalidOperationException("현재 작업 단일 하이라이트 검증이 실패했습니다.");
-            var heartbeatGraph = DashboardGraph.Render(highlightPlan, highlightState with { Agents = [
-                new("agent", "worker", "ACTIVE", "older", null, 0, DateTimeOffset.UtcNow, false)] });
+            var heartbeatGraph = DashboardGraph.Render(highlightPlan, highlightState with
+            {
+                Agents = [
+                new("agent", "worker", "ACTIVE", "older", null, 0, DateTimeOffset.UtcNow, false)]
+            });
             if (heartbeatGraph.Split(" current\"", StringSplitOptions.None).Length != 2
                 || !heartbeatGraph.Contains("flow-node IN_PROGRESS current\"><title>이전 진행"))
                 throw new InvalidOperationException("최신 heartbeat 작업 하이라이트 검증이 실패했습니다.");
@@ -124,9 +127,13 @@ public static class MvpSelfCheck
                 new("first", "선행", 1, [], "IN_PROGRESS", null, null, null),
                 new("second", "후행", 1, ["first"], "IN_PROGRESS", null, null, null)]);
             var gatedRequest = first with { WorkflowId = "gated", NodeId = "second", ProgressPercentage = 5 };
-            if (WorkflowDependencyGate.Validate(gatedRequest, gatedPlan) is null
+            if (WorkflowDependencyGate.Validate(first, new("demo", "empty", [])) is null
+                || WorkflowDependencyGate.Validate(gatedRequest, gatedPlan) is null
                 || DashboardHierarchy.DisplayStatus(gatedPlan.Nodes[1], gatedPlan.Nodes) != "PENDING")
                 throw new InvalidOperationException("선행 작업 완료 게이트 검증이 실패했습니다.");
+            if (!(await new AgentTools(store, notifier).RecordHeartbeat("demo", "empty", "agent", "worker"))
+                .Contains("save_plan", StringComparison.Ordinal))
+                throw new InvalidOperationException("계획 없는 heartbeat 차단 검증이 실패했습니다.");
             var completedGate = gatedPlan with { Nodes = [gatedPlan.Nodes[0] with { Status = "SUCCESS" }, gatedPlan.Nodes[1]] };
             if (WorkflowDependencyGate.Validate(gatedRequest, completedGate) is not null
                 || DashboardHierarchy.DisplayStatus(completedGate.Nodes[1], completedGate.Nodes) != "IN_PROGRESS")
@@ -242,6 +249,10 @@ public static class MvpSelfCheck
                 var legacyStore = new EventStore(Path.Combine(serverPath, "smsr.db"));
                 await legacyStore.InitializeAsync();
                 await legacyStore.SavePlanAsync("demo", opaqueWorkflow, [new("readable", "사람이 읽는 기존 작업")]);
+                await legacyStore.SavePlanAsync("project-b", "workflow-b", [new("b-node", "B 프로젝트 구현")]);
+                await legacyStore.RecordAsync(new("event-b", "project-b", "workflow-b", "b-node", "agent-b",
+                    "NODE_STATUS_CHANGED", "IN_PROGRESS", "B 프로젝트 작업 중", null, null, ["b-result.txt"],
+                    "implementer", 40));
                 await OAuthSelfCheck.RunAsync(host.Address);
                 var platform = new TestPlatformActions();
                 var viewModel = new MainWindowViewModel(host, platform, settings);
@@ -264,6 +275,18 @@ public static class MvpSelfCheck
                 if (!viewModel.Workspace.Selection.Workflows.Any(item => item.WorkflowId == opaqueWorkflow
                     && item.DisplayName.Contains("사람이 읽는 기존 작업", StringComparison.Ordinal)))
                     throw new InvalidOperationException("기존 UUID 워크플로우 표시명 검증이 실패했습니다.");
+                var projectB = viewModel.Workspace.Selection.CalendarWorkflows.SingleOrDefault(item =>
+                    item.ProjectId == "project-b" && item.WorkflowId == "workflow-b");
+                if (!viewModel.Workspace.Selection.ProjectIds.Contains("project-b") || projectB is null
+                    || projectB.DisplayName.Contains("workflow-b", StringComparison.Ordinal))
+                    throw new InvalidOperationException("다중 프로젝트 캘린더 통합 검증이 실패했습니다.");
+                await viewModel.Workspace.SelectCalendarWorkflowAsync(projectB);
+                if (viewModel.Workspace.Selection.ProjectId != "project-b"
+                    || viewModel.Workspace.Selection.WorkflowId != "workflow-b"
+                    || viewModel.Workspace.Monitor.Nodes.Single().NodeId != "b-node")
+                    throw new InvalidOperationException("캘린더 작업 전환 검증이 실패했습니다.");
+                await viewModel.Workspace.SelectCalendarWorkflowAsync(viewModel.Workspace.Selection.CalendarWorkflows
+                    .First(item => item.ProjectId == "demo" && item.WorkflowId == "wf-1"));
                 viewModel.Workspace.Selection.WorkflowId = "wf-1";
                 await host.StopAsync().WaitAsync(TimeSpan.FromSeconds(5));
                 await host.StartAsync();
@@ -284,6 +307,35 @@ public static class MvpSelfCheck
                 var exportedDashboard = File.ReadAllText(Path.Combine(export.DirectoryPath, "dashboard.html"));
                 if (!platform.OpenedUrl.Contains("projectId=demo") || viewModel.Workspace.Monitor.Nodes.Count == 0 || summary.Content.Length == 0 || !File.Exists(export.ZipPath) || !File.ReadAllText(Path.Combine(export.DirectoryPath, "events.jsonl")).Contains("evt-mcp-1") || !File.ReadAllText(Path.Combine(export.DirectoryPath, "activity.jsonl")).Contains("TOOL_COMPLETED") || !themedDashboard.Contains("color-scheme:light") || !exportedDashboard.Contains("color-scheme:light") || !exportedDashboard.Contains("flow-svg"))
                     throw new InvalidOperationException("WPF 서버 제어·요약·내보내기 검증이 실패했습니다.");
+                var deleteActivity = new ActivityJsonlStore(serverPath);
+                deleteActivity.Append(new(DateTimeOffset.UtcNow, "delete-project", "delete-workflow", "delete-session",
+                    "TOOL_COMPLETED", "TOOL", ActivityId: "delete-activity"));
+                await legacyStore.SavePlanAsync("delete-project", "delete-workflow", [new("delete-node", "삭제 검증")]);
+                new TrackingSessionStore(serverPath).Save("delete-session",
+                    new("delete-project", "delete-workflow", null, DateTimeOffset.UtcNow));
+                if (await host.DeleteWorkflowAsync("delete-project", "delete-workflow") != 1
+                    || (await host.GetWorkflowIdsAsync("delete-project")).Count != 0
+                    || File.Exists(deleteActivity.PathFor("delete-project", "delete-workflow"))
+                    || new TrackingSessionStore(serverPath).Load("delete-session") is not null)
+                    throw new InvalidOperationException("워크플로우 이력 삭제 검증이 실패했습니다.");
+                foreach (var workflowId in new[] { "project-delete-a", "project-delete-b" })
+                {
+                    await legacyStore.SavePlanAsync("delete-project", workflowId, [new("delete-node", "프로젝트 삭제 검증")]);
+                    deleteActivity.Append(new(DateTimeOffset.UtcNow, "delete-project", workflowId, workflowId,
+                        "TOOL_COMPLETED", "TOOL", ActivityId: workflowId));
+                    new TrackingSessionStore(serverPath).Save(workflowId,
+                        new("delete-project", workflowId, null, DateTimeOffset.UtcNow));
+                }
+                if (await host.DeleteProjectAsync("delete-project") != 2
+                    || (await host.GetProjectIdsAsync()).Contains("delete-project")
+                    || File.Exists(deleteActivity.PathFor("delete-project", "project-delete-a"))
+                    || new TrackingSessionStore(serverPath).Load("project-delete-b") is not null)
+                    throw new InvalidOperationException("프로젝트 이력 삭제 검증이 실패했습니다.");
+                var exportedZip = export.ZipPath;
+                if (await host.DeleteAllAsync() < 3 || (await host.GetProjectIdsAsync()).Count != 0
+                    || !File.Exists(exportedZip)
+                    || Directory.EnumerateFiles(Path.Combine(serverPath, "activity"), "*.jsonl*").Any())
+                    throw new InvalidOperationException("전체 이력 삭제와 내보내기 보존 검증이 실패했습니다.");
                 await host.StopAsync().WaitAsync(TimeSpan.FromSeconds(5));
                 if (host.IsRunning || viewModel.Workspace.ExportCommand.CanExecute(null) || !File.ReadAllText(host.LogPath).Contains("server started") || !File.ReadAllText(host.LogPath).Contains("server stopped"))
                     throw new InvalidOperationException("서버 중지·로그 복구 검증이 실패했습니다.");
@@ -304,5 +356,6 @@ public static class MvpSelfCheck
         public bool TryCopyToClipboard(string value) => true;
         public bool TryOpenBrowser(string url) { OpenedUrl = url; return true; }
         public bool TryOpenPath(string path) => Directory.Exists(path);
+        public bool Confirm(string title, string message) => true;
     }
 }

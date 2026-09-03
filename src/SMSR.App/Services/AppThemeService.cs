@@ -16,6 +16,8 @@ public static class AppThemeService
         Set("AccentHoverBrush", dark ? "#3D8FE5" : "#4849C5");
         Set("AccentSoftBrush", dark ? "#1E3048" : "#ECECFF");
         Set("QuietBrush", dark ? "#202C3F" : "#ECEEF6");
+        Set("DangerBrush", dark ? "#E05A65" : "#C2414B");
+        Set("DangerHoverBrush", dark ? "#C74450" : "#A9323C");
         Set("QuietHoverBrush", dark ? "#2B3A50" : "#DEE2EE");
     }
 

@@ -43,13 +43,27 @@ internal sealed class TrackingSessionStore(string dataPath)
     }
 
     public void RemoveWorkflow(string projectId, string workflowId)
+        => RemoveWhere(item => item.ProjectId == projectId && item.WorkflowId == workflowId);
+
+    public void RemoveProject(string projectId)
+        => RemoveWhere(item => item.ProjectId == projectId);
+
+    public void Clear()
+    {
+        if (!Directory.Exists(_root)) return;
+        foreach (var path in Directory.EnumerateFiles(_root, "*.json"))
+            try { File.Delete(path); }
+            catch (IOException) { }
+    }
+
+    private void RemoveWhere(Func<TrackingSession, bool> predicate)
     {
         if (!Directory.Exists(_root)) return;
         foreach (var path in Directory.EnumerateFiles(_root, "*.json"))
             try
             {
                 var item = JsonSerializer.Deserialize<TrackingSession>(File.ReadAllText(path));
-                if (item?.ProjectId == projectId && item.WorkflowId == workflowId) File.Delete(path);
+                if (item is not null && predicate(item)) File.Delete(path);
             }
             catch { }
     }

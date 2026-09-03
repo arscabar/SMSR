@@ -21,6 +21,9 @@ public sealed record WorkflowPlan(string ProjectId, string WorkflowId, IReadOnly
 public sealed record WorkflowCatalogEntry(
     string WorkflowId, string? Title, int NodeCount, string Status, DateTimeOffset? UpdatedAtUtc);
 
+public sealed record WorkflowCalendarEntry(
+    string ProjectId, string WorkflowId, string? Title, int NodeCount, string Status, DateTimeOffset? UpdatedAtUtc);
+
 public static class PlanValidation
 {
     public static string? Validate(string projectId, string workflowId, IReadOnlyList<PlanNodeDefinition>? nodes)

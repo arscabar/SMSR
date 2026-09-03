@@ -39,6 +39,8 @@ Codex가 `SMSR.App.exe --mcp-stdio`를 직접 실행하면 브리지가 9개 도
 
 `eventType`은 `NODE_STATUS_CHANGED`만 가능하며 `status`는 `PENDING`, `IN_PROGRESS`, `VALIDATING`, `SUCCESS`, `FAILED`, `RETRYING`, `BLOCKED` 중 하나여야 한다. 같은 `eventId`는 다시 저장하지 않고 `duplicate: true`를 반환한다.
 
+`record_event`와 `record_heartbeat`는 먼저 저장된 계획과 계획에 포함된 node ID가 있어야 한다. 새 그래프에서는 반드시 `save_plan`을 먼저 호출해야 하며, 이 순서를 어긴 이벤트는 저장하지 않는다. 따라서 Codex task UUID가 계획 제목 없는 독립 그래프로 먼저 생기는 것을 방지한다.
+
 `dependsOn`으로 연결된 순차 작업은 모든 선행 노드가 `SUCCESS`가 된 뒤에만 후행 노드를 `IN_PROGRESS`, `VALIDATING`, `RETRYING`, `SUCCESS`로 기록할 수 있다. `SUCCESS`는 진행률 100%로 정규화되고 다시 진행 상태로 열 수 없다. 같은 요청의 후속 작업은 새 형제 또는 최상위 노드로 추가하고 기존 완료 노드와 `dependsOn`으로 연결한다. 모든 기존 노드가 완료된 그래프도 이 방식의 관련 후속 노드는 허용하며, 연결되지 않은 별도 작업은 새 workflow로 생성해야 한다. 계획을 재저장하면 같은 ID의 상태는 유지되고 새 노드는 `PENDING`으로 시작한다. 선행 작업이 끝나기 전에 전달된 후행 상태는 저장하지 않으며, 과거의 잘못된 병렬 상태도 대시보드에서는 `PENDING 0%`로 보정한다. 의존성이 없는 노드는 병렬 진행할 수 있다.
 
 SMSR은 에이전트를 능동 호출하거나 polling하지 않는다. 그래프 추적이 요청된 동안 각 에이전트는 계획 직후 첫 노드 시작과 상태·진행률·검증·재시도·다음 작업·산출물 변경을 `record_event`로 즉시 전송한다. 의미 있는 변경 없이 작업이 계속될 때만 30초 이내 간격으로 `record_heartbeat`를 호출한다. 활성 heartbeat가 90초 넘게 갱신되지 않으면 대시보드에서 `STALE`로 표시한다. 수신된 이벤트는 별도 새로 고침 주기 없이 SSE로 즉시 앱과 브라우저에 전달된다.
@@ -53,6 +55,8 @@ SMSR은 에이전트를 능동 호출하거나 polling하지 않는다. 그래�
 - 포트 충돌은 `Get-NetTCPConnection -LocalPort 49783`으로 확인한다.
 
 SQLite 데이터와 마지막 선택 항목은 앱을 재시작해도 `%LocalAppData%\SMSR`에 유지된다. 기존 설정 파일은 등록 시 `config.toml.smsr.bak`으로 백업한다.
+
+WPF 작업 현황의 통합 캘린더는 모든 프로젝트를 마지막 수신 날짜로 조회한다. 날짜를 고르면 그날의 최신 작업을 열고 같은 날짜의 다른 작업도 선택할 수 있다. `기록 관리`에서 워크플로우·프로젝트·전체 이력을 삭제하면 SQLite와 활동 JSONL, 자동추적 세션 매핑을 함께 정리한다. 이미 내보낸 ZIP/HTML과 앱 설정은 보존한다.
 
 같은 Windows 사용자에서는 재부팅 후 Windows 자동 시작, stdio 명령, DPAPI 브리지 토큰이 그대로 복원된다. 다른 PC에서는 설치된 실행 파일을 한 번 시작하면 그 PC의 실제 경로와 새 DPAPI 토큰을 자동 생성하므로 설정을 복사하거나 인증할 필요가 없다. Windows 자동 시작이 누락되거나 SMSR을 완전히 종료했더라도 다음 Codex 시작 시 stdio 브리지가 대시보드 본체와 서버를 자동 복구한다.
 

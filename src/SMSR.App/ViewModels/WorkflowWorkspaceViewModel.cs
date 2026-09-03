@@ -1,16 +1,18 @@
-using System.ComponentModel;
 using System.Windows.Input;
 using SMSR.App.Infrastructure;
-using SMSR.App.Mvp;
 using SMSR.App.Services;
 
 namespace SMSR.App.ViewModels;
 
-public sealed class WorkflowWorkspaceViewModel : ViewModelBase
+public sealed partial class WorkflowWorkspaceViewModel : ViewModelBase
 {
     private readonly LocalServerHost _host;
     private readonly IPlatformActions _platform;
     private readonly RelayCommand _openDashboardCommand;
+    private readonly RelayCommand _deleteWorkflowCommand;
+    private readonly RelayCommand _deleteProjectCommand;
+    private readonly RelayCommand _deleteAllCommand;
+    private bool _isDeleting;
     private string _statusMessage = "워크플로우를 선택하세요.";
 
     public WorkflowWorkspaceViewModel(LocalServerHost host, IPlatformActions platform)
@@ -20,12 +22,19 @@ public sealed class WorkflowWorkspaceViewModel : ViewModelBase
         Selection = new WorkflowSelectionViewModel(host);
         Monitor = new WorkflowMonitorViewModel(host);
         Selection.PropertyChanged += OnSelectionChanged;
+        Selection.WorkflowRequested += choice => _ = SelectCalendarWorkflowAsync(choice);
         RefreshSelectionCommand = new RelayCommand(() => _ = RefreshSelectionAsync());
         RefreshMonitorCommand = new RelayCommand(() => _ = RefreshMonitorAsync(), HasWorkflowSelection);
         GenerateSummaryCommand = new RelayCommand(() => _ = GenerateSummaryAsync(), HasWorkflowSelection);
         ExportCommand = new RelayCommand(() => _ = ExportAsync(), HasWorkflowSelection);
         _openDashboardCommand = new RelayCommand(OpenDashboard, HasWorkflowSelection);
         OpenDashboardCommand = _openDashboardCommand;
+        _deleteWorkflowCommand = new RelayCommand(() => _ = DeleteWorkflowAsync(), HasWorkflowSelection);
+        _deleteProjectCommand = new RelayCommand(() => _ = DeleteProjectAsync(), HasProjectSelection);
+        _deleteAllCommand = new RelayCommand(() => _ = DeleteAllAsync(), CanDeleteAll);
+        DeleteWorkflowCommand = _deleteWorkflowCommand;
+        DeleteProjectCommand = _deleteProjectCommand;
+        DeleteAllCommand = _deleteAllCommand;
         _host.Stopping += OnHostStopping;
         _host.StateChanged += OnHostStateChanged;
         _host.WorkflowChanged += OnWorkflowChanged;
@@ -38,6 +47,9 @@ public sealed class WorkflowWorkspaceViewModel : ViewModelBase
     public ICommand GenerateSummaryCommand { get; }
     public ICommand ExportCommand { get; }
     public ICommand OpenDashboardCommand { get; }
+    public ICommand DeleteWorkflowCommand { get; }
+    public ICommand DeleteProjectCommand { get; }
+    public ICommand DeleteAllCommand { get; }
     public string StatusMessage { get => _statusMessage; private set => SetField(ref _statusMessage, value); }
 
     public async Task LoadAsync()
@@ -50,81 +62,14 @@ public sealed class WorkflowWorkspaceViewModel : ViewModelBase
         }
     }
 
-    private bool HasWorkflowSelection() => _host.IsRunning && !string.IsNullOrWhiteSpace(Selection.ProjectId) && !string.IsNullOrWhiteSpace(Selection.WorkflowId);
+    private bool HasWorkflowSelection() => !_isDeleting && HasProjectSelection() && !string.IsNullOrWhiteSpace(Selection.WorkflowId);
+    private bool HasProjectSelection() => !_isDeleting && _host.IsRunning && !string.IsNullOrWhiteSpace(Selection.ProjectId);
+    private bool CanDeleteAll() => !_isDeleting && _host.IsRunning && Selection.ProjectIds.Count > 0;
 
-    private async Task RefreshSelectionAsync()
+    private void NotifyCommandStates()
     {
-        try
-        {
-            await Selection.LoadAsync();
-            StatusMessage = Selection.ProjectIds.Count == 0 ? "저장된 프로젝트가 없습니다. ID를 직접 입력하세요." : "저장 목록을 새로 고쳤습니다.";
-        }
-        catch { StatusMessage = "저장된 목록을 읽지 못했습니다."; }
-    }
-
-    private async Task RefreshMonitorAsync()
-    {
-        try
-        {
-            await Monitor.RefreshAsync(Selection.ProjectId, Selection.WorkflowId);
-            Monitor.StartLiveUpdates(Selection.ProjectId, Selection.WorkflowId);
-            StatusMessage = "워크플로우 상태를 새로 고쳤습니다.";
-        }
-        catch { StatusMessage = "워크플로우 상태를 읽지 못했습니다."; }
-    }
-
-    private async Task GenerateSummaryAsync()
-    {
-        try { await Monitor.GenerateSummaryAsync(Selection.ProjectId, Selection.WorkflowId); StatusMessage = "요약을 생성해 저장했습니다."; }
-        catch { StatusMessage = "요약을 생성하지 못했습니다."; }
-    }
-
-    private async Task ExportAsync()
-    {
-        try { StatusMessage = $"내보내기를 완료했습니다: {(await Monitor.ExportAsync(Selection.ProjectId, Selection.WorkflowId)).DirectoryPath}"; }
-        catch { StatusMessage = "내보내기를 완료하지 못했습니다."; }
-    }
-
-    private void OpenDashboard()
-    {
-        var url = $"{_host.Address}/dashboard?projectId={Uri.EscapeDataString(Selection.ProjectId.Trim())}&workflowId={Uri.EscapeDataString(Selection.WorkflowId.Trim())}";
-        StatusMessage = _platform.TryOpenBrowser(url) ? "기본 브라우저에서 대시보드를 열었습니다." : "대시보드를 열지 못했습니다.";
-    }
-
-    private void OnSelectionChanged(object? sender, PropertyChangedEventArgs eventArgs)
-    {
-        if (eventArgs.PropertyName is nameof(WorkflowSelectionViewModel.ProjectId) or nameof(WorkflowSelectionViewModel.WorkflowId))
-        {
-            foreach (var command in new[] { RefreshMonitorCommand, GenerateSummaryCommand, ExportCommand, OpenDashboardCommand })
-                ((RelayCommand)command).NotifyCanExecuteChanged();
-        }
-    }
-
-    private void OnHostStateChanged(object? sender, EventArgs eventArgs)
-    {
-        if (!_host.IsRunning) Monitor.StopLiveUpdates();
-        foreach (var command in new[] { RefreshMonitorCommand, GenerateSummaryCommand, ExportCommand, OpenDashboardCommand })
+        foreach (var command in new[] { RefreshMonitorCommand, GenerateSummaryCommand, ExportCommand,
+                     OpenDashboardCommand, DeleteWorkflowCommand, DeleteProjectCommand, DeleteAllCommand })
             ((RelayCommand)command).NotifyCanExecuteChanged();
-    }
-
-    private void OnHostStopping(object? sender, EventArgs eventArgs) => Monitor.StopLiveUpdates();
-
-    private void OnWorkflowChanged(object? sender, WorkflowChangedEventArgs eventArgs)
-    {
-        if (!eventArgs.IsFirstObservation) return;
-        var dispatcher = System.Windows.Application.Current?.Dispatcher;
-        if (dispatcher is null) return;
-        _ = dispatcher.InvokeAsync(() => _ = SelectIncomingWorkflowAsync(eventArgs));
-    }
-
-    private async Task SelectIncomingWorkflowAsync(WorkflowChangedEventArgs eventArgs)
-    {
-        try
-        {
-            await Selection.SelectAsync(eventArgs.ProjectId, eventArgs.WorkflowId);
-            await RefreshMonitorAsync();
-            StatusMessage = $"새 그래프를 자동 선택했습니다: {eventArgs.ProjectId} / {eventArgs.WorkflowId}";
-        }
-        catch { StatusMessage = "새 그래프를 자동으로 불러오지 못했습니다."; }
     }
 }

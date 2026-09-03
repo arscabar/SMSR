@@ -9,7 +9,7 @@ using ModelContextProtocol.Server;
 namespace SMSR.App.Mvp;
 
 public sealed class LocalServer(WebApplication app, EventStore events, WorkflowSummaryService summaries,
-    WorkflowExportService exports, WorkflowEventNotifier notifier, LocalOAuthStore oauth,
+    WorkflowExportService exports, WorkflowEventNotifier notifier, ActivityJsonlStore activity, LocalOAuthStore oauth,
     McpConnectionTracker connections) : IAsyncDisposable
 {
     public const int Port = 49783;
@@ -65,7 +65,7 @@ public sealed class LocalServer(WebApplication app, EventStore events, WorkflowS
         var app = builder.Build();
         LocalServerEndpoints.Map(app, oauth, bridgeToken, flows, oauthAudit, connections, notifier, activity, activityToken, dashboardTheme);
         await app.StartAsync();
-        return new(app, store, summaries, exports, notifier, oauth, connections);
+        return new(app, store, summaries, exports, notifier, activity, oauth, connections);
     }
 
     public Task<IReadOnlyList<string>> GetProjectIdsAsync(CancellationToken cancellationToken = default)
@@ -76,6 +76,8 @@ public sealed class LocalServer(WebApplication app, EventStore events, WorkflowS
 
     public Task<IReadOnlyList<WorkflowCatalogEntry>> GetWorkflowCatalogAsync(string projectId, CancellationToken cancellationToken = default)
         => events.GetWorkflowCatalogAsync(projectId, cancellationToken);
+    public Task<IReadOnlyList<WorkflowCalendarEntry>> GetWorkflowCalendarAsync(CancellationToken cancellationToken = default)
+        => events.GetWorkflowCalendarAsync(cancellationToken);
 
     public Task<WorkflowState> GetStateAsync(string projectId, string workflowId, CancellationToken cancellationToken = default)
         => events.GetStateAsync(projectId, workflowId, cancellationToken);
@@ -91,6 +93,35 @@ public sealed class LocalServer(WebApplication app, EventStore events, WorkflowS
 
     public Task<ExportResult> ExportAsync(string projectId, string workflowId, CancellationToken cancellationToken = default)
         => exports.ExportAsync(projectId, workflowId, cancellationToken);
+
+    public async Task<int> DeleteWorkflowAsync(string projectId, string workflowId, CancellationToken cancellationToken = default)
+    {
+        var count = await events.DeleteWorkflowAsync(projectId, workflowId, cancellationToken);
+        activity.Delete(projectId, workflowId);
+        notifier.Publish(projectId, workflowId);
+        return count;
+    }
+
+    public async Task<int> DeleteProjectAsync(string projectId, CancellationToken cancellationToken = default)
+    {
+        var workflowIds = await events.GetWorkflowIdsAsync(projectId, cancellationToken);
+        var count = await events.DeleteProjectAsync(projectId, cancellationToken);
+        activity.DeleteProject(projectId);
+        foreach (var workflowId in workflowIds) notifier.Publish(projectId, workflowId);
+        return count;
+    }
+
+    public async Task<int> DeleteAllAsync(CancellationToken cancellationToken = default)
+    {
+        var projects = await events.GetProjectIdsAsync(cancellationToken);
+        var workflows = new List<(string ProjectId, string WorkflowId)>();
+        foreach (var projectId in projects)
+            workflows.AddRange((await events.GetWorkflowIdsAsync(projectId, cancellationToken)).Select(id => (projectId, id)));
+        var count = await events.DeleteAllAsync(cancellationToken);
+        activity.Clear();
+        foreach (var item in workflows) notifier.Publish(item.ProjectId, item.WorkflowId);
+        return count;
+    }
 
     public async ValueTask DisposeAsync()
     {

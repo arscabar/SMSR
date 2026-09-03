@@ -17,6 +17,8 @@
     <SolidColorBrush x:Key="AccentSoftBrush" Color="#ECECFF" />
     <SolidColorBrush x:Key="QuietBrush" Color="#ECEEF6" />
     <SolidColorBrush x:Key="QuietHoverBrush" Color="#DEE2EE" />
+    <SolidColorBrush x:Key="DangerBrush" Color="#C2414B" />
+    <SolidColorBrush x:Key="DangerHoverBrush" Color="#A9323C" />
 
     <Style TargetType="{x:Type Window}">
         <Setter Property="Background" Value="{DynamicResource CanvasBrush}" />

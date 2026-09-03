@@ -1,6 +1,6 @@
-namespace SMSR.App.ViewModels;
+using SMSR.App.Mvp;
 
-public sealed record WorkflowChoice(string WorkflowId, string DisplayName);
+namespace SMSR.App.ViewModels;
 
 public sealed partial class WorkflowSelectionViewModel
 {
@@ -11,10 +11,12 @@ public sealed partial class WorkflowSelectionViewModel
         foreach (var entry in await server.GetWorkflowCatalogAsync(projectId))
         {
             WorkflowIds.Add(entry.WorkflowId);
-            var display = string.IsNullOrWhiteSpace(entry.Title)
-                ? entry.WorkflowId
-                : $"{entry.Title} · {entry.WorkflowId}";
-            Workflows.Add(new(entry.WorkflowId, display));
+            Workflows.Add(CreateChoice(projectId, entry));
         }
     }
+
+    private static WorkflowChoice CreateChoice(string projectId, WorkflowCatalogEntry entry)
+        => new(projectId, entry.WorkflowId,
+            string.IsNullOrWhiteSpace(entry.Title) ? "이름 없는 이전 작업" : entry.Title,
+            entry.Status, entry.NodeCount, entry.UpdatedAtUtc);
 }

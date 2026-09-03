@@ -23,8 +23,13 @@ public sealed partial class EventStore
               ) GROUP BY workflow_id
             )
             SELECT w.workflow_id,
-              (SELECT p.title FROM plan_nodes p WHERE p.project_id=$projectId AND p.workflow_id=w.workflow_id
-                ORDER BY json_extract(p.metadata_json, '$.ParentNodeId') IS NOT NULL, p.rowid LIMIT 1),
+              COALESCE(
+                (SELECT p.title FROM plan_nodes p WHERE p.project_id=$projectId AND p.workflow_id=w.workflow_id
+                  ORDER BY json_extract(p.metadata_json, '$.ParentNodeId') IS NOT NULL, p.rowid LIMIT 1),
+                (SELECT e.summary FROM events e WHERE e.project_id=$projectId AND e.workflow_id=w.workflow_id
+                  AND e.summary IS NOT NULL AND trim(e.summary) <> '' ORDER BY e.created_at_utc DESC, e.rowid DESC LIMIT 1),
+                (SELECT h.summary FROM agent_heartbeats h WHERE h.project_id=$projectId AND h.workflow_id=w.workflow_id
+                  AND h.summary IS NOT NULL AND trim(h.summary) <> '' ORDER BY h.heartbeat_at_utc DESC LIMIT 1)),
               (SELECT COUNT(*) FROM plan_nodes p WHERE p.project_id=$projectId AND p.workflow_id=w.workflow_id),
               (SELECT COUNT(*) FROM plan_nodes p JOIN current_state s ON s.project_id=p.project_id
                 AND s.workflow_id=p.workflow_id AND s.node_id=p.node_id WHERE p.project_id=$projectId

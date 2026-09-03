@@ -52,6 +52,29 @@ public sealed class ActivityJsonlStore(string dataPath)
             return true;
         });
 
+    public void Delete(string projectId, string workflowId)
+        => DeleteKey(Key(projectId, workflowId));
+
+    public void DeleteProject(string projectId)
+    {
+        if (!Directory.Exists(_root)) return;
+        foreach (var path in Directory.EnumerateFiles(_root, "*.jsonl*"))
+            try
+            {
+                var record = File.ReadLines(path).Select(Parse).FirstOrDefault(item => item is not null);
+                if (record?.ProjectId == projectId) DeleteKey(Path.GetFileName(path).Split('.')[0]);
+            }
+            catch (IOException) { }
+    }
+
+    public void Clear()
+    {
+        if (!Directory.Exists(_root)) return;
+        var keys = Directory.EnumerateFiles(_root, "*.jsonl*")
+            .Select(path => Path.GetFileName(path).Split('.')[0]).Distinct(StringComparer.Ordinal).ToArray();
+        foreach (var key in keys) DeleteKey(key);
+    }
+
     private static ActivityRecord? Parse(string line)
     {
         try { return JsonSerializer.Deserialize<ActivityRecord>(line, Json); }
@@ -63,6 +86,15 @@ public sealed class ActivityJsonlStore(string dataPath)
         try { File.Move(path, path + ".previous", true); }
         catch (IOException) { }
     }
+
+    private void DeleteKey(string key)
+        => ActivityFileLock.Run(key, () =>
+        {
+            var path = Path.Combine(_root, key + ".jsonl");
+            if (File.Exists(path)) File.Delete(path);
+            if (File.Exists(path + ".previous")) File.Delete(path + ".previous");
+            return true;
+        });
 
     private static string Key(string projectId, string workflowId)
         => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(projectId + "\n" + workflowId)))[..24];

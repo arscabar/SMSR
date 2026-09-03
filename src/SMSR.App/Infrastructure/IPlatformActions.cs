@@ -5,4 +5,5 @@ public interface IPlatformActions
     bool TryCopyToClipboard(string value);
     bool TryOpenBrowser(string url);
     bool TryOpenPath(string path);
+    bool Confirm(string title, string message);
 }

@@ -74,11 +74,30 @@ public sealed class LocalServerHost(string? dataPath = null, int port = LocalSer
     public Task<IReadOnlyList<string>> GetProjectIdsAsync() => Server.GetProjectIdsAsync();
     public Task<IReadOnlyList<string>> GetWorkflowIdsAsync(string projectId) => Server.GetWorkflowIdsAsync(projectId);
     public Task<IReadOnlyList<WorkflowCatalogEntry>> GetWorkflowCatalogAsync(string projectId) => Server.GetWorkflowCatalogAsync(projectId);
+    public Task<IReadOnlyList<WorkflowCalendarEntry>> GetWorkflowCalendarAsync() => Server.GetWorkflowCalendarAsync();
     public Task<WorkflowState> GetStateAsync(string projectId, string workflowId) => Server.GetStateAsync(projectId, workflowId);
     public Task<IReadOnlyList<RecentEvent>> GetRecentEventsAsync(string projectId, string workflowId) => Server.GetRecentEventsAsync(projectId, workflowId);
     public Task<WorkflowSummary?> GetLatestSummaryAsync(string projectId, string workflowId) => Server.GetLatestSummaryAsync(projectId, workflowId);
     public Task<WorkflowSummary> GenerateSummaryAsync(string projectId, string workflowId) => Server.GenerateSummaryAsync(projectId, workflowId);
     public Task<ExportResult> ExportAsync(string projectId, string workflowId) => Server.ExportAsync(projectId, workflowId);
+    public async Task<int> DeleteWorkflowAsync(string projectId, string workflowId)
+    {
+        var count = await Server.DeleteWorkflowAsync(projectId, workflowId);
+        new TrackingSessionStore(_dataPath).RemoveWorkflow(projectId, workflowId);
+        return count;
+    }
+    public async Task<int> DeleteProjectAsync(string projectId)
+    {
+        var count = await Server.DeleteProjectAsync(projectId);
+        new TrackingSessionStore(_dataPath).RemoveProject(projectId);
+        return count;
+    }
+    public async Task<int> DeleteAllAsync()
+    {
+        var count = await Server.DeleteAllAsync();
+        new TrackingSessionStore(_dataPath).Clear();
+        return count;
+    }
 
     public async ValueTask DisposeAsync()
     {

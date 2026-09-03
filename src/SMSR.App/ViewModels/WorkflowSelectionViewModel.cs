@@ -42,6 +42,7 @@ public sealed partial class WorkflowSelectionViewModel(LocalServerHost server) :
         ProjectIds.Clear();
         foreach (var id in await server.GetProjectIdsAsync()) ProjectIds.Add(id);
         if (string.IsNullOrWhiteSpace(ProjectId) && ProjectIds.Count > 0) ProjectId = saved is not null && ProjectIds.Contains(saved.ProjectId) ? saved.ProjectId : ProjectIds[0];
+        await LoadCalendarAsync();
         WorkflowIds.Clear();
         if (string.IsNullOrWhiteSpace(ProjectId)) return;
         await LoadWorkflowsAsync(ProjectId);
@@ -57,6 +58,21 @@ public sealed partial class WorkflowSelectionViewModel(LocalServerHost server) :
         ProjectId = projectId;
         await LoadWorkflowsAsync(projectId);
         if (WorkflowIds.Contains(workflowId)) WorkflowId = workflowId;
+    }
+
+    public async Task ReloadCalendarAsync()
+        => await LoadCalendarAsync();
+
+    public void Reset()
+    {
+        ProjectId = "";
+        WorkflowId = "";
+        ProjectIds.Clear();
+        WorkflowIds.Clear();
+        Workflows.Clear();
+        CalendarWorkflows.Clear();
+        _calendarSource.Clear();
+        SelectedDate = null;
     }
 
     private LastWorkflow? LoadSaved()

@@ -8,7 +8,7 @@ public static class StdioMcpHost
 {
     public static async Task RunAsync()
     {
-        _ = ConnectDashboardAsync();
+        await ConnectDashboardAsync();
         var services = new ServiceCollection();
         services.AddSingleton<McpHttpGateway>();
         services.AddMcpServer(options => options.ServerInstructions = SmsrMcpInstructions.Text)
