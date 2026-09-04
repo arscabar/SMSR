@@ -29,6 +29,7 @@ public static class MvpSelfCheck
             OAuthPersistenceSelfCheck.Run(serverPath);
             await ActivitySelfCheck.RunAsync(serverPath);
             await AppUpdateSelfCheck.RunAsync(serverPath);
+            await AiSummarySelfCheck.RunAsync(serverPath);
             var connectionTracker = new McpConnectionTracker();
             var connectionChanges = 0;
             connectionTracker.Changed += (_, _) => connectionChanges++;
@@ -164,6 +165,16 @@ public static class MvpSelfCheck
                 });
                 var dailyRecords = await server.GetDailyActivitiesAsync(DateTimeOffset.UtcNow.AddMinutes(-1),
                     DateTimeOffset.UtcNow.AddMinutes(1));
+                var pendingSummary = server.CreateDailySummaryRequest(DateTime.Today, "MCP 요약 자료");
+                DailySummaryCompletedEventArgs? completedSummary = null;
+                server.DailySummaryCompleted += (_, item) => completedSummary = item;
+                var summaryGateway = new McpHttpGateway(server.Address, serverPath);
+                var summaryRequest = await summaryGateway.CallAsync("get_daily_summary_request",
+                    new { requestId = pendingSummary.RequestId });
+                var summaryResult = await summaryGateway.CallAsync("save_daily_summary_result",
+                    new { requestId = pendingSummary.RequestId, content = "MCP 일일 요약 완료" });
+                using var summaryRequestDocument = JsonDocument.Parse(summaryRequest);
+                using var summaryResultDocument = JsonDocument.Parse(summaryResult);
                 using var bridgeDocument = JsonDocument.Parse(bridgeWorkflows);
                 using var restartedBridgeDocument = JsonDocument.Parse(restartedBridgeWorkflows);
                 var bridgeCatalogRead = bridgeDocument.RootElement.GetProperty("projectId").GetString() == "demo"
@@ -240,6 +251,9 @@ public static class MvpSelfCheck
                     ("bridge", bridgeAnnounced && server.HasActiveMcpClient && bridgeCatalogRead),
                     ("daily-activity", dailyResult.Contains("daily-mcp-1", StringComparison.Ordinal)
                         && dailyRecords.Any(item => item.ActivityId == "daily-mcp-1" && item.Files.Single() == "README.md")),
+                    ("daily-summary", summaryRequestDocument.RootElement.GetProperty("Prompt").GetString() == "MCP 요약 자료"
+                        && summaryResultDocument.RootElement.GetProperty("saved").GetBoolean()
+                        && completedSummary?.Content == "MCP 일일 요약 완료"),
                     ("initial-http-sse", stateResponse.IsSuccessStatusCode && dashboardResponse.IsSuccessStatusCode && streamResponse.IsSuccessStatusCode && initialEvent == "event: state" && initialData == "data: changed" && changedEvent == "event: state"),
                     ("activity", activityResponse.IsSuccessStatusCode && activityJson.Contains("TOOL_COMPLETED") && recordedDashboard.Contains("TOOL_COMPLETED")),
                     ("mcp-http", recordResponse.IsSuccessStatusCode && planResponse.IsSuccessStatusCode && listResponse.IsSuccessStatusCode),
@@ -291,7 +305,11 @@ public static class MvpSelfCheck
                 await viewModel.Workspace.Selection.LoadAsync();
                 if (!viewModel.Workspace.Selection.DailyActivities.Any(item => item.ActivityId == "daily-simple")
                     || !viewModel.Workspace.Selection.CalendarSummary.Contains("작업 기록", StringComparison.Ordinal)
-                    || !viewModel.Workspace.Selection.DailyOverview.Contains("변경 파일", StringComparison.Ordinal))
+                    || !viewModel.Workspace.Selection.DailyOverview.Contains("변경 파일", StringComparison.Ordinal)
+                    || viewModel.Workspace.Selection.CalendarDays.Count(item => item.IsInMonth)
+                        != DateTime.DaysInMonth(viewModel.Workspace.Selection.SelectedDate!.Value.Year,
+                            viewModel.Workspace.Selection.SelectedDate.Value.Month)
+                    || viewModel.Workspace.Selection.CalendarDays.Count(item => item.IsInMonth) > 31)
                     throw new InvalidOperationException("일일 작업 캘린더 표시 검증이 실패했습니다.");
                 if (!viewModel.Workspace.Selection.Workflows.Any(item => item.WorkflowId == opaqueWorkflow
                     && item.DisplayName.Contains("사람이 읽는 기존 작업", StringComparison.Ordinal)))

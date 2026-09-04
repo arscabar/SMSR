@@ -56,7 +56,7 @@ internal sealed class CodexConnectionService
     private string Message(string? version, bool registered, bool tracking)
     {
         var name = version is null ? "Codex 공유 환경" : $"Codex {version}";
-        if (_host.IsCodexConnected && tracking) return $"{name} 연결 완료 · 도구 10개 · 일일 기록·그래프 준비됨";
+        if (_host.IsCodexConnected && tracking) return $"{name} 연결 완료 · 도구 12개 · 일일 기록·그래프·AI 요약 준비됨";
         if (!registered || !tracking) return $"{name}의 연결과 그래프 추적 훅을 자동 구성합니다.";
         if (!StartsWithWindows()) return "MCP는 등록됐지만 자동 시작이 꺼져 있습니다. 한 번에 설정으로 복구하세요.";
         return "자동 로컬 브리지 설정 완료 · 인증창 없이 연결됩니다. Codex를 한 번 다시 연 뒤 첫 SMSR 요청을 기다리는 중입니다.";

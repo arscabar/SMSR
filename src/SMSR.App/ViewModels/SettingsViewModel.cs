@@ -9,6 +9,8 @@ public sealed partial class SettingsViewModel : ViewModelBase
     private readonly AppSettingsService _settings;
     private readonly IPlatformActions _platform;
     private readonly AppUpdateService _updates;
+    private readonly GeminiCredentialStore _geminiCredentials;
+    private readonly GeminiSummaryClient _gemini;
     private readonly Action _exitApplication;
     private string _statusMessage = "변경 사항은 현재 Windows 사용자에게 자동 저장됩니다.";
 
@@ -18,6 +20,8 @@ public sealed partial class SettingsViewModel : ViewModelBase
         _settings = settings;
         _platform = platform;
         _updates = new AppUpdateService(host.DataPath);
+        _geminiCredentials = new GeminiCredentialStore(host.DataPath);
+        _gemini = new GeminiSummaryClient(_geminiCredentials);
         _exitApplication = exitApplication ?? (() => { });
         DataPath = host.DataPath;
         LogPath = System.IO.Path.GetDirectoryName(host.LogPath) ?? host.DataPath;

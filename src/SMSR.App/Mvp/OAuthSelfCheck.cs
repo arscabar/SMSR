@@ -83,7 +83,7 @@ internal static partial class OAuthSelfCheck
         var toolsJson = await toolsResponse.Content.ReadAsStringAsync();
         string[] expectedTools = ["save_plan", "get_plan", "list_workflows", "record_event",
             "record_heartbeat", "get_state", "generate_summary", "save_summary", "export_workflow",
-            "record_daily_activity"];
+            "record_daily_activity", "get_daily_summary_request", "save_daily_summary_result"];
         if (!registration.IsSuccessStatusCode || approval.StatusCode != HttpStatusCode.Redirect
             || !token.IsSuccessStatusCode || !initialized.IsSuccessStatusCode
             || !refreshed.IsSuccessStatusCode || !refreshedJson.Contains("refresh_token", StringComparison.Ordinal)

@@ -5,11 +5,15 @@ namespace SMSR.App.ViewModels;
 public sealed partial class WorkflowSelectionViewModel
 {
     private readonly List<WorkflowChoice> _calendarSource = [];
+    private readonly List<DailyActivityItem> _dailyCalendarSource = [];
     private DateTime? _selectedDate;
+    private DateTime _displayMonth = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private CalendarDayItem? _selectedCalendarDay;
     private WorkflowChoice? _selectedCalendarWorkflow;
     private DailyActivityItem? _selectedDailyActivity;
 
     public ObservableCollection<WorkflowChoice> CalendarWorkflows { get; } = [];
+    public ObservableCollection<CalendarDayItem> CalendarDays { get; } = [];
     public event Action<WorkflowChoice>? WorkflowRequested;
     public event Action<DailyActivityItem>? DailyActivityRequested;
 
@@ -19,10 +23,23 @@ public sealed partial class WorkflowSelectionViewModel
         set
         {
             if (!SetField(ref _selectedDate, value?.Date)) return;
+            _selectedCalendarDay = CalendarDays.FirstOrDefault(item => item.Date == _selectedDate);
+            OnPropertyChanged(nameof(SelectedCalendarDay));
             FilterCalendar(true);
-            if (value is not null) _ = LoadDailyActivitiesAsync(value.Value.Date);
         }
     }
+
+    public CalendarDayItem? SelectedCalendarDay
+    {
+        get => _selectedCalendarDay;
+        set
+        {
+            if (!SetField(ref _selectedCalendarDay, value) || value?.Date is null) return;
+            SelectedDate = value.Date;
+        }
+    }
+
+    public string DisplayMonthLabel => $"{_displayMonth:yyyy년 M월}";
 
     public DailyActivityItem? SelectedDailyActivity
     {
@@ -50,53 +67,4 @@ public sealed partial class WorkflowSelectionViewModel
     public string DailyOverview => DailyActivities.Count == 0 ? "이 날짜에는 프로젝트 변경 기록이 없습니다."
         : $"프로젝트 {DailyActivities.Select(item => item.ProjectId).Distinct().Count()}개 · 완료 {DailyActivities.Count(item => item.Status == "SUCCESS")}건 · 문제 {DailyActivities.Count(item => item.Status != "SUCCESS")}건 · 변경 파일 {DailyActivities.SelectMany(item => item.Files).Distinct().Count()}개";
 
-    private async Task LoadCalendarAsync()
-    {
-        _calendarSource.Clear();
-        foreach (var entry in await server.GetWorkflowCalendarAsync())
-            _calendarSource.Add(new(entry.ProjectId, entry.WorkflowId,
-                string.IsNullOrWhiteSpace(entry.Title) ? "이름 없는 이전 작업" : entry.Title,
-                entry.Status, entry.NodeCount, entry.UpdatedAtUtc));
-        _calendarSource.Sort((left, right) => Nullable.Compare(right.UpdatedAtUtc, left.UpdatedAtUtc));
-        var latestDaily = await server.GetLatestDailyActivityAtAsync();
-        if (SelectedDate is null)
-        {
-            var latestGraph = _calendarSource.FirstOrDefault(item => item.ActivityDate is not null)?.UpdatedAtUtc;
-            _selectedDate = new[] { latestGraph, latestDaily }.Where(value => value is not null)
-                .Max()?.ToLocalTime().Date
-                ?? DateTime.Today;
-            OnPropertyChanged(nameof(SelectedDate));
-        }
-        FilterCalendar();
-        if (SelectedDate is { } selectedDate) await LoadDailyActivitiesAsync(selectedDate);
-    }
-
-    private void FilterCalendar(bool selectFirst = false)
-    {
-        SelectedCalendarWorkflow = null;
-        SelectedDailyActivity = null;
-        CalendarWorkflows.Clear();
-        DailyActivities.Clear();
-        foreach (var item in _calendarSource.Where(item => item.ActivityDate == SelectedDate).Take(200))
-            CalendarWorkflows.Add(item);
-        OnPropertyChanged(nameof(CalendarSummary));
-        OnPropertyChanged(nameof(DailyOverview));
-        if (selectFirst && CalendarWorkflows.Count > 0)
-            SelectedCalendarWorkflow = CalendarWorkflows[0];
-    }
-
-    private async Task LoadDailyActivitiesAsync(DateTime date)
-    {
-        var unspecified = DateTime.SpecifyKind(date.Date, DateTimeKind.Unspecified);
-        var start = new DateTimeOffset(unspecified, TimeZoneInfo.Local.GetUtcOffset(unspecified)).ToUniversalTime();
-        var endDate = unspecified.AddDays(1);
-        var end = new DateTimeOffset(endDate, TimeZoneInfo.Local.GetUtcOffset(endDate)).ToUniversalTime();
-        var items = await server.GetDailyActivitiesAsync(start, end);
-        if (SelectedDate != date.Date) return;
-        SelectedDailyActivity = null;
-        DailyActivities.Clear();
-        foreach (var item in items) DailyActivities.Add(DailyActivityItem.From(item));
-        OnPropertyChanged(nameof(CalendarSummary));
-        OnPropertyChanged(nameof(DailyOverview));
-    }
 }

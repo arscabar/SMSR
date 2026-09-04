@@ -47,7 +47,8 @@ public sealed partial class WorkflowWorkspaceViewModel
     private void OnSelectionChanged(object? sender, PropertyChangedEventArgs eventArgs)
     {
         if (eventArgs.PropertyName is nameof(WorkflowSelectionViewModel.ProjectId)
-            or nameof(WorkflowSelectionViewModel.WorkflowId)) NotifyCommandStates();
+            or nameof(WorkflowSelectionViewModel.WorkflowId)
+            or nameof(WorkflowSelectionViewModel.SelectedDate)) NotifyCommandStates();
     }
 
     private void OnHostStateChanged(object? sender, EventArgs eventArgs)

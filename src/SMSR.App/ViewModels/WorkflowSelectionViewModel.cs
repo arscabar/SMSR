@@ -1,20 +1,35 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Text.Json;
+using System.Windows.Input;
+using SMSR.App.Infrastructure;
 using SMSR.App.Services;
 
 namespace SMSR.App.ViewModels;
 
-public sealed partial class WorkflowSelectionViewModel(LocalServerHost server) : ViewModelBase
+public sealed partial class WorkflowSelectionViewModel : ViewModelBase
 {
-    private readonly string _selectionPath = Path.Combine(server.DataPath, "last-workflow.json");
+    private readonly LocalServerHost server;
+    private readonly string _selectionPath;
     private string _projectId = "";
     private string _workflowId = "";
+
+    public WorkflowSelectionViewModel(LocalServerHost server)
+    {
+        this.server = server;
+        _selectionPath = Path.Combine(server.DataPath, "last-workflow.json");
+        PreviousMonthCommand = new RelayCommand(() => _ = MoveMonthAsync(-1));
+        NextMonthCommand = new RelayCommand(() => _ = MoveMonthAsync(1));
+        TodayCommand = new RelayCommand(() => _ = ShowTodayAsync());
+    }
 
     public ObservableCollection<string> ProjectIds { get; } = [];
     public ObservableCollection<string> WorkflowIds { get; } = [];
     public ObservableCollection<WorkflowChoice> Workflows { get; } = [];
     public ObservableCollection<DailyActivityItem> DailyActivities { get; } = [];
+    public ICommand PreviousMonthCommand { get; }
+    public ICommand NextMonthCommand { get; }
+    public ICommand TodayCommand { get; }
 
     public string ProjectId
     {
@@ -73,7 +88,9 @@ public sealed partial class WorkflowSelectionViewModel(LocalServerHost server) :
         Workflows.Clear();
         CalendarWorkflows.Clear();
         DailyActivities.Clear();
+        CalendarDays.Clear();
         _calendarSource.Clear();
+        _dailyCalendarSource.Clear();
         SelectedDate = null;
     }
 

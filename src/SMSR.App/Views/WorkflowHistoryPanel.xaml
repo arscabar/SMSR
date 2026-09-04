@@ -4,22 +4,18 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <Border Margin="0,0,8,0" Padding="18" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10">
             <StackPanel>
-                <TextBlock FontSize="16" FontWeight="SemiBold" Text="최근 이벤트 · 산출물" />
-                <TextBlock Margin="0,4,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="시각은 SMSR가 이벤트를 받은 로컬 시각이며, 산출물은 에이전트가 보고한 파일 경로입니다." TextWrapping="Wrap" />
-                <ItemsControl Margin="0,12,0,0" ItemsSource="{Binding Monitor.RecentEvents}">
-                    <ItemsControl.ItemTemplate><DataTemplate><Border Margin="0,0,0,8" Padding="10" Background="{DynamicResource QuietBrush}" CornerRadius="6"><StackPanel>
-                        <TextBlock FontWeight="SemiBold" Text="{Binding Title}" TextWrapping="Wrap" />
-                        <TextBlock Margin="0,3,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="{Binding Meta}" />
-                        <TextBlock Margin="0,3,0,0" Foreground="{DynamicResource AccentBrush}" Text="{Binding Artifacts}" TextWrapping="Wrap" />
-                    </StackPanel></Border></DataTemplate></ItemsControl.ItemTemplate>
-                </ItemsControl>
-                <TextBlock Margin="0,16,0,0" FontSize="16" FontWeight="SemiBold" Text="요약" />
-                <TextBlock Margin="0,8,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="{Binding Monitor.Summary}" TextWrapping="Wrap" />
-                <StackPanel Margin="0,16,0,0" Orientation="Horizontal">
-                    <Button Command="{Binding GenerateSummaryCommand}" Content="요약 생성" />
-                    <Button Margin="8,0,0,0" Style="{StaticResource IconButton}" Command="{Binding ExportCommand}" Content="⇩" ToolTip="내보내기" />
-                </StackPanel>
-                <TextBlock Margin="0,12,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="{Binding StatusMessage}" TextWrapping="Wrap" />
+                <TextBlock FontSize="18" FontWeight="SemiBold" Text="일자별 작업 요약" />
+                <TextBlock Margin="0,5,0,14" Foreground="{DynamicResource MutedTextBrush}" Text="모든 프로젝트의 그래프와 완료 기록을 모아 Gemini로 요약합니다. Gemini를 사용할 수 없을 때만 Codex 요청을 엽니다." TextWrapping="Wrap" />
+                <WrapPanel>
+                    <Button Command="{Binding GenerateTodaySummaryCommand}" Content="금일 작업 요약" />
+                    <Button Margin="8,0,0,0" Command="{Binding GenerateSelectedDateSummaryCommand}" Content="그리드 선택일자 전체 요약" />
+                </WrapPanel>
+                <Border Margin="0,18,0,0" Padding="16" MinHeight="260" Background="{DynamicResource QuietBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8">
+                    <StackPanel>
+                        <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" Text="{Binding DailySummaryMeta}" TextWrapping="Wrap" />
+                        <TextBlock Margin="0,14,0,0" Text="{Binding DailySummary}" TextWrapping="Wrap" LineHeight="23" />
+                    </StackPanel>
+                </Border>
             </StackPanel>
         </Border>
     </ScrollViewer>

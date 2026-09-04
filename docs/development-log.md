@@ -1504,3 +1504,21 @@
 - 검증 결과: 임시 SQLite 일일 기록 생성·정정·조회·삭제, 복잡도 정책, 상태 카드와 SSE 상태 보존, 정상·오염 업데이트 체크섬을 통과했다. 설치본은 protocol `2025-11-25`와 도구 10개를 제공하고, 앱 종료 뒤 브리지 호출이 설치 앱과 127.0.0.1 서버를 자동 복구했다. 초기 최종 설치 검사는 백그라운드 앱이 stdio 파이프를 상속해 클라이언트 종료가 지연됐고, 숨김 셸 실행으로 핸들 상속을 차단했다. 설치 설정은 업그레이드 전후 동일하게 보존됐다. 저장소 전체 포맷 검사는 기존 압축 스타일 파일도 보고해 이번에 추가한 C# 파일 범위로 재실행했고, 해당 검사와 전체 diff 검사가 통과했다.
 - 남은 위험: 코드 서명이 없어 다른 PC에서 SmartScreen 경고가 표시될 수 있다. 실제 클릭 브라우저 자동화는 현재 런타임 부재로 HTML/SSE 자체 검사와 실행 서버 계약 검사로 대체했다.
 - 다음 조치: 최종 커밋 기준 설치본을 다시 만들고 공개 릴리스의 SHA-256 다운로드 검증을 수행한다.
+
+## 2026-09-04 - 월간 작업 그리드와 Gemini 일자별 요약
+
+- 변경 파일: 월간 캘린더·작업 요약·설정 WPF 화면, `WorkflowSelectionViewModel`·`WorkflowWorkspaceViewModel` partial, Gemini 보안 저장·요약 클라이언트, Codex 요약 요청 coordinator와 MCP 도구, stdio 브리지, 자체 검사, README와 MCP·그래프 안내 문서
+- 변경 사유: 첫 탭의 중복 현재 상태를 제거하고 날짜별 기록을 한 달 그리드로 찾으며, 최근 이벤트 대신 금일 또는 선택일자의 전체 프로젝트 작업을 LLM으로 읽기 쉽게 요약한다. Gemini를 우선 사용하고 사용할 수 없을 때만 CLI 의존성 없이 Codex에 맡긴다.
+- 실행 명령: Release `dotnet build`·`dotnet test`; config·tracking·update·OAuth·전체 self-check; 소스 브리지 `scripts/test-mcp-stdio.ps1 -ExpectedToolCount 12`; 신규 C# 파일 범위 `dotnet format whitespace --verify-no-changes`; `git diff --check`
+- 검증 결과: Release 빌드 경고 0·오류 0, 테스트와 자체 검사 5종이 종료 코드 0을 반환했다. 날짜 그리드는 선택 월의 실제 날짜만 최대 31일 포함하며 그래프·일일 기록 수를 표시한다. DPAPI 키 저장·읽기·삭제, `gemini-2.5-flash` URL·인증 헤더·응답 해석을 가짜 HTTP 응답으로 검증했다. Codex 대체 요청은 `get_daily_summary_request`와 `save_daily_summary_result`를 실제 HTTP MCP로 왕복했고 stdio protocol `2025-11-25`에서 총 12개 도구를 확인했다. 최초 종합 검사는 JSON 한글 escape를 원문으로 비교한 테스트 판정이 실패했으며 구조화 JSON 판정으로 수정한 뒤 통과했다.
+- 남은 위험: 실제 Gemini 키와 외부 API의 실호출은 키를 저장한 사용자 환경에서 확인해야 한다. Codex Desktop 딥링크는 보안상 프롬프트를 자동 전송하지 않아 열린 새 작업에서 사용자가 전송을 한 번 눌러야 하며, 업데이트된 두 MCP 도구를 읽도록 Codex를 한 번 다시 시작해야 한다. 대기 중 SMSR 서버가 종료되면 메모리의 Codex 요약 요청은 만료된다. 저장소 전체 포맷 검사는 기존 압축 스타일의 수정 파일도 보고하므로 신규 파일 범위로 검증했다.
+- 다음 조치: 설정에서 Gemini 키를 저장해 연결 확인 후 실제 일자 요약을 생성한다. 배포가 필요하면 버전을 결정하고 설치본을 생성해 설치 후 WPF 시각 확인과 Codex 재시작 검증을 수행한다.
+
+## 2026-09-04 - SMSR v1.4.0 기능 릴리스
+
+- 변경 파일: `src/SMSR.App/SMSR.App.csproj`, README, 설치 안내, `docs/releases/v1.4.0.md`, `docs/test-report-2026-09-04-v1.4.0.md`, 생성 설치 파일
+- 변경 사유: 월간 작업 그리드와 Gemini 우선·Codex 대체 일자별 요약을 다른 Windows PC에서 설치·자동 업데이트할 수 있는 정식 기능 릴리스로 배포한다.
+- 실행 명령: Release 빌드·테스트, config·tracking·update·OAuth·전체 self-check, `scripts/build-installer.ps1`, 무인 업그레이드, 설치본 자체 검사 5종, 설치본 stdio `initialize`·`tools/list`, `/api/health`, WPF UI Automation, 버전·SHA-256·설정 보존 확인
+- 검증 결과: 앱·설치 버전 `1.4.0.0`, Release 빌드 경고 0·오류 0, 소스와 최종 설치본 자체 검사 5종 종료 코드 0을 확인했다. 설치본은 서버가 없는 상태에서 본체를 자동 복구하고 protocol `2025-11-25`와 도구 12개를 제공했다. 월간 그리드·두 요약 버튼·Gemini 설정 컨트롤을 실제 설치 WPF Automation 트리에서 확인했다. 기존 `settings.json`과 SQLite 해시는 업그레이드 전후 같고 publish·설치 앱 SHA-256은 `CADB77020C903CBBF66AAAC4862617DD3DD9689709B9FB187A68BF8AD08B5E7C`로 일치한다. Setup SHA-256은 `871C5FF0A870DD192F62A18413D8CDD80404DAAF5D0ED5752E7F3F5E31D89E6D`이다.
+- 남은 위험: 실제 Gemini 호출은 사용자의 키가 있어야 확인할 수 있고 설치 파일은 코드 서명되지 않았다. Codex가 새 두 도구를 읽으려면 설치 후 한 번 완전히 다시 시작해야 한다. 서버가 중지된 기존 설치본이 단일 인스턴스를 점유한 상태의 소스 브리지 검사는 시작 대기에서 두 번 타임아웃돼 같은 재시도를 중단하고, 기존 프로세스를 정상 업그레이드한 뒤 최종 설치본 자동 복구 검사로 전환해 통과했다. 첫 WPF Automation 검사는 탭 헤더의 접근성 이름이 일반값이라 컨트롤을 찾지 못했으며 헤더 텍스트의 부모 탭을 선택하도록 검사 방식을 고쳐 통과했다.
+- 다음 조치: 변경 커밋과 `v1.4.0` 태그를 `origin/main`에 푸시하고 GitHub 릴리스에 설치 EXE와 SHA-256 파일을 첨부한다.

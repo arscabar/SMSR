@@ -19,7 +19,7 @@ tool_timeout_sec = 60
 enabled = true
 ```
 
-Codex가 `SMSR.Bridge.exe --mcp-stdio`를 직접 실행하면 브리지가 10개 도구를 노출하고 내부 HTTP MCP로 요청을 전달한다. 서버가 꺼져 있으면 브리지가 같은 폴더의 `SMSR.App.exe`를 `--background --ensure-server`로 한 번만 실행한 뒤 준비를 기다린다. 설치·휴대용 실행 때 GUI 앱에서 현재 실행 파일의 콘솔 브리지 사본을 생성하므로 특정 PC 경로를 하드코딩하지 않는다. 서버와 브리지는 `%LocalAppData%\SMSR\mcp-bridge-token.bin`의 DPAPI 보호 토큰으로 상호 인증하며, 토큰 원문은 Codex 설정이나 로그에 기록하지 않는다. 브리지는 시작 즉시 보호된 연결 신호를 보내며 서버 준비 동안 최대 30초 재시도한다.
+Codex가 `SMSR.Bridge.exe --mcp-stdio`를 직접 실행하면 브리지가 12개 도구를 노출하고 내부 HTTP MCP로 요청을 전달한다. 서버가 꺼져 있으면 브리지가 같은 폴더의 `SMSR.App.exe`를 `--background --ensure-server`로 한 번만 실행한 뒤 준비를 기다린다. 설치·휴대용 실행 때 GUI 앱에서 현재 실행 파일의 콘솔 브리지 사본을 생성하므로 특정 PC 경로를 하드코딩하지 않는다. 서버와 브리지는 `%LocalAppData%\SMSR\mcp-bridge-token.bin`의 DPAPI 보호 토큰으로 상호 인증하며, 토큰 원문은 Codex 설정이나 로그에 기록하지 않는다. 브리지는 시작 즉시 보호된 연결 신호를 보내며 서버 준비 동안 최대 30초 재시도한다.
 
 서버는 `127.0.0.1`에만 bind한다. 기존 Streamable HTTP 클라이언트와 진단을 위해 OAuth DCR·PKCE endpoint도 유지하지만 Codex 기본 연결은 이를 사용하지 않으므로 브라우저 인증이나 인증 화면을 먼저 만들기 위한 도구 호출이 필요 없다.
 
@@ -37,6 +37,8 @@ Codex가 `SMSR.Bridge.exe --mcp-stdio`를 직접 실행하면 브리지가 10개
 | `generate_summary` | 프로젝트 ID, 워크플로우 ID | 로컬 상태 기반 요약 생성·저장 |
 | `save_summary` | 프로젝트 ID, 워크플로우 ID, 요약 내용 | 외부 생성 요약 저장 |
 | `export_workflow` | 프로젝트 ID, 워크플로우 ID | HTML·Markdown·JSON·ZIP 내보내기 |
+| `get_daily_summary_request` | SMSR이 발급한 일자별 요약 요청 ID | 해당 날짜의 전체 프로젝트 작업 자료와 요약 형식 |
+| `save_daily_summary_result` | 요청 ID, 완성된 한국어 요약 | 대기 중인 SMSR 요약 화면에 결과 반환 |
 
 `eventType`은 `NODE_STATUS_CHANGED`만 가능하며 `status`는 `PENDING`, `IN_PROGRESS`, `VALIDATING`, `SUCCESS`, `FAILED`, `RETRYING`, `BLOCKED` 중 하나여야 한다. 같은 `eventId`는 다시 저장하지 않고 `duplicate: true`를 반환한다.
 
@@ -57,11 +59,11 @@ SMSR은 에이전트를 능동 호출하거나 polling하지 않는다. 그래�
 
 SQLite 데이터와 마지막 선택 항목은 앱을 재시작해도 `%LocalAppData%\SMSR`에 유지된다. 기존 설정 파일은 등록 시 `config.toml.smsr.bak`으로 백업한다.
 
-WPF 작업 현황의 통합 캘린더는 모든 프로젝트의 그래프와 일일 기록을 마지막 수신 날짜로 조회한다. 날짜를 고르면 복잡 작업 그래프, 프로젝트별 작업 요약, 변경 파일과 검증 결과를 함께 볼 수 있다. `기록 관리`에서 워크플로우·프로젝트·전체 이력을 삭제하면 SQLite 일일 기록과 이벤트, 활동 JSONL, 자동추적 세션 매핑을 함께 정리한다. 이미 내보낸 ZIP/HTML과 앱 설정은 보존한다.
+WPF 작업 현황의 통합 캘린더는 한 달짜리 날짜 그리드로 모든 프로젝트의 그래프와 일일 기록을 마지막 수신 날짜별로 조회한다. 날짜를 고르면 복잡 작업 그래프, 프로젝트별 작업 카드, 변경 파일과 검증 결과를 함께 볼 수 있다. 별도 `작업 요약` 탭은 금일 또는 그리드 선택일자의 모든 프로젝트 기록을 Gemini로 요약한다. Gemini 키가 없거나 호출이 실패하면 `codex://threads/new?prompt=...`로 요청이 채워진 새 Codex 작업을 열며, 사용자가 전송을 누른 뒤 Codex가 위 두 요약 도구로 결과를 돌려준다. Codex Desktop 딥링크는 보안상 프롬프트를 자동 전송하지 않는다. `기록 관리`에서 워크플로우·프로젝트·전체 이력을 삭제하면 SQLite 일일 기록과 이벤트, 활동 JSONL, 자동추적 세션 매핑을 함께 정리한다. 이미 내보낸 ZIP/HTML과 앱 설정은 보존한다.
 
 같은 Windows 사용자에서는 재부팅 후 Windows 자동 시작, stdio 명령, DPAPI 브리지 토큰이 그대로 복원된다. 다른 PC에서는 설치된 실행 파일을 한 번 시작하면 그 PC의 실제 경로와 새 DPAPI 토큰을 자동 생성하므로 설정을 복사하거나 인증할 필요가 없다. Windows 자동 시작이 누락되거나 SMSR을 완전히 종료했더라도 다음 Codex 시작 시 stdio 브리지가 대시보드 본체와 서버를 자동 복구한다.
 
-설정 파일 존재만으로 연결 완료를 추정하지 않는다. Codex가 stdio 브리지를 시작해 보호된 연결 신호를 보내면 설정 버튼이 숨겨지고 `Codex 연결됨 · 도구 10개` 상태로 전환된다. 확인을 위한 별도 에이전트 도구 호출은 필요 없다.
+설정 파일 존재만으로 연결 완료를 추정하지 않는다. Codex가 stdio 브리지를 시작해 보호된 연결 신호를 보내면 설정 버튼이 숨겨지고 `Codex 연결됨 · 도구 12개` 상태로 전환된다. 확인을 위한 별도 에이전트 도구 호출은 필요 없다.
 
 자동 설정은 현재 설치 폴더의 콘솔 브리지를 MCP stdio와 전역 훅 명령에, GUI 앱을 Windows 자동 시작에 등록한다. 다른 컴퓨터에서는 그 컴퓨터의 실제 경로로 자동 재생성된다. 비관리 훅의 최초 신뢰는 Codex 보안 경계라 앱이 대신 승인하지 않는다.
 

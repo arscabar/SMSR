@@ -10,7 +10,7 @@ namespace SMSR.App.Mvp;
 
 public sealed class LocalServer(WebApplication app, EventStore events, WorkflowSummaryService summaries,
     WorkflowExportService exports, WorkflowEventNotifier notifier, ActivityJsonlStore activity, LocalOAuthStore oauth,
-    McpConnectionTracker connections, DailyActivityNotifier dailyActivities) : IAsyncDisposable
+    McpConnectionTracker connections, DailyActivityNotifier dailyActivities, DailySummaryCoordinator dailySummaries) : IAsyncDisposable
 {
     public const int Port = 49783;
     public string Address => app.Urls.Single();
@@ -37,6 +37,11 @@ public sealed class LocalServer(WebApplication app, EventStore events, WorkflowS
         add => dailyActivities.Changed += value;
         remove => dailyActivities.Changed -= value;
     }
+    public event EventHandler<DailySummaryCompletedEventArgs>? DailySummaryCompleted
+    {
+        add => dailySummaries.Completed += value;
+        remove => dailySummaries.Completed -= value;
+    }
 
     public static async Task<LocalServer> StartAsync(string? dataPath = null, int port = Port,
         Func<string>? dashboardTheme = null)
@@ -54,6 +59,7 @@ public sealed class LocalServer(WebApplication app, EventStore events, WorkflowS
         var activityToken = new ActivityHookToken(dataPath);
         var connections = new McpConnectionTracker();
         var dailyActivities = new DailyActivityNotifier();
+        var dailySummaries = new DailySummaryCoordinator();
         var summaries = new WorkflowSummaryService(store);
         var exports = new WorkflowExportService(store, activity, Path.Combine(dataPath, "exports"), dashboardTheme);
         var builder = WebApplication.CreateSlimBuilder();
@@ -64,16 +70,18 @@ public sealed class LocalServer(WebApplication app, EventStore events, WorkflowS
         builder.Services.AddSingleton(exports);
         builder.Services.AddSingleton(connections);
         builder.Services.AddSingleton(dailyActivities);
+        builder.Services.AddSingleton(dailySummaries);
         builder.Services.AddMcpServer(options => options.ServerInstructions = SmsrMcpInstructions.Text)
             .WithHttpTransport(options => options.Stateless = true)
             .WithTools<WorkflowTools>()
             .WithTools<PlanTools>()
             .WithTools<AgentTools>()
-            .WithTools<DailyActivityTools>();
+            .WithTools<DailyActivityTools>()
+            .WithTools<DailySummaryTools>();
         var app = builder.Build();
         LocalServerEndpoints.Map(app, oauth, bridgeToken, flows, oauthAudit, connections, notifier, activity, activityToken, dashboardTheme);
         await app.StartAsync();
-        return new(app, store, summaries, exports, notifier, activity, oauth, connections, dailyActivities);
+        return new(app, store, summaries, exports, notifier, activity, oauth, connections, dailyActivities, dailySummaries);
     }
 
     public Task<IReadOnlyList<string>> GetProjectIdsAsync(CancellationToken cancellationToken = default)
@@ -91,6 +99,8 @@ public sealed class LocalServer(WebApplication app, EventStore events, WorkflowS
         => events.GetDailyActivitiesAsync(startUtc, endUtc, cancellationToken);
     public Task<DateTimeOffset?> GetLatestDailyActivityAtAsync(CancellationToken cancellationToken = default)
         => events.GetLatestDailyActivityAtAsync(cancellationToken);
+    public PendingDailySummary CreateDailySummaryRequest(DateTime date, string prompt)
+        => dailySummaries.Create(date, prompt);
 
     public Task<WorkflowState> GetStateAsync(string projectId, string workflowId, CancellationToken cancellationToken = default)
         => events.GetStateAsync(projectId, workflowId, cancellationToken);

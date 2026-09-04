@@ -18,6 +18,7 @@ public sealed class LocalServerHost(string? dataPath = null, int port = LocalSer
     public event EventHandler? AuthorizationChanged;
     public event EventHandler<WorkflowChangedEventArgs>? WorkflowChanged;
     public event EventHandler<DailyActivityChangedEventArgs>? DailyActivityChanged;
+    public event EventHandler<DailySummaryCompletedEventArgs>? DailySummaryCompleted;
     public bool IsRunning => _server is not null;
     public string Address => _server?.Address ?? "";
     public string LogPath => _log.Path;
@@ -38,6 +39,7 @@ public sealed class LocalServerHost(string? dataPath = null, int port = LocalSer
                 _server.ConnectionChanged += OnConnectionChanged;
                 _server.WorkflowChanged += OnWorkflowChanged;
                 _server.DailyActivityChanged += OnDailyActivityChanged;
+                _server.DailySummaryCompleted += OnDailySummaryCompleted;
                 _isCodexAuthorized = _server.HasAuthorizedCodex;
                 UpdateConnectionState();
                 await WriteLogAsync("server started");
@@ -64,6 +66,7 @@ public sealed class LocalServerHost(string? dataPath = null, int port = LocalSer
                 _server.ConnectionChanged -= OnConnectionChanged;
                 _server.WorkflowChanged -= OnWorkflowChanged;
                 _server.DailyActivityChanged -= OnDailyActivityChanged;
+                _server.DailySummaryCompleted -= OnDailySummaryCompleted;
                 await _server.DisposeAsync();
                 await WriteLogAsync("server stopped");
             }
@@ -81,6 +84,8 @@ public sealed class LocalServerHost(string? dataPath = null, int port = LocalSer
     public Task<IReadOnlyList<DailyActivity>> GetDailyActivitiesAsync(DateTimeOffset startUtc, DateTimeOffset endUtc)
         => Server.GetDailyActivitiesAsync(startUtc, endUtc);
     public Task<DateTimeOffset?> GetLatestDailyActivityAtAsync() => Server.GetLatestDailyActivityAtAsync();
+    public PendingDailySummary CreateDailySummaryRequest(DateTime date, string prompt)
+        => Server.CreateDailySummaryRequest(date, prompt);
     public Task<WorkflowState> GetStateAsync(string projectId, string workflowId) => Server.GetStateAsync(projectId, workflowId);
     public Task<IReadOnlyList<RecentEvent>> GetRecentEventsAsync(string projectId, string workflowId) => Server.GetRecentEventsAsync(projectId, workflowId);
     public Task<WorkflowSummary?> GetLatestSummaryAsync(string projectId, string workflowId) => Server.GetLatestSummaryAsync(projectId, workflowId);
@@ -117,6 +122,7 @@ public sealed class LocalServerHost(string? dataPath = null, int port = LocalSer
                 _server.ConnectionChanged -= OnConnectionChanged;
                 _server.WorkflowChanged -= OnWorkflowChanged;
                 _server.DailyActivityChanged -= OnDailyActivityChanged;
+                _server.DailySummaryCompleted -= OnDailySummaryCompleted;
                 await _server.DisposeAsync().ConfigureAwait(false);
                 _server = null;
                 UpdateConnectionState();
@@ -152,6 +158,9 @@ public sealed class LocalServerHost(string? dataPath = null, int port = LocalSer
 
     private void OnDailyActivityChanged(object? sender, DailyActivityChangedEventArgs eventArgs)
         => DailyActivityChanged?.Invoke(this, eventArgs);
+
+    private void OnDailySummaryCompleted(object? sender, DailySummaryCompletedEventArgs eventArgs)
+        => DailySummaryCompleted?.Invoke(this, eventArgs);
 
     private void UpdateConnectionState()
     {

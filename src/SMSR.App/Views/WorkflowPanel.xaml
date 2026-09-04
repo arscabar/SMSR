@@ -14,7 +14,6 @@
                     </ComboBox>
                     <StackPanel Margin="0,16,0,0" Orientation="Horizontal">
                         <Button Command="{Binding RefreshSelectionCommand}" Content="목록 새로 고침" />
-                        <Button Margin="8,0,0,0" Command="{Binding RefreshMonitorCommand}" Content="상태 새로 고침" />
                         <Button Margin="8,0,0,0" Style="{StaticResource IconButton}" Command="{Binding OpenDashboardCommand}" Content="↗" ToolTip="대시보드 열기" />
                     </StackPanel>
                 </StackPanel>
@@ -24,23 +23,50 @@
                 <StackPanel>
                     <TextBlock FontSize="16" FontWeight="SemiBold" Text="작업 캘린더" />
                     <TextBlock Margin="0,4,0,14" Foreground="{DynamicResource MutedTextBrush}" Text="모든 프로젝트의 SMSR 수신 날짜를 한곳에서 찾습니다. 항목을 선택하면 해당 프로젝트와 그래프로 전환됩니다." TextWrapping="Wrap" />
-                    <Grid>
-                        <Grid.ColumnDefinitions><ColumnDefinition Width="290" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                        <Calendar SelectedDate="{Binding Selection.SelectedDate, Mode=TwoWay}" Background="{DynamicResource SurfaceBrush}" Foreground="{DynamicResource TextBrush}" BorderBrush="{DynamicResource BorderBrush}">
-                            <Calendar.Resources>
-                                <Style TargetType="{x:Type CalendarDayButton}">
-                                    <Setter Property="Background" Value="Transparent" /><Setter Property="Foreground" Value="{DynamicResource TextBrush}" /><Setter Property="BorderBrush" Value="Transparent" />
-                                    <Style.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource QuietBrush}" /></Trigger>
-                                        <Trigger Property="IsToday" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" /></Trigger>
-                                        <Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="{DynamicResource AccentBrush}" /><Setter Property="Foreground" Value="White" /></Trigger>
-                                        <Trigger Property="IsInactive" Value="True"><Setter Property="Opacity" Value="0.45" /></Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                                <Style TargetType="{x:Type CalendarButton}"><Setter Property="Background" Value="Transparent" /><Setter Property="Foreground" Value="{DynamicResource TextBrush}" /></Style>
-                            </Calendar.Resources>
-                        </Calendar>
-                        <StackPanel Grid.Column="1" Margin="16,0,0,0">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <Button Width="38" Style="{StaticResource QuietButton}" Command="{Binding Selection.PreviousMonthCommand}" Content="‹" ToolTip="이전 달" />
+                            <StackPanel Grid.Column="1" HorizontalAlignment="Center" Orientation="Horizontal">
+                                <TextBlock VerticalAlignment="Center" FontSize="18" FontWeight="Bold" Text="{Binding Selection.DisplayMonthLabel}" />
+                                <Button Margin="10,0,0,0" Style="{StaticResource QuietButton}" Command="{Binding Selection.TodayCommand}" Content="오늘" />
+                            </StackPanel>
+                            <Button Grid.Column="2" Width="38" Style="{StaticResource QuietButton}" Command="{Binding Selection.NextMonthCommand}" Content="›" ToolTip="다음 달" />
+                        </Grid>
+                        <UniformGrid Columns="7" Margin="2,0,2,4">
+                            <TextBlock HorizontalAlignment="Center" Foreground="{DynamicResource MutedTextBrush}" Text="일" />
+                            <TextBlock HorizontalAlignment="Center" Foreground="{DynamicResource MutedTextBrush}" Text="월" />
+                            <TextBlock HorizontalAlignment="Center" Foreground="{DynamicResource MutedTextBrush}" Text="화" />
+                            <TextBlock HorizontalAlignment="Center" Foreground="{DynamicResource MutedTextBrush}" Text="수" />
+                            <TextBlock HorizontalAlignment="Center" Foreground="{DynamicResource MutedTextBrush}" Text="목" />
+                            <TextBlock HorizontalAlignment="Center" Foreground="{DynamicResource MutedTextBrush}" Text="금" />
+                            <TextBlock HorizontalAlignment="Center" Foreground="{DynamicResource MutedTextBrush}" Text="토" />
+                        </UniformGrid>
+                        <ListBox ItemsSource="{Binding Selection.CalendarDays}" SelectedItem="{Binding Selection.SelectedCalendarDay, Mode=TwoWay}"
+                                 BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="7" /></ItemsPanelTemplate></ListBox.ItemsPanel>
+                            <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem">
+                                <Setter Property="Height" Value="70" /><Setter Property="Margin" Value="2" /><Setter Property="Padding" Value="0" />
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" /><Setter Property="VerticalContentAlignment" Value="Stretch" />
+                                <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem">
+                                    <Border x:Name="Cell" Padding="8" Background="{DynamicResource QuietBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="7">
+                                        <ContentPresenter />
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Cell" Property="Background" Value="{DynamicResource QuietHoverBrush}" /></Trigger>
+                                        <Trigger Property="IsSelected" Value="True"><Setter TargetName="Cell" Property="Background" Value="{DynamicResource AccentSoftBrush}" /><Setter TargetName="Cell" Property="BorderBrush" Value="{DynamicResource AccentBrush}" /><Setter TargetName="Cell" Property="BorderThickness" Value="2" /></Trigger>
+                                        <DataTrigger Binding="{Binding IsToday}" Value="True"><Setter TargetName="Cell" Property="BorderBrush" Value="{DynamicResource AccentBrush}" /></DataTrigger>
+                                        <DataTrigger Binding="{Binding IsInMonth}" Value="False"><Setter Property="Opacity" Value="0" /><Setter Property="IsHitTestVisible" Value="False" /></DataTrigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate></Setter.Value></Setter>
+                            </Style></ListBox.ItemContainerStyle>
+                            <ListBox.ItemTemplate><DataTemplate><StackPanel ToolTip="{Binding AccessibleLabel}">
+                                <TextBlock FontWeight="Bold" Text="{Binding DayLabel}" />
+                                <TextBlock Margin="0,5,0,0" FontSize="11" Foreground="{DynamicResource AccentBrush}" Text="{Binding GraphLabel}" />
+                                <TextBlock FontSize="11" Foreground="{DynamicResource MutedTextBrush}" Text="{Binding ActivityLabel}" />
+                            </StackPanel></DataTemplate></ListBox.ItemTemplate>
+                        </ListBox>
+                        <StackPanel Margin="0,16,0,0">
                             <TextBlock FontWeight="SemiBold" Text="{Binding Selection.CalendarSummary}" />
                             <TextBlock Margin="0,10,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="복잡한 작업 그래프" />
                             <ListView Margin="0,10,0,0" MaxHeight="250" ItemsSource="{Binding Selection.CalendarWorkflows}" SelectedItem="{Binding Selection.SelectedCalendarWorkflow, Mode=TwoWay}">
@@ -70,21 +96,7 @@
                                 </DataTemplate></ListView.ItemTemplate>
                             </ListView>
                         </StackPanel>
-                    </Grid>
-                </StackPanel>
-            </Border>
-
-            <Border Margin="0,16,0,0" Padding="18" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10">
-                <StackPanel>
-                    <TextBlock FontSize="16" FontWeight="SemiBold" Text="현재 상태" />
-                    <TextBlock Margin="0,4,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="{Binding Monitor.UpdateMode}" />
-                    <ItemsControl Margin="0,10,0,0" ItemsSource="{Binding Monitor.Nodes}">
-                        <ItemsControl.ItemTemplate><DataTemplate><Border Margin="0,0,0,6" Padding="10" Background="{DynamicResource QuietBrush}" CornerRadius="6">
-                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="130"/><ColumnDefinition Width="120"/></Grid.ColumnDefinitions>
-                                <TextBlock Text="{Binding NodeId}" TextTrimming="CharacterEllipsis" /><TextBlock Grid.Column="1" Text="{Binding Status}" /><TextBlock Grid.Column="2" Text="{Binding AgentId}" TextTrimming="CharacterEllipsis" />
-                            </Grid>
-                        </Border></DataTemplate></ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                    </StackPanel>
                 </StackPanel>
             </Border>
 

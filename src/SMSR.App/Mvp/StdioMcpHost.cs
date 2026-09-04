@@ -16,7 +16,8 @@ public static class StdioMcpHost
             .WithTools<StdioWorkflowTools>()
             .WithTools<StdioPlanTools>()
             .WithTools<StdioAgentTools>()
-            .WithTools<StdioDailyActivityTools>();
+            .WithTools<StdioDailyActivityTools>()
+            .WithTools<StdioDailySummaryTools>();
         await using var provider = services.BuildServiceProvider();
         await provider.GetRequiredService<McpServer>().RunAsync();
     }
