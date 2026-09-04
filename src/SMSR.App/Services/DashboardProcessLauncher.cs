@@ -21,8 +21,7 @@ internal static class DashboardProcessLauncher
     {
         var info = new ProcessStartInfo(executable)
         {
-            UseShellExecute = false,
-            CreateNoWindow = true,
+            UseShellExecute = true,
             WindowStyle = ProcessWindowStyle.Hidden
         };
         info.ArgumentList.Add("--background");

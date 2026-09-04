@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 
 namespace SMSR.App.Services;
@@ -85,7 +86,8 @@ internal static class CodexMcpConfigSelfCheck
                 throw new InvalidOperationException("콘솔 MCP 브리지 생성 검증이 실패했습니다.");
             var launch = DashboardProcessLauncher.CreateStartInfo(@"C:\Program Files\SMSR\SMSR.App.exe");
             if (launch.ArgumentList.Count != 2 || launch.ArgumentList[0] != "--background"
-                || launch.ArgumentList[1] != "--ensure-server" || launch.UseShellExecute || !launch.CreateNoWindow)
+                || launch.ArgumentList[1] != "--ensure-server" || !launch.UseShellExecute
+                || launch.WindowStyle != ProcessWindowStyle.Hidden)
                 throw new InvalidOperationException("Codex 시작 시 대시보드 자동 실행 명령 검증이 실패했습니다.");
 
             CodexAutoTrackingHook.Unregister(path);
