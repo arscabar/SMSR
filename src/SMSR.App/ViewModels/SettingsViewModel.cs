@@ -8,16 +8,22 @@ public sealed partial class SettingsViewModel : ViewModelBase
 {
     private readonly AppSettingsService _settings;
     private readonly IPlatformActions _platform;
+    private readonly AppUpdateService _updates;
+    private readonly Action _exitApplication;
     private string _statusMessage = "변경 사항은 현재 Windows 사용자에게 자동 저장됩니다.";
 
-    public SettingsViewModel(AppSettingsService settings, LocalServerHost host, IPlatformActions platform)
+    public SettingsViewModel(AppSettingsService settings, LocalServerHost host, IPlatformActions platform,
+        Action? exitApplication = null)
     {
         _settings = settings;
         _platform = platform;
+        _updates = new AppUpdateService(host.DataPath);
+        _exitApplication = exitApplication ?? (() => { });
         DataPath = host.DataPath;
         LogPath = System.IO.Path.GetDirectoryName(host.LogPath) ?? host.DataPath;
         OpenDataFolderCommand = new RelayCommand(() => Open(DataPath, "데이터"));
         OpenLogFolderCommand = new RelayCommand(() => Open(LogPath, "로그"));
+        CheckForUpdatesCommand = new RelayCommand(() => _ = CheckForUpdatesAsync(false), () => !_isCheckingForUpdates);
         _startWithWindows = ReadStartupState();
         _settings.Changed += OnSettingsChanged;
     }
@@ -32,6 +38,22 @@ public sealed partial class SettingsViewModel : ViewModelBase
     {
         get => _settings.Current.AutomateCodexIntegration;
         set => Update(_settings.Current with { AutomateCodexIntegration = value }, nameof(AutomateCodexIntegration));
+    }
+
+    public bool TrackComplexTasksAutomatically
+    {
+        get => _settings.Current.TrackComplexTasksAutomatically;
+        set => Update(_settings.Current with { TrackComplexTasksAutomatically = value }, nameof(TrackComplexTasksAutomatically));
+    }
+
+    public bool AutoUpdateEnabled
+    {
+        get => _settings.Current.AutoUpdateEnabled;
+        set
+        {
+            Update(_settings.Current with { AutoUpdateEnabled = value }, nameof(AutoUpdateEnabled));
+            if (value) _ = CheckForUpdatesAsync(true);
+        }
     }
 
     public bool MinimizeToTray
@@ -54,6 +76,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
     public string StatusMessage { get => _statusMessage; private set => SetField(ref _statusMessage, value); }
     public ICommand OpenDataFolderCommand { get; }
     public ICommand OpenLogFolderCommand { get; }
+    public ICommand CheckForUpdatesCommand { get; }
 
     private void Update(AppSettings value, string propertyName)
     {

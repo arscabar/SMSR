@@ -50,7 +50,7 @@ public sealed partial class ServerControlViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsCodexConnected));
         OnPropertyChanged(nameof(NeedsCodexSetup));
         OnPropertyChanged(nameof(CodexConnectionTitle));
-        if (IsCodexConnected) CodexStatus = "실제 MCP 연결이 확인되었습니다. SMSR 도구 9개를 사용할 수 있습니다.";
+        if (IsCodexConnected) CodexStatus = "실제 MCP 연결이 확인되었습니다. SMSR 도구 10개를 사용할 수 있습니다.";
         ((RelayCommand)StartCommand).NotifyCanExecuteChanged();
         ((RelayCommand)StopCommand).NotifyCanExecuteChanged();
     }

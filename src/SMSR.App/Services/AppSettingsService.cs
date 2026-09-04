@@ -15,6 +15,8 @@ public sealed record AppSettings(
     bool MinimizeToTray = true,
     string DashboardTheme = DashboardThemes.Dark,
     bool AutomateCodexIntegration = true,
+    bool TrackComplexTasksAutomatically = true,
+    bool AutoUpdateEnabled = false,
     bool RequirePlanReview = true,
     string PlanningPrompt = PlanningPromptSettings.Default);
 
@@ -55,6 +57,8 @@ public sealed class AppSettingsService
                 loaded = loaded with { AutomateCodexIntegration = true };
             if (!document.RootElement.TryGetProperty(nameof(AppSettings.RequirePlanReview), out _))
                 loaded = loaded with { RequirePlanReview = true };
+            if (!document.RootElement.TryGetProperty(nameof(AppSettings.TrackComplexTasksAutomatically), out _))
+                loaded = loaded with { TrackComplexTasksAutomatically = true };
             return loaded with
             {
                 DashboardTheme = DashboardThemes.Normalize(loaded.DashboardTheme),

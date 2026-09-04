@@ -17,7 +17,7 @@ public partial class App : WpfApplication
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
-        ShutdownMode = ShutdownMode.OnMainWindowClose;
+        ShutdownMode = ShutdownMode.OnExplicitShutdown;
         if (e.Args.Contains("--smsr-auto-track-hook"))
         {
             try { await CodexHookRunner.RunAsync(); Shutdown(); }
@@ -27,6 +27,21 @@ public partial class App : WpfApplication
         if (e.Args.Contains("--mcp-stdio"))
         {
             try { await StdioMcpHost.RunAsync(); Shutdown(); }
+            catch (Exception exception)
+            {
+                System.IO.File.WriteAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "smsr-stdio-error.txt"), exception.ToString());
+                Shutdown(-1);
+            }
+            return;
+        }
+        if (e.Args.Contains("--ensure-bridge"))
+        {
+            try
+            {
+                _ = CodexBridgeExecutable.Ensure(Environment.ProcessPath
+                    ?? throw new InvalidOperationException("SMSR 실행 파일 경로를 확인할 수 없습니다."));
+                Shutdown();
+            }
             catch { Shutdown(-1); }
             return;
         }
@@ -45,7 +60,11 @@ public partial class App : WpfApplication
                 CodexMcpConfigSelfCheck.Run();
                 Shutdown();
             }
-            catch { Shutdown(-1); }
+            catch (Exception exception)
+            {
+                System.IO.File.WriteAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "smsr-codex-config-self-test-error.txt"), exception.ToString());
+                Shutdown(-1);
+            }
             return;
         }
         if (e.Args.Contains("--oauth-self-test"))
@@ -70,6 +89,18 @@ public partial class App : WpfApplication
             }
             return;
         }
+        if (e.Args.Contains("--update-self-test"))
+        {
+            var path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"smsr-update-{Guid.NewGuid():N}");
+            try { await AppUpdateSelfCheck.RunPublishedReleaseAsync(path); Shutdown(); }
+            catch (Exception exception)
+            {
+                System.IO.File.WriteAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "smsr-update-self-test-error.txt"), exception.ToString());
+                Shutdown(-1);
+            }
+            finally { if (System.IO.Directory.Exists(path)) System.IO.Directory.Delete(path, true); }
+            return;
+        }
         if (e.Args.Contains("--self-test"))
         {
             try { await MvpSelfCheck.RunAsync(); }
@@ -83,6 +114,7 @@ public partial class App : WpfApplication
             Shutdown();
             return;
         }
+        ShutdownMode = ShutdownMode.OnMainWindowClose;
         var startInBackground = e.Args.Contains("--background", StringComparer.OrdinalIgnoreCase);
         _mainInstance = MainInstanceGuard.TryAcquire();
         if (_mainInstance is null)
@@ -121,6 +153,7 @@ public partial class App : WpfApplication
             _server.StateChanged += OnServerStateChanged;
             _mainInstance.Listen(() => Dispatcher.BeginInvoke(() => window.ShowFromTray()));
             if (!startInBackground) MainWindow.Show();
+            _ = viewModel.Settings.CheckForUpdatesOnStartupAsync();
         }
         catch (Exception exception)
         {

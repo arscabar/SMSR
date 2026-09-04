@@ -3,7 +3,9 @@ name: smsr-tracking
 description: Push a Codex task's hierarchical plan, per-agent heartbeat, retries, and artifacts to a connected local SMSR MCP dashboard.
 ---
 
-SMSR is a passive receiver. It never starts or polls agents. Graph tracking is opt-in: use this skill only when the user explicitly asks to track or visualize work as a graph, flow, dashboard, or SMSR workflow, or asks to resume a previous graph. Ordinary work creates no SMSR records.
+SMSR is a passive receiver. It never starts or polls agents. Never record calculations, quick lookups, Q&A, read-only inspection, status checks, navigation, or commands that do not change project files. After a request actually changes project files, call `record_daily_activity` exactly once before the final reply with a unique activity ID for that request, a concise title, result, changed paths, verification, and artifacts. Reuse the activity ID only to correct the same card. Never store prompt or raw command text.
+
+Graph tracking is reserved for an explicit user request or an automatically qualified complex project change. Automatic qualification requires a real project change and at least two of: three or more execution stages, multiple files/components, build-test-release work, parallel/subagent work, or over ten minutes expected duration. Ambiguous work and a single-location small edit use only daily activity.
 
 Use the repository folder name as `projectId`. For a new graph, omit `workflowId` in the first `save_plan`; SMSR returns a readable `yyyyMMdd-HHmmssfff__project__task` ID. Reuse that returned ID unchanged for every heartbeat and event until the explicitly requested graph scope ends. Use the current Codex task/session ID as `agentId`, not as the generated workflow ID.
 
@@ -15,7 +17,7 @@ Use the repository folder name as `projectId`. For a new graph, omit `workflowId
 - The coordinator must not fabricate a subagent heartbeat or mirror a subagent event when the subagent can send it directly.
 - Do not send prompts, raw shell commands, secrets, or every tool call. Artifact entries should be paths or concise identifiers, not file contents.
 - A `SUCCESS` node is complete and must not be reopened, edited, or used as the parent of later work. For implementation, fixes, validation, documentation, commit, or release work related to the same request, preserve the completed nodes and append a sibling/new root connected to a completed node with `dependsOn`. Do this `save_plan` update before starting the follow-up work, even when every existing node is already terminal.
-- Start an unrelated request as a new graph by omitting `workflowId`. Include all already-known remaining work before marking the last node `SUCCESS`; if more related work is discovered afterward, append its node and immediately record it `IN_PROGRESS` before any other tool call. Stop heartbeats only when every planned task is actually terminal.
+- The graph scope closes when every planned node is terminal. A later request starts no graph unless it independently qualifies or the user explicitly requests one. Include all already-known remaining work before marking the last node `SUCCESS`; if more related work is discovered while the scope is active, append its node and immediately record it `IN_PROGRESS` before any other tool call.
 
-Use `get_plan` and `get_state` to load or confirm a selected graph. Semantic heartbeat and progress exist only while an explicitly requested graph is active.
+Use `get_plan` and `get_state` to load or confirm a selected graph. Semantic heartbeat and progress exist only while a qualified graph is active. Link its final `record_daily_activity` to the graph workflow ID.
 When the installed SMSR Codex hook is trusted, it separately writes normalized agent lifecycle and supported local tool completion metadata to the active workflow's `activity.jsonl`. This automatic activity trail never replaces semantic `record_event` updates and never stores prompts, raw commands, tool inputs, or tool outputs.

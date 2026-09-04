@@ -33,7 +33,8 @@ internal static class DashboardProcessLauncher
     private static void StartDashboard()
     {
         var executable = Environment.ProcessPath;
-        if (!string.IsNullOrWhiteSpace(executable)) Process.Start(CreateStartInfo(executable));
+        if (!string.IsNullOrWhiteSpace(executable))
+            Process.Start(CreateStartInfo(CodexBridgeExecutable.DashboardPath(executable)));
     }
 
     private static async Task<bool> IsReadyAsync(CancellationToken cancellationToken)

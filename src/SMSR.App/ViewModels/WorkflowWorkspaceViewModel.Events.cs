@@ -12,6 +12,24 @@ public sealed partial class WorkflowWorkspaceViewModel
         _ = dispatcher.InvokeAsync(() => _ = HandleWorkflowChangedAsync(eventArgs));
     }
 
+    private void OnDailyActivityChanged(object? sender, DailyActivityChangedEventArgs eventArgs)
+    {
+        if (_isDeleting) return;
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+        if (dispatcher is null) return;
+        _ = dispatcher.InvokeAsync(() => _ = HandleDailyActivityChangedAsync(eventArgs));
+    }
+
+    private async Task HandleDailyActivityChangedAsync(DailyActivityChangedEventArgs eventArgs)
+    {
+        try
+        {
+            await Selection.ReloadCalendarAsync();
+            StatusMessage = $"{eventArgs.ProjectId}의 일일 작업 기록이 갱신되었습니다.";
+        }
+        catch { StatusMessage = "일일 작업 기록을 불러오지 못했습니다."; }
+    }
+
     private async Task HandleWorkflowChangedAsync(WorkflowChangedEventArgs eventArgs)
     {
         try
@@ -38,5 +56,12 @@ public sealed partial class WorkflowWorkspaceViewModel
             StatusMessage = $"{choice.DateTimeLabel}의 작업을 열었습니다: {choice.Title}";
         }
         catch { StatusMessage = "선택한 작업을 불러오지 못했습니다."; }
+    }
+
+    private async Task SelectDailyActivityAsync(DailyActivityItem item)
+    {
+        if (string.IsNullOrWhiteSpace(item.WorkflowId)) return;
+        await SelectCalendarWorkflowAsync(new(item.ProjectId, item.WorkflowId, item.Title,
+            item.Status, 0, item.RecordedAtUtc));
     }
 }

@@ -30,11 +30,13 @@ public sealed partial class EventStore
             count.CommandText = $"SELECT COUNT(*) FROM (SELECT workflow_id FROM events{where} UNION SELECT workflow_id FROM plan_nodes{where} UNION SELECT workflow_id FROM agent_heartbeats{where});";
             AddScopeParameters(count, projectId, workflowId);
             var deletedWorkflows = Convert.ToInt32(await count.ExecuteScalarAsync(cancellationToken));
-            foreach (var table in new[] { "events", "current_state", "plan_nodes", "summaries", "agent_heartbeats" })
+            foreach (var table in new[] { "events", "current_state", "plan_nodes", "summaries", "agent_heartbeats", "daily_activities" })
             {
                 var command = connection.CreateCommand();
                 command.Transaction = transaction;
-                command.CommandText = $"DELETE FROM {table}{where};";
+                var tableWhere = table == "daily_activities" && workflowId is not null
+                    ? " WHERE project_id=$projectId AND workflow_id=$workflowId" : where;
+                command.CommandText = $"DELETE FROM {table}{tableWhere};";
                 AddScopeParameters(command, projectId, workflowId);
                 await command.ExecuteNonQueryAsync(cancellationToken);
             }

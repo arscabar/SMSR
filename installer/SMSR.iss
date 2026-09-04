@@ -31,7 +31,7 @@ WizardSmallImageFileDynamicDark={#SourcePath}..\src\SMSR.App\Assets\SMSR.png
 WizardImageFile={#SourcePath}SMSR-Wizard.png
 WizardImageFileDynamicDark={#SourcePath}SMSR-Wizard.png
 CloseApplications=force
-CloseApplicationsFilter=SMSR.App.exe
+CloseApplicationsFilter=SMSR.App.exe,SMSR.Bridge.exe
 RestartApplications=no
 VersionInfoVersion={#AppVersion}
 
@@ -54,6 +54,7 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 
 [Run]
 Filename: "{app}\SMSR.App.exe"; Description: "{cm:LaunchProgram,SMSR}"; WorkingDir: "{app}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\SMSR.App.exe"; Parameters: "--background"; WorkingDir: "{app}"; Flags: nowait runhidden; Check: IsAutomaticUpdate
 
 [UninstallRun]
 Filename: "{app}\SMSR.App.exe"; Parameters: "--uninstall-cleanup"; WorkingDir: "{app}"; RunOnceId: "SMSRCodexCleanup"; Flags: runhidden waituntilterminated skipifdoesntexist

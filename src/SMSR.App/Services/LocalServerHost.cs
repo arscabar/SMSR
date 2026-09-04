@@ -17,6 +17,7 @@ public sealed class LocalServerHost(string? dataPath = null, int port = LocalSer
     public event EventHandler? Stopping;
     public event EventHandler? AuthorizationChanged;
     public event EventHandler<WorkflowChangedEventArgs>? WorkflowChanged;
+    public event EventHandler<DailyActivityChangedEventArgs>? DailyActivityChanged;
     public bool IsRunning => _server is not null;
     public string Address => _server?.Address ?? "";
     public string LogPath => _log.Path;
@@ -36,6 +37,7 @@ public sealed class LocalServerHost(string? dataPath = null, int port = LocalSer
                 _server.AuthorizationChanged += OnAuthorizationChanged;
                 _server.ConnectionChanged += OnConnectionChanged;
                 _server.WorkflowChanged += OnWorkflowChanged;
+                _server.DailyActivityChanged += OnDailyActivityChanged;
                 _isCodexAuthorized = _server.HasAuthorizedCodex;
                 UpdateConnectionState();
                 await WriteLogAsync("server started");
@@ -61,6 +63,7 @@ public sealed class LocalServerHost(string? dataPath = null, int port = LocalSer
                 _server.AuthorizationChanged -= OnAuthorizationChanged;
                 _server.ConnectionChanged -= OnConnectionChanged;
                 _server.WorkflowChanged -= OnWorkflowChanged;
+                _server.DailyActivityChanged -= OnDailyActivityChanged;
                 await _server.DisposeAsync();
                 await WriteLogAsync("server stopped");
             }
@@ -75,6 +78,9 @@ public sealed class LocalServerHost(string? dataPath = null, int port = LocalSer
     public Task<IReadOnlyList<string>> GetWorkflowIdsAsync(string projectId) => Server.GetWorkflowIdsAsync(projectId);
     public Task<IReadOnlyList<WorkflowCatalogEntry>> GetWorkflowCatalogAsync(string projectId) => Server.GetWorkflowCatalogAsync(projectId);
     public Task<IReadOnlyList<WorkflowCalendarEntry>> GetWorkflowCalendarAsync() => Server.GetWorkflowCalendarAsync();
+    public Task<IReadOnlyList<DailyActivity>> GetDailyActivitiesAsync(DateTimeOffset startUtc, DateTimeOffset endUtc)
+        => Server.GetDailyActivitiesAsync(startUtc, endUtc);
+    public Task<DateTimeOffset?> GetLatestDailyActivityAtAsync() => Server.GetLatestDailyActivityAtAsync();
     public Task<WorkflowState> GetStateAsync(string projectId, string workflowId) => Server.GetStateAsync(projectId, workflowId);
     public Task<IReadOnlyList<RecentEvent>> GetRecentEventsAsync(string projectId, string workflowId) => Server.GetRecentEventsAsync(projectId, workflowId);
     public Task<WorkflowSummary?> GetLatestSummaryAsync(string projectId, string workflowId) => Server.GetLatestSummaryAsync(projectId, workflowId);
@@ -110,6 +116,7 @@ public sealed class LocalServerHost(string? dataPath = null, int port = LocalSer
                 _server.AuthorizationChanged -= OnAuthorizationChanged;
                 _server.ConnectionChanged -= OnConnectionChanged;
                 _server.WorkflowChanged -= OnWorkflowChanged;
+                _server.DailyActivityChanged -= OnDailyActivityChanged;
                 await _server.DisposeAsync().ConfigureAwait(false);
                 _server = null;
                 UpdateConnectionState();
@@ -142,6 +149,9 @@ public sealed class LocalServerHost(string? dataPath = null, int port = LocalSer
 
     private void OnWorkflowChanged(object? sender, WorkflowChangedEventArgs eventArgs)
         => WorkflowChanged?.Invoke(this, eventArgs);
+
+    private void OnDailyActivityChanged(object? sender, DailyActivityChangedEventArgs eventArgs)
+        => DailyActivityChanged?.Invoke(this, eventArgs);
 
     private void UpdateConnectionState()
     {

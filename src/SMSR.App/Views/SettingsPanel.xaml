@@ -8,6 +8,14 @@
             <views:SettingsPlanningPanel />
             <Border Margin="0,14,0,0" Padding="18" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10">
                 <StackPanel>
+                    <TextBlock FontSize="16" FontWeight="SemiBold" Text="앱 업데이트" />
+                    <TextBlock Margin="0,8,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="{Binding CurrentVersionLabel}" />
+                    <TextBlock Margin="0,5,0,12" Foreground="{DynamicResource MutedTextBrush}" Text="자동 업데이트를 켜면 시작 시 정식 GitHub 릴리스를 확인하고 SHA-256 검증 후 자동 설치합니다." TextWrapping="Wrap" />
+                    <Button Width="130" HorizontalAlignment="Left" Command="{Binding CheckForUpdatesCommand}" Content="업데이트 확인" />
+                </StackPanel>
+            </Border>
+            <Border Margin="0,14,0,0" Padding="18" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10">
+                <StackPanel>
                     <TextBlock FontSize="16" FontWeight="SemiBold" Text="로컬 데이터" />
                     <TextBlock Margin="0,14,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="데이터 폴더" />
                     <TextBlock Margin="0,4,0,0" FontFamily="Consolas" Text="{Binding DataPath}" TextWrapping="Wrap" />

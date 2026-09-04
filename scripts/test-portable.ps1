@@ -16,6 +16,8 @@ New-Item -ItemType Directory -Path $testRoot | Out-Null
 Expand-Archive -LiteralPath $archive.FullName -DestinationPath $testRoot
 $executable = Join-Path $testRoot "SMSR.App.exe"
 if (-not (Test-Path -LiteralPath $executable)) { throw "Published executable not found." }
+$bridge = Join-Path $testRoot "SMSR.Bridge.exe"
+if (-not (Test-Path -LiteralPath $bridge)) { throw "Published console bridge not found." }
 
 $results = foreach ($argument in @("--codex-config-self-test", "--tracking-self-test", "--oauth-self-test", "--self-test")) {
     $process = Start-Process -FilePath $executable -ArgumentList $argument -WorkingDirectory $testRoot -WindowStyle Hidden -Wait -PassThru
@@ -24,7 +26,7 @@ $results = foreach ($argument in @("--codex-config-self-test", "--tracking-self-
 }
 
 $startInfo = [Diagnostics.ProcessStartInfo]::new()
-$startInfo.FileName = $executable
+$startInfo.FileName = $bridge
 $startInfo.Arguments = "--smsr-auto-track-hook"
 $startInfo.WorkingDirectory = $testRoot
 $startInfo.UseShellExecute = $false
@@ -42,6 +44,7 @@ if ($hookProcess.ExitCode -ne 0 -or -not $hookOutput.Contains("portable-session"
 
 $results
 "hook mode : OK"
+& (Join-Path $PSScriptRoot "test-mcp-stdio.ps1") -ApplicationPath $bridge -ExpectedToolCount 10
 "archive : $($archive.FullName) ($($archive.Length) bytes)"
 "extracted executable : $executable"
 Get-ChildItem -LiteralPath $testRoot -File -Recurse | ForEach-Object { "file : $($_.Name) ($($_.Length) bytes)" }

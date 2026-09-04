@@ -14,6 +14,7 @@ public sealed partial class WorkflowSelectionViewModel(LocalServerHost server) :
     public ObservableCollection<string> ProjectIds { get; } = [];
     public ObservableCollection<string> WorkflowIds { get; } = [];
     public ObservableCollection<WorkflowChoice> Workflows { get; } = [];
+    public ObservableCollection<DailyActivityItem> DailyActivities { get; } = [];
 
     public string ProjectId
     {
@@ -71,6 +72,7 @@ public sealed partial class WorkflowSelectionViewModel(LocalServerHost server) :
         WorkflowIds.Clear();
         Workflows.Clear();
         CalendarWorkflows.Clear();
+        DailyActivities.Clear();
         _calendarSource.Clear();
         SelectedDate = null;
     }

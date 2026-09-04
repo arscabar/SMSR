@@ -10,7 +10,7 @@ namespace SMSR.App.Mvp;
 
 public sealed class LocalServer(WebApplication app, EventStore events, WorkflowSummaryService summaries,
     WorkflowExportService exports, WorkflowEventNotifier notifier, ActivityJsonlStore activity, LocalOAuthStore oauth,
-    McpConnectionTracker connections) : IAsyncDisposable
+    McpConnectionTracker connections, DailyActivityNotifier dailyActivities) : IAsyncDisposable
 {
     public const int Port = 49783;
     public string Address => app.Urls.Single();
@@ -32,6 +32,11 @@ public sealed class LocalServer(WebApplication app, EventStore events, WorkflowS
         add => notifier.Changed += value;
         remove => notifier.Changed -= value;
     }
+    public event EventHandler<DailyActivityChangedEventArgs>? DailyActivityChanged
+    {
+        add => dailyActivities.Changed += value;
+        remove => dailyActivities.Changed -= value;
+    }
 
     public static async Task<LocalServer> StartAsync(string? dataPath = null, int port = Port,
         Func<string>? dashboardTheme = null)
@@ -48,6 +53,7 @@ public sealed class LocalServer(WebApplication app, EventStore events, WorkflowS
         var activity = new ActivityJsonlStore(dataPath);
         var activityToken = new ActivityHookToken(dataPath);
         var connections = new McpConnectionTracker();
+        var dailyActivities = new DailyActivityNotifier();
         var summaries = new WorkflowSummaryService(store);
         var exports = new WorkflowExportService(store, activity, Path.Combine(dataPath, "exports"), dashboardTheme);
         var builder = WebApplication.CreateSlimBuilder();
@@ -57,15 +63,17 @@ public sealed class LocalServer(WebApplication app, EventStore events, WorkflowS
         builder.Services.AddSingleton(summaries);
         builder.Services.AddSingleton(exports);
         builder.Services.AddSingleton(connections);
+        builder.Services.AddSingleton(dailyActivities);
         builder.Services.AddMcpServer(options => options.ServerInstructions = SmsrMcpInstructions.Text)
             .WithHttpTransport(options => options.Stateless = true)
             .WithTools<WorkflowTools>()
             .WithTools<PlanTools>()
-            .WithTools<AgentTools>();
+            .WithTools<AgentTools>()
+            .WithTools<DailyActivityTools>();
         var app = builder.Build();
         LocalServerEndpoints.Map(app, oauth, bridgeToken, flows, oauthAudit, connections, notifier, activity, activityToken, dashboardTheme);
         await app.StartAsync();
-        return new(app, store, summaries, exports, notifier, activity, oauth, connections);
+        return new(app, store, summaries, exports, notifier, activity, oauth, connections, dailyActivities);
     }
 
     public Task<IReadOnlyList<string>> GetProjectIdsAsync(CancellationToken cancellationToken = default)
@@ -78,6 +86,11 @@ public sealed class LocalServer(WebApplication app, EventStore events, WorkflowS
         => events.GetWorkflowCatalogAsync(projectId, cancellationToken);
     public Task<IReadOnlyList<WorkflowCalendarEntry>> GetWorkflowCalendarAsync(CancellationToken cancellationToken = default)
         => events.GetWorkflowCalendarAsync(cancellationToken);
+    public Task<IReadOnlyList<DailyActivity>> GetDailyActivitiesAsync(DateTimeOffset startUtc,
+        DateTimeOffset endUtc, CancellationToken cancellationToken = default)
+        => events.GetDailyActivitiesAsync(startUtc, endUtc, cancellationToken);
+    public Task<DateTimeOffset?> GetLatestDailyActivityAtAsync(CancellationToken cancellationToken = default)
+        => events.GetLatestDailyActivityAtAsync(cancellationToken);
 
     public Task<WorkflowState> GetStateAsync(string projectId, string workflowId, CancellationToken cancellationToken = default)
         => events.GetStateAsync(projectId, workflowId, cancellationToken);

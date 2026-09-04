@@ -42,6 +42,13 @@ public sealed partial class EventStore(string databasePath)
               agent_role TEXT NOT NULL, status TEXT NOT NULL, node_id TEXT, summary TEXT,
               retry_count INTEGER NOT NULL, heartbeat_at_utc TEXT NOT NULL,
               PRIMARY KEY(project_id, workflow_id, agent_id));
+            CREATE TABLE IF NOT EXISTS daily_activities (
+              activity_id TEXT PRIMARY KEY, project_id TEXT NOT NULL, task_id TEXT NOT NULL,
+              title TEXT NOT NULL, summary TEXT NOT NULL, status TEXT NOT NULL,
+              files_json TEXT NOT NULL, verifications_json TEXT NOT NULL, artifacts_json TEXT NOT NULL,
+              workflow_id TEXT, agent_id TEXT, recorded_at_utc TEXT NOT NULL);
+            CREATE INDEX IF NOT EXISTS ix_daily_activities_date
+              ON daily_activities(project_id, recorded_at_utc DESC);
             """;
         await command.ExecuteNonQueryAsync(cancellationToken);
         await EventStoreMigrations.EnsureMetadataColumnsAsync(connection, cancellationToken);

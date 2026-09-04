@@ -10,7 +10,7 @@ public sealed class MainWindowViewModel
     {
         Server = new ServerControlViewModel(host, settings);
         Workspace = new WorkflowWorkspaceViewModel(host, platform);
-        Settings = new SettingsViewModel(settings, host, platform);
+        Settings = new SettingsViewModel(settings, host, platform, exitApplication);
         ExitCommand = new RelayCommand(exitApplication ?? (() => { }));
     }
 

@@ -41,29 +41,31 @@ internal static class CodexMcpConfigSelfCheck
                 || !hooksText.Contains("SessionEnd", StringComparison.Ordinal)
                 || hooksText.Contains("record_lifecycle", StringComparison.Ordinal)
                 || hooksBackup is null || !File.Exists(hooksBackup))
-                throw new InvalidOperationException("Codex 요청형 그래프 훅 병합 검증이 실패했습니다.");
+                throw new InvalidOperationException("Codex 작업 기록 훅 병합 검증이 실패했습니다.");
             if (CodexAutoTrackingHook.Register(path, fakeExecutable) is not null)
                 throw new InvalidOperationException("Codex 자동 추적 훅 중복 방지가 실패했습니다.");
             var planningSettings = new AppSettings(PlanningPrompt: "PLAN {projectId} {taskId}");
             var context = CodexAutoTrackingContext.CreateOutput("{\"session_id\":\"session-1\",\"cwd\":\"C:\\\\work\\\\SMSR\",\"prompt\":\"SECRET\"}", planningSettings);
             if (!context.Contains("session-1", StringComparison.Ordinal) || !context.Contains("SMSR", StringComparison.Ordinal)
-                || !context.Contains("graph tracking is opt-in", StringComparison.Ordinal)
-                || !context.Contains("Ignore source_thread_id", StringComparison.Ordinal)
-                || !context.Contains("current Codex task/session ID", StringComparison.Ordinal)
+                || !context.Contains("record_daily_activity exactly once", StringComparison.Ordinal)
+                || !context.Contains("at least two complexity signals", StringComparison.Ordinal)
+                || !context.Contains("calculations, quick lookups", StringComparison.Ordinal)
                 || !context.Contains("omit workflowId in the first save_plan", StringComparison.Ordinal)
-                || !context.Contains("yyyyMMdd-HHmmssfff__project__task", StringComparison.Ordinal)
-                || !context.Contains("Never reopen, edit, or add children to a SUCCESS node", StringComparison.Ordinal)
-                || !context.Contains("Start an unrelated request as a new graph", StringComparison.Ordinal)
-                || !context.Contains("before any other tool call", StringComparison.Ordinal)
-                || !context.Contains("SUCCESS, FAILED, or BLOCKED", StringComparison.Ordinal)
-                || !context.Contains("never batch updates at the end", StringComparison.Ordinal)
-                || !context.Contains("within 30 seconds only", StringComparison.Ordinal)
+                || !context.Contains("A graph scope ends", StringComparison.Ordinal)
+                || !context.Contains("Never reopen or add children to SUCCESS nodes", StringComparison.Ordinal)
+                || !context.Contains("within 30 seconds", StringComparison.Ordinal)
                 || !context.Contains("PLAN SMSR session-1", StringComparison.Ordinal)
                 || context.Contains("SECRET", StringComparison.Ordinal))
                 throw new InvalidOperationException("Codex 자동 추적 컨텍스트 검증이 실패했습니다.");
             var noPlanning = CodexAutoTrackingContext.CreateOutput("{\"session_id\":\"session-1\",\"cwd\":\"C:\\\\work\\\\SMSR\"}", planningSettings with { RequirePlanReview = false });
             if (noPlanning.Contains("User-configured SMSR planning policy", StringComparison.Ordinal))
                 throw new InvalidOperationException("작업계획 검토 비활성화 검증이 실패했습니다.");
+            var explicitOnly = CodexAutoTrackingContext.CreateOutput("{\"session_id\":\"session-1\",\"cwd\":\"C:\\\\work\\\\SMSR\"}",
+                planningSettings with { TrackComplexTasksAutomatically = false });
+            if (!explicitOnly.Contains("Do not automatically create a graph based on complexity", StringComparison.Ordinal))
+                throw new InvalidOperationException("복잡 작업 명시 요청 문구 검증이 실패했습니다.");
+            if (explicitOnly.Contains("at least two complexity signals", StringComparison.Ordinal))
+                throw new InvalidOperationException("복잡 작업 자동 기준 비활성화 검증이 실패했습니다.");
             if (PlanningPromptSettings.Normalize(PlanningPromptSettings.LegacyDefault) != PlanningPromptSettings.Default)
                 throw new InvalidOperationException("이전 작업계획 기본 문구 마이그레이션이 실패했습니다.");
             if (PlanningPromptSettings.Normalize(PlanningPromptSettings.PreviousDefault) != PlanningPromptSettings.Default)
@@ -71,6 +73,16 @@ internal static class CodexMcpConfigSelfCheck
             if (WindowsStartupRegistration.BuildCommand(@"C:\Program Files\SMSR\SMSR.App.exe")
                 != "\"C:\\Program Files\\SMSR\\SMSR.App.exe\" --background")
                 throw new InvalidOperationException("Windows 자동 시작 명령 검증이 실패했습니다.");
+            var bridgeDirectory = Path.Combine(directory, "bridge");
+            Directory.CreateDirectory(bridgeDirectory);
+            var bridgeSource = Path.Combine(bridgeDirectory, "SMSR.App.exe");
+            File.Copy(Environment.ProcessPath
+                ?? throw new InvalidOperationException("실행 파일 경로 확인 실패"), bridgeSource);
+            var bridge = CodexBridgeExecutable.Ensure(bridgeSource);
+            if (Path.GetFileName(bridge) != "SMSR.Bridge.exe"
+                || CodexBridgeExecutable.ReadSubsystem(bridge) != 3
+                || CodexBridgeExecutable.DashboardPath(bridge) != bridgeSource)
+                throw new InvalidOperationException("콘솔 MCP 브리지 생성 검증이 실패했습니다.");
             var launch = DashboardProcessLauncher.CreateStartInfo(@"C:\Program Files\SMSR\SMSR.App.exe");
             if (launch.ArgumentList.Count != 2 || launch.ArgumentList[0] != "--background"
                 || launch.ArgumentList[1] != "--ensure-server" || launch.UseShellExecute || !launch.CreateNoWindow)

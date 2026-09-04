@@ -28,6 +28,7 @@ public static class MvpSelfCheck
             CodexMcpConfigSelfCheck.Run();
             OAuthPersistenceSelfCheck.Run(serverPath);
             await ActivitySelfCheck.RunAsync(serverPath);
+            await AppUpdateSelfCheck.RunAsync(serverPath);
             var connectionTracker = new McpConnectionTracker();
             var connectionChanges = 0;
             connectionTracker.Changed += (_, _) => connectionChanges++;
@@ -155,6 +156,14 @@ public static class MvpSelfCheck
                     .CallAsync("list_workflows", new { projectId = "demo" });
                 var restartedBridgeWorkflows = await new McpHttpGateway(server.Address, serverPath)
                     .CallAsync("list_workflows", new { projectId = "demo" });
+                var dailyResult = await new McpHttpGateway(server.Address, serverPath).CallAsync("record_daily_activity", new
+                {
+                    activityId = "daily-mcp-1", projectId = "daily-mcp", taskId = "task-mcp",
+                    title = "간단한 파일 수정", summary = "한 파일을 수정하고 검증했습니다.",
+                    status = "SUCCESS", files = new[] { "README.md" }, verifications = new[] { "확인 완료" }
+                });
+                var dailyRecords = await server.GetDailyActivitiesAsync(DateTimeOffset.UtcNow.AddMinutes(-1),
+                    DateTimeOffset.UtcNow.AddMinutes(1));
                 using var bridgeDocument = JsonDocument.Parse(bridgeWorkflows);
                 using var restartedBridgeDocument = JsonDocument.Parse(restartedBridgeWorkflows);
                 var bridgeCatalogRead = bridgeDocument.RootElement.GetProperty("projectId").GetString() == "demo"
@@ -229,6 +238,8 @@ public static class MvpSelfCheck
                 {
                     ("health-auth", healthResponse.IsSuccessStatusCode && denied.StatusCode == HttpStatusCode.Unauthorized),
                     ("bridge", bridgeAnnounced && server.HasActiveMcpClient && bridgeCatalogRead),
+                    ("daily-activity", dailyResult.Contains("daily-mcp-1", StringComparison.Ordinal)
+                        && dailyRecords.Any(item => item.ActivityId == "daily-mcp-1" && item.Files.Single() == "README.md")),
                     ("initial-http-sse", stateResponse.IsSuccessStatusCode && dashboardResponse.IsSuccessStatusCode && streamResponse.IsSuccessStatusCode && initialEvent == "event: state" && initialData == "data: changed" && changedEvent == "event: state"),
                     ("activity", activityResponse.IsSuccessStatusCode && activityJson.Contains("TOOL_COMPLETED") && recordedDashboard.Contains("TOOL_COMPLETED")),
                     ("mcp-http", recordResponse.IsSuccessStatusCode && planResponse.IsSuccessStatusCode && listResponse.IsSuccessStatusCode),
@@ -253,6 +264,9 @@ public static class MvpSelfCheck
                 await legacyStore.RecordAsync(new("event-b", "project-b", "workflow-b", "b-node", "agent-b",
                     "NODE_STATUS_CHANGED", "IN_PROGRESS", "B 프로젝트 작업 중", null, null, ["b-result.txt"],
                     "implementer", 40));
+                await legacyStore.RecordDailyActivityAsync(new("daily-simple", "simple-project", "simple-task",
+                    "단일 문서 수정", "안내 문구 한 곳을 수정했습니다.", Files: ["README.md"],
+                    Verifications: ["문서 렌더링 확인"]));
                 await OAuthSelfCheck.RunAsync(host.Address);
                 var platform = new TestPlatformActions();
                 var viewModel = new MainWindowViewModel(host, platform, settings);
@@ -261,17 +275,24 @@ public static class MvpSelfCheck
                     throw new InvalidOperationException("Codex 연결 완료 UI 상태 복원이 실패했습니다.");
                 viewModel.Settings.StartServerAutomatically = false;
                 viewModel.Settings.AutomateCodexIntegration = false;
+                viewModel.Settings.TrackComplexTasksAutomatically = false;
+                viewModel.Settings.AutoUpdateEnabled = false;
                 viewModel.Settings.MinimizeToTray = false;
                 viewModel.Settings.DashboardTheme = DashboardThemes.Light;
                 viewModel.Settings.RequirePlanReview = false;
                 viewModel.Settings.PlanningPrompt = "검토용 계획 {projectId}";
                 var savedSettings = new AppSettingsService(serverPath).Current;
                 if (savedSettings.StartServerAutomatically || savedSettings.AutomateCodexIntegration
+                    || savedSettings.TrackComplexTasksAutomatically || savedSettings.AutoUpdateEnabled
                     || savedSettings.MinimizeToTray || savedSettings.DashboardTheme != DashboardThemes.Light
                     || savedSettings.RequirePlanReview || savedSettings.PlanningPrompt != "검토용 계획 {projectId}")
                     throw new InvalidOperationException("사용자 설정 저장 검증이 실패했습니다.");
                 viewModel.Workspace.Selection.ProjectId = "demo";
                 await viewModel.Workspace.Selection.LoadAsync();
+                if (!viewModel.Workspace.Selection.DailyActivities.Any(item => item.ActivityId == "daily-simple")
+                    || !viewModel.Workspace.Selection.CalendarSummary.Contains("작업 기록", StringComparison.Ordinal)
+                    || !viewModel.Workspace.Selection.DailyOverview.Contains("변경 파일", StringComparison.Ordinal))
+                    throw new InvalidOperationException("일일 작업 캘린더 표시 검증이 실패했습니다.");
                 if (!viewModel.Workspace.Selection.Workflows.Any(item => item.WorkflowId == opaqueWorkflow
                     && item.DisplayName.Contains("사람이 읽는 기존 작업", StringComparison.Ordinal)))
                     throw new InvalidOperationException("기존 UUID 워크플로우 표시명 검증이 실패했습니다.");

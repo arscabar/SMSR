@@ -32,14 +32,8 @@ internal static class DashboardPanels
         return $"<dl class=\"detail\"><dt>작업</dt><dd>{Encode(nodeId)} · {Encode(planNode?.Title ?? nodeId)}</dd><dt>상태 / 진행률</dt><dd>{Encode(stateNode?.Status ?? "PENDING")} · {WorkflowProgress.Value(stateNode)}%</dd><dt>담당 / 역할</dt><dd>{Encode(stateNode?.AgentId ?? planNode?.AssignedAgentId ?? "-")} · {Encode(stateNode?.AgentRole ?? planNode?.AgentRole ?? "-")}</dd><dt>재시도</dt><dd>{stateNode?.RetryCount ?? 0}회</dd><dt>현재 작업</dt><dd>{Encode(stateNode?.Error ?? stateNode?.Summary ?? "-")}</dd><dt>다음 작업</dt><dd>{Encode(stateNode?.NextAction ?? "-")}</dd><dt>완료 조건</dt><dd>{Encode(planNode?.CompletionCriteria ?? "-")}</dd><dt>산출물</dt><dd>{Encode(artifacts)}</dd><dt>갱신</dt><dd>{stateNode?.UpdatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") ?? "-"}</dd></dl>";
     }
 
-    public static string RenderHistory(IReadOnlyList<RecentEvent> events)
-    {
-        if (events.Count == 0) return "<p class=\"empty\">최근 기록이 없습니다.</p>";
-        var html = new StringBuilder("<ul class=\"history\">");
-        foreach (var item in events.Take(8))
-            html.Append($"<li><b>{Encode(item.NodeId)}</b> {Encode(item.Status)}<br>{Encode(item.Error ?? item.Summary ?? "-")}</li>");
-        return html.Append("</ul>").ToString();
-    }
+    public static string RenderHistory(IReadOnlyList<RecentEvent> events, WorkflowPlan plan)
+        => DashboardHistoryCards.Render(events, plan);
 
     public static string RenderActivities(IReadOnlyList<ActivityRecord> activities)
     {

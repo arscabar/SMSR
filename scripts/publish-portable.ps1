@@ -21,12 +21,21 @@ $publishArguments = @(
     "--self-contained", "true",
     "--nologo",
     "-p:PublishProfile=Portable",
+    "-p:PublishSingleFile=false",
+    "-p:IncludeNativeLibrariesForSelfExtract=false",
+    "-p:EnableCompressionInSingleFile=false",
     "-p:PublishDir=$publishPath"
 )
 
 & dotnet @publishArguments
 if ($LASTEXITCODE -ne 0) {
     throw "dotnet publish failed with exit code $LASTEXITCODE."
+}
+
+$publishedApplication = Join-Path $publishPath "SMSR.App.exe"
+$bridgeProcess = Start-Process -FilePath $publishedApplication -ArgumentList "--ensure-bridge" -Wait -PassThru -WindowStyle Hidden
+if ($bridgeProcess.ExitCode -ne 0 -or -not (Test-Path -LiteralPath (Join-Path $publishPath "SMSR.Bridge.exe"))) {
+    throw "Console MCP bridge generation failed with exit code $($bridgeProcess.ExitCode)."
 }
 
 Copy-Item -LiteralPath $quickStartPath -Destination (Join-Path $publishPath "README.md")

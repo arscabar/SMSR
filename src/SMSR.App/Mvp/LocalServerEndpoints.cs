@@ -39,6 +39,10 @@ internal static class LocalServerEndpoints
         app.MapGet("/api/state", (string? projectId, string? workflowId, EventStore events, CancellationToken ct) => GetStateAsync(projectId, workflowId, events, ct));
         app.MapGet("/api/plan", (string? projectId, string? workflowId, EventStore events, CancellationToken ct) => GetPlanAsync(projectId, workflowId, events, ct));
         app.MapGet("/api/summary", (string? projectId, string? workflowId, EventStore events, CancellationToken ct) => GetSummaryAsync(projectId, workflowId, events, ct));
+        app.MapGet("/api/daily-activities", async (DateTimeOffset? startUtc, DateTimeOffset? endUtc,
+            EventStore events, CancellationToken ct) => startUtc is null || endUtc is null
+                ? Results.BadRequest(new { error = "startUtc와 endUtc가 필요합니다." })
+                : Results.Ok(await events.GetDailyActivitiesAsync(startUtc.Value, endUtc.Value, ct)));
         app.MapGet("/api/events/stream", async (string? projectId, string? workflowId, HttpResponse response, WorkflowEventNotifier notifier, CancellationToken ct) =>
         {
             if (string.IsNullOrWhiteSpace(projectId) || string.IsNullOrWhiteSpace(workflowId))

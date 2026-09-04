@@ -13,6 +13,11 @@ korean.UninstallTitle=SMSR 제거
 english.UninstallTitle=Uninstall SMSR
 
 [Code]
+function IsAutomaticUpdate: Boolean;
+begin
+  Result := ExpandConstant('{param:SMSRAUTORESTART|0}') = '1';
+end;
+
 procedure InitializeWizard;
 begin
   WizardForm.Caption := 'SMSR';

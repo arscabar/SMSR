@@ -38,6 +38,8 @@ public sealed partial class SettingsViewModel
         OnPropertyChanged(nameof(StartWithWindows));
         OnPropertyChanged(nameof(StartServerAutomatically));
         OnPropertyChanged(nameof(AutomateCodexIntegration));
+        OnPropertyChanged(nameof(TrackComplexTasksAutomatically));
+        OnPropertyChanged(nameof(AutoUpdateEnabled));
         OnPropertyChanged(nameof(MinimizeToTray));
         OnPropertyChanged(nameof(DashboardTheme));
         OnPropertyChanged(nameof(RequirePlanReview));

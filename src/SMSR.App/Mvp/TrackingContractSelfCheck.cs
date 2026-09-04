@@ -7,16 +7,13 @@ internal static class TrackingContractSelfCheck
 {
     public static async Task RunAsync()
     {
-        if (!SmsrMcpInstructions.Text.Contains("명시적으로 요청", StringComparison.Ordinal)
-            || !SmsrMcpInstructions.Text.Contains("일반 작업은 어떤 SMSR 기록도", StringComparison.Ordinal)
+        if (!SmsrMcpInstructions.Text.Contains("record_daily_activity", StringComparison.Ordinal)
+            || !SmsrMcpInstructions.Text.Contains("계산, 짧은 검색", StringComparison.Ordinal)
             || !SmsrMcpInstructions.Text.Contains("workflowId를 생략", StringComparison.Ordinal)
-            || !SmsrMcpInstructions.Text.Contains("yyyyMMdd-HHmmssfff", StringComparison.Ordinal)
             || !SmsrMcpInstructions.Text.Contains("즉시 record_event", StringComparison.Ordinal)
-            || !SmsrMcpInstructions.Text.Contains("몰아서 보내지", StringComparison.Ordinal)
             || !SmsrMcpInstructions.Text.Contains("list_workflows", StringComparison.Ordinal)
-            || !SmsrMcpInstructions.Text.Contains("최종 record_event", StringComparison.Ordinal)
-            || !SmsrMcpInstructions.Text.Contains("모든 노드가 완료된 뒤", StringComparison.Ordinal)
-            || !SmsrMcpInstructions.Text.Contains("무관한 별도 요청", StringComparison.Ordinal))
+            || !SmsrMcpInstructions.Text.Contains("범위를 닫", StringComparison.Ordinal)
+            || !SmsrMcpInstructions.Text.Contains("일일 활동만 기록", StringComparison.Ordinal))
             Fail("요청형 그래프 지침");
 
         var path = Path.Combine(Path.GetTempPath(), $"smsr-tracking-{Guid.NewGuid():N}.db");
@@ -24,6 +21,25 @@ internal static class TrackingContractSelfCheck
         {
             var store = new EventStore(path);
             await store.InitializeAsync();
+            var dailyNotifier = new DailyActivityNotifier();
+            var dailyChanges = 0;
+            dailyNotifier.Changed += (_, _) => dailyChanges++;
+            var dailyTools = new DailyActivityTools(store, dailyNotifier);
+            var dailyResult = await dailyTools.RecordDailyActivity("daily-1", "daily-project", "task-1",
+                "설정 문구 수정", "한 파일의 안내 문구를 수정했습니다.", files: ["README.md"],
+                verifications: ["문서 확인"]);
+            await dailyTools.RecordDailyActivity("daily-1", "daily-project", "task-1",
+                "설정 문구 수정", "검증에서 문제를 발견했습니다.", status: "FAILED",
+                files: ["README.md"], verifications: ["문서 검사 실패"]);
+            var now = DateTimeOffset.UtcNow;
+            var daily = await store.GetDailyActivitiesAsync(now.AddMinutes(-1), now.AddMinutes(1));
+            if (dailyResult.Contains("error", StringComparison.OrdinalIgnoreCase) || dailyChanges != 2
+                || daily.Single().Files.Single() != "README.md" || daily.Single().Status != "FAILED"
+                || !(await store.GetProjectIdsAsync()).Contains("daily-project")
+                || DailyActivityValidation.Validate(new("", "project", "task", "title", "summary")) is null)
+                Fail("일일 작업 기록 계약");
+            await store.DeleteProjectAsync("daily-project");
+            if ((await store.GetProjectIdsAsync()).Contains("daily-project")) Fail("일일 작업 삭제 계약");
             var generatedId = WorkflowIdGenerator.Create("Apple Game", "점심 추천 웹서버",
                 new DateTimeOffset(2026, 8, 31, 15, 42, 7, TimeSpan.FromHours(9)).AddMilliseconds(123));
             if (generatedId != "20260831-154207123__Apple-Game__점심-추천-웹서버") Fail("workflow ID 자동 생성");
@@ -119,6 +135,9 @@ internal static class TrackingContractSelfCheck
             var root = DashboardPage.Render(state, plan, recent);
             var child = DashboardPage.Render(state, plan, recent, null, "implementation", "contract");
             if (!root.Contains("하위 작업 2개") || !root.Contains("parentNodeId=implementation") || !root.Contains("implementation · lead · IN_PROGRESS")
+                || !root.Contains("toggle-status-cards") || !root.Contains("status-card")
+                || !root.Contains("smsr-status-cards")
+                || !root.Contains("<span class=\"status-card-title\">계약 확장</span>", StringComparison.Ordinal)
                 || !child.Contains("계약 검사 통과") || !child.Contains("src/SMSR.App/Mvp/Contracts.cs"))
                 Fail("계층 드릴다운 렌더링");
         }

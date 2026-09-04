@@ -23,6 +23,7 @@ public sealed partial class WorkflowWorkspaceViewModel : ViewModelBase
         Monitor = new WorkflowMonitorViewModel(host);
         Selection.PropertyChanged += OnSelectionChanged;
         Selection.WorkflowRequested += choice => _ = SelectCalendarWorkflowAsync(choice);
+        Selection.DailyActivityRequested += item => _ = SelectDailyActivityAsync(item);
         RefreshSelectionCommand = new RelayCommand(() => _ = RefreshSelectionAsync());
         RefreshMonitorCommand = new RelayCommand(() => _ = RefreshMonitorAsync(), HasWorkflowSelection);
         GenerateSummaryCommand = new RelayCommand(() => _ = GenerateSummaryAsync(), HasWorkflowSelection);
@@ -38,6 +39,7 @@ public sealed partial class WorkflowWorkspaceViewModel : ViewModelBase
         _host.Stopping += OnHostStopping;
         _host.StateChanged += OnHostStateChanged;
         _host.WorkflowChanged += OnWorkflowChanged;
+        _host.DailyActivityChanged += OnDailyActivityChanged;
     }
 
     public WorkflowSelectionViewModel Selection { get; }

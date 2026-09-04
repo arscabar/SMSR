@@ -42,11 +42,32 @@
                         </Calendar>
                         <StackPanel Grid.Column="1" Margin="16,0,0,0">
                             <TextBlock FontWeight="SemiBold" Text="{Binding Selection.CalendarSummary}" />
+                            <TextBlock Margin="0,10,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="복잡한 작업 그래프" />
                             <ListView Margin="0,10,0,0" MaxHeight="250" ItemsSource="{Binding Selection.CalendarWorkflows}" SelectedItem="{Binding Selection.SelectedCalendarWorkflow, Mode=TwoWay}">
                                 <ListView.ItemTemplate><DataTemplate><StackPanel ToolTip="{Binding WorkflowId}">
                                     <TextBlock FontWeight="SemiBold" Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
                                     <TextBlock Margin="0,3,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="{Binding CalendarMeta}" TextWrapping="Wrap" />
                                 </StackPanel></DataTemplate></ListView.ItemTemplate>
+                            </ListView>
+                            <TextBlock Margin="0,16,0,0" FontWeight="SemiBold" Text="일일 작업 요약" />
+                            <TextBlock Margin="0,3,0,8" Foreground="{DynamicResource MutedTextBrush}" Text="파일을 변경한 간단 작업과 그래프 작업을 날짜별로 모아봅니다." TextWrapping="Wrap" />
+                            <TextBlock Margin="0,0,0,8" Foreground="{DynamicResource AccentBrush}" Text="{Binding Selection.DailyOverview}" TextWrapping="Wrap" />
+                            <ListView MaxHeight="360" ItemsSource="{Binding Selection.DailyActivities}" SelectedItem="{Binding Selection.SelectedDailyActivity, Mode=TwoWay}">
+                                <ListView.ItemTemplate><DataTemplate>
+                                    <Border Margin="0,0,0,8" Padding="10" Background="{DynamicResource QuietBrush}" CornerRadius="7">
+                                        <StackPanel ToolTip="{Binding TaskId}">
+                                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                <TextBlock FontWeight="SemiBold" Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Grid.Column="1" Margin="10,0,0,0" Foreground="{DynamicResource AccentBrush}" Text="{Binding StatusLabel}" />
+                                            </Grid>
+                                            <TextBlock Margin="0,3,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="{Binding Meta}" />
+                                            <TextBlock Margin="0,6,0,0" Text="{Binding Summary}" TextWrapping="Wrap" />
+                                            <TextBlock Margin="0,6,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="{Binding FileLabel}" TextWrapping="Wrap" />
+                                            <TextBlock Margin="0,3,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="{Binding VerificationLabel}" TextWrapping="Wrap" />
+                                            <TextBlock Margin="0,5,0,0" Foreground="{DynamicResource AccentBrush}" Text="{Binding GraphLabel}" />
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate></ListView.ItemTemplate>
                             </ListView>
                         </StackPanel>
                     </Grid>

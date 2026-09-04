@@ -14,7 +14,7 @@ public sealed partial class ServerControlViewModel
     public string CodexStatus { get => _codexStatus; private set => SetField(ref _codexStatus, value); }
     public bool IsCodexConnected => _host.IsCodexConnected;
     public bool NeedsCodexSetup => !IsCodexConnected;
-    public string CodexConnectionTitle => IsCodexConnected ? "● Codex 연결됨 · 도구 9개 · 요청형 그래프" : "Codex 연결 설정";
+    public string CodexConnectionTitle => IsCodexConnected ? "● Codex 연결됨 · 도구 10개 · 일일 기록·그래프" : "Codex 연결 설정";
     public bool IsSettingUp { get => _isSettingUp; private set => SetField(ref _isSettingUp, value); }
 
     private async Task SetupConnectionAsync()
@@ -34,7 +34,7 @@ public sealed partial class ServerControlViewModel
     private async Task ConfirmConnectionAsync()
     {
         CodexStatus = IsCodexConnected
-            ? "실제 MCP 연결이 확인되었습니다. SMSR 도구 9개를 사용할 수 있습니다."
+            ? "실제 MCP 연결이 확인되었습니다. SMSR 도구 10개를 사용할 수 있습니다."
             : (await _codex.CheckAsync()).Message;
     }
 }

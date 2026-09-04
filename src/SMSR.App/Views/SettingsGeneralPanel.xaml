@@ -4,7 +4,10 @@
     <Border Padding="18" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10">
         <StackPanel>
             <TextBlock FontSize="16" FontWeight="SemiBold" Text="일반" />
-            <CheckBox Margin="0,16,0,0" IsChecked="{Binding AutomateCodexIntegration}" Content="앱 시작 시 Codex 연결·요청형 그래프 설정 자동 복구" />
+            <CheckBox Margin="0,16,0,0" IsChecked="{Binding AutomateCodexIntegration}" Content="앱 시작 시 Codex 연결·작업 기록 설정 자동 복구" />
+            <CheckBox Margin="0,12,0,0" IsChecked="{Binding TrackComplexTasksAutomatically}" Content="복잡한 프로젝트 작업을 자동으로 그래프로 추적" />
+            <TextBlock Margin="24,4,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="계산·짧은 검색·질문·상태 확인·한 곳의 작은 수정은 제외합니다." TextWrapping="Wrap" />
+            <CheckBox Margin="0,12,0,0" IsChecked="{Binding AutoUpdateEnabled}" Content="새 버전을 자동으로 다운로드하고 설치" />
             <CheckBox Margin="0,12,0,0" IsChecked="{Binding StartWithWindows}" Content="Windows 로그인 시 SMSR 자동 시작" />
             <CheckBox Margin="0,12,0,0" IsChecked="{Binding StartServerAutomatically}" Content="SMSR 시작 시 로컬 서버 자동 시작" />
             <CheckBox Margin="0,12,0,0" IsChecked="{Binding MinimizeToTray}" Content="닫기 버튼을 누르면 트레이로 숨기기" />

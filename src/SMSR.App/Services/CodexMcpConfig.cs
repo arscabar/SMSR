@@ -73,8 +73,9 @@ internal static partial class CodexMcpConfig
 
     private static string Quote(string value) => $"\"{value.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"";
     private static string ResolveExecutablePath(string? path)
-        => Path.GetFullPath(path ?? Environment.ProcessPath
-            ?? throw new InvalidOperationException("SMSR 실행 파일 경로를 확인할 수 없습니다."));
+        => path is not null ? Path.GetFullPath(path)
+            : CodexBridgeExecutable.Ensure(Environment.ProcessPath
+                ?? throw new InvalidOperationException("SMSR 실행 파일 경로를 확인할 수 없습니다."));
 
     [GeneratedRegex("(?<=\\n)")]
     private static partial Regex NewlineRegex();
