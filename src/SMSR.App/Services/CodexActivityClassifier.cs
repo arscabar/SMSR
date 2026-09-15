@@ -25,7 +25,7 @@ internal static class CodexActivityClassifier
 
     public static bool IsTerminalEvent(string tool, JsonElement? arguments)
         => tool.EndsWith("record_event", StringComparison.OrdinalIgnoreCase) && arguments is { } value
-            && HookJson.String(value, "status") is "SUCCESS" or "FAILED" or "BLOCKED";
+            && HookJson.String(value, "status") is "SUCCESS" or "FAILED" or "BLOCKED" or "CANCELLED";
 
     public static string Identity(string eventName, string sessionId, string turnId,
         string agentId, string toolName, string toolUseId)

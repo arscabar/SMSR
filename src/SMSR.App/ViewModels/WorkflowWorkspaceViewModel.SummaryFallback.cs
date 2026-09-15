@@ -5,14 +5,17 @@ namespace SMSR.App.ViewModels;
 
 public sealed partial class WorkflowWorkspaceViewModel
 {
-    private void OpenCodexSummaryRequest(DateTime date, string prompt)
+    private void OpenCodexSummaryRequest(DateTime date, string label, string prompt, string? geminiError)
     {
         var request = _host.CreateDailySummaryRequest(date, prompt);
-        _pendingSummaryRequestId = request.RequestId;
         if (!_platform.TryOpenBrowser(CodexSummaryRequest.Uri(request.RequestId)))
             throw new InvalidOperationException("Codex 앱을 열 수 없습니다.");
+        _pendingSummaryRequestId = request.RequestId;
+        _pendingSummaryLabel = label;
         DailySummary = "Codex에 요약 요청을 준비했습니다. 열린 Codex 창에서 전송을 누르면 결과가 이곳에 자동 반영됩니다.";
-        DailySummaryMeta = $"{date:yyyy년 M월 d일} · Gemini 미연결 · Codex 응답 대기";
+        var status = _geminiCredentials.Exists
+            ? $"Gemini 실패: {geminiError ?? "알 수 없는 오류"}" : "Gemini API 키 없음";
+        DailySummaryMeta = $"{label} · {status} · Codex 응답 대기";
     }
 
     private void OnDailySummaryCompleted(object? sender, DailySummaryCompletedEventArgs eventArgs)
@@ -23,8 +26,9 @@ public sealed partial class WorkflowWorkspaceViewModel
         _ = dispatcher.InvokeAsync(() =>
         {
             DailySummary = eventArgs.Content;
-            DailySummaryMeta = $"{eventArgs.Date:yyyy년 M월 d일} · Codex · 생성 {DateTime.Now:HH:mm}";
+            DailySummaryMeta = $"{_pendingSummaryLabel ?? $"{eventArgs.Date:yyyy년 M월 d일}"} · Codex · 생성 {DateTime.Now:HH:mm}";
             _pendingSummaryRequestId = null;
+            _pendingSummaryLabel = null;
         });
     }
 

@@ -22,6 +22,7 @@ public sealed partial class SettingsViewModel : ViewModelBase
         _updates = new AppUpdateService(host.DataPath);
         _geminiCredentials = new GeminiCredentialStore(host.DataPath);
         _gemini = new GeminiSummaryClient(_geminiCredentials);
+        _geminiModels = [settings.Current.GeminiModel];
         _exitApplication = exitApplication ?? (() => { });
         DataPath = host.DataPath;
         LogPath = System.IO.Path.GetDirectoryName(host.LogPath) ?? host.DataPath;

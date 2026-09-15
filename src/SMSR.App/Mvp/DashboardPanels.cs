@@ -32,11 +32,12 @@ internal static class DashboardPanels
         return $"<dl class=\"detail\"><dt>작업</dt><dd>{Encode(nodeId)} · {Encode(planNode?.Title ?? nodeId)}</dd><dt>상태 / 진행률</dt><dd>{Encode(stateNode?.Status ?? "PENDING")} · {WorkflowProgress.Value(stateNode)}%</dd><dt>담당 / 역할</dt><dd>{Encode(stateNode?.AgentId ?? planNode?.AssignedAgentId ?? "-")} · {Encode(stateNode?.AgentRole ?? planNode?.AgentRole ?? "-")}</dd><dt>재시도</dt><dd>{stateNode?.RetryCount ?? 0}회</dd><dt>현재 작업</dt><dd>{Encode(stateNode?.Error ?? stateNode?.Summary ?? "-")}</dd><dt>다음 작업</dt><dd>{Encode(stateNode?.NextAction ?? "-")}</dd><dt>완료 조건</dt><dd>{Encode(planNode?.CompletionCriteria ?? "-")}</dd><dt>산출물</dt><dd>{Encode(artifacts)}</dd><dt>갱신</dt><dd>{stateNode?.UpdatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") ?? "-"}</dd></dl>";
     }
 
-    public static string RenderHistory(IReadOnlyList<RecentEvent> events, WorkflowPlan plan)
-        => DashboardHistoryCards.Render(events, plan);
+    public static string RenderHistory(IReadOnlyList<RecentEvent> events, WorkflowPlan plan, string? nodeId = null)
+        => DashboardHistoryCards.Render(nodeId is null ? events : events.Where(item => item.NodeId == nodeId).ToArray(), plan);
 
-    public static string RenderActivities(IReadOnlyList<ActivityRecord> activities)
+    public static string RenderActivities(IReadOnlyList<ActivityRecord> activities, string? nodeId = null)
     {
+        if (nodeId is not null) activities = activities.Where(item => item.NodeId == nodeId).ToArray();
         if (activities.Count == 0) return "<p class=\"empty\">활성 그래프의 에이전트 활동이 없습니다.</p>";
         var html = new StringBuilder("<ul class=\"history activity\">");
         foreach (var item in activities.Take(12))

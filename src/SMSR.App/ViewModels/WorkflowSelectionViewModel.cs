@@ -37,9 +37,7 @@ public sealed partial class WorkflowSelectionViewModel : ViewModelBase
         set
         {
             if (!SetField(ref _projectId, value)) return;
-            WorkflowIds.Clear();
-            Workflows.Clear();
-            WorkflowId = "";
+            FilterProjectWorkflows();
         }
     }
 
@@ -48,8 +46,16 @@ public sealed partial class WorkflowSelectionViewModel : ViewModelBase
         get => _workflowId;
         set
         {
-            if (SetField(ref _workflowId, value) && !string.IsNullOrWhiteSpace(ProjectId) && !string.IsNullOrWhiteSpace(value)) Save();
+            if (!SetField(ref _workflowId, value)) return;
+            OnPropertyChanged(nameof(SelectedWorkflow));
+            if (!string.IsNullOrWhiteSpace(ProjectId) && !string.IsNullOrWhiteSpace(value)) Save();
         }
+    }
+
+    public WorkflowChoice? SelectedWorkflow
+    {
+        get => Workflows.FirstOrDefault(item => item.WorkflowId == WorkflowId);
+        set => WorkflowId = value?.WorkflowId ?? "";
     }
 
     public async Task LoadAsync()
@@ -59,10 +65,8 @@ public sealed partial class WorkflowSelectionViewModel : ViewModelBase
         foreach (var id in await server.GetProjectIdsAsync()) ProjectIds.Add(id);
         if (string.IsNullOrWhiteSpace(ProjectId) && ProjectIds.Count > 0) ProjectId = saved is not null && ProjectIds.Contains(saved.ProjectId) ? saved.ProjectId : ProjectIds[0];
         await LoadCalendarAsync();
-        WorkflowIds.Clear();
         if (string.IsNullOrWhiteSpace(ProjectId)) return;
-        await LoadWorkflowsAsync(ProjectId);
-        if (string.IsNullOrWhiteSpace(WorkflowId) && WorkflowIds.Count > 0) WorkflowId = saved is not null && WorkflowIds.Contains(saved.WorkflowId) ? saved.WorkflowId : WorkflowIds[0];
+        if (saved is not null && WorkflowIds.Contains(saved.WorkflowId)) WorkflowId = saved.WorkflowId;
     }
 
     public async Task SelectAsync(string projectId, string workflowId)
@@ -92,6 +96,8 @@ public sealed partial class WorkflowSelectionViewModel : ViewModelBase
         _calendarSource.Clear();
         _dailyCalendarSource.Clear();
         SelectedDate = null;
+        SummaryStartDate = null;
+        _awaitingSummaryRangeEnd = false;
     }
 
     private LastWorkflow? LoadSaved()

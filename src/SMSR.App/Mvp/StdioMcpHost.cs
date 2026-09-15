@@ -6,9 +6,9 @@ namespace SMSR.App.Mvp;
 
 public static class StdioMcpHost
 {
-    public static async Task RunAsync()
+    public static async Task RunAsync(bool connectDashboard = true)
     {
-        await ConnectDashboardAsync();
+        if (connectDashboard) await ConnectDashboardAsync();
         var services = new ServiceCollection();
         services.AddSingleton<McpHttpGateway>();
         services.AddMcpServer(options => options.ServerInstructions = SmsrMcpInstructions.Text)

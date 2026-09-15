@@ -28,6 +28,7 @@ internal static class DashboardHistoryCards
         "SUCCESS" => "success",
         "FAILED" or "BLOCKED" => "error",
         "IN_PROGRESS" or "VALIDATING" or "RETRYING" => "active",
+        "CANCELLED" => "cancelled",
         _ => "pending"
     };
 
@@ -36,6 +37,7 @@ internal static class DashboardHistoryCards
         "SUCCESS" => "완료",
         "FAILED" => "실패",
         "BLOCKED" => "차단",
+        "CANCELLED" => "중단",
         "IN_PROGRESS" => "진행 중",
         "VALIDATING" => "검증 중",
         "RETRYING" => "재시도",

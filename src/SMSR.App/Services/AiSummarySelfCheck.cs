@@ -13,10 +13,28 @@ internal static class AiSummarySelfCheck
         credentials.Save("test-key");
         if (credentials.Read() != "test-key") throw new InvalidOperationException("Gemini DPAPI 저장 검증이 실패했습니다.");
         var handler = new GeminiHandler();
-        await new GeminiSummaryClient(credentials, new HttpClient(handler)).TestAsync();
-        if (handler.ApiKey != "test-key" || !handler.Body.Contains("SMSR", StringComparison.Ordinal)
-            || handler.RequestUri?.AbsoluteUri.Contains(GeminiSummaryClient.Model, StringComparison.Ordinal) != true)
+        var client = new GeminiSummaryClient(credentials, new HttpClient(handler));
+        var models = await client.GetModelsAsync();
+        await client.TestAsync("gemini-3-test");
+        var modernBody = handler.Body;
+        var modernUri = handler.RequestUri;
+        await client.TestAsync("gemini-2.5-test");
+        if (handler.ApiKey != "test-key" || !modernBody.Contains("\"thinkingLevel\":\"low\"", StringComparison.Ordinal)
+            || modernBody.Contains("temperature", StringComparison.Ordinal)
+            || modernUri?.AbsoluteUri.Contains("gemini-3-test", StringComparison.Ordinal) != true
+            || !handler.Body.Contains("SMSR", StringComparison.Ordinal)
+            || !handler.Body.Contains("temperature", StringComparison.Ordinal)
+            || handler.Body.Contains("thinkingLevel", StringComparison.Ordinal)
+            || handler.RequestUri?.AbsoluteUri.Contains("gemini-2.5-test", StringComparison.Ordinal) != true
+            || models.Single() != "gemini-test")
             throw new InvalidOperationException("Gemini 요청 계약 검증이 실패했습니다.");
+        var settings = new AppSettingsService(dataPath);
+        settings.Save(settings.Current with { GeminiModel = "models/gemini-test" });
+        if (new AppSettingsService(dataPath).Current.GeminiModel != "gemini-test")
+            throw new InvalidOperationException("Gemini 모델 설정 저장 검증이 실패했습니다.");
+        var periodPrompt = DailyWorkSummaryPrompt.Build(new(2026, 9, 1), new(2026, 9, 15), [], []);
+        if (!periodPrompt.Contains("2026년 9월 1일부터 2026년 9월 15일까지", StringComparison.Ordinal))
+            throw new InvalidOperationException("Gemini 기간 요약 프롬프트 검증이 실패했습니다.");
         credentials.Delete();
         if (credentials.Exists) throw new InvalidOperationException("Gemini 키 삭제 검증이 실패했습니다.");
 
@@ -45,8 +63,10 @@ internal static class AiSummarySelfCheck
         {
             ApiKey = request.Headers.GetValues("x-goog-api-key").Single();
             RequestUri = request.RequestUri;
-            Body = await request.Content!.ReadAsStringAsync(cancellationToken);
-            const string json = "{\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"OK\"}]}}]}";
+            Body = request.Content is null ? "" : await request.Content.ReadAsStringAsync(cancellationToken);
+            var json = request.Method == HttpMethod.Get
+                ? "{\"models\":[{\"name\":\"models/gemini-test\",\"supportedGenerationMethods\":[\"generateContent\"]}]}"
+                : "{\"candidates\":[{\"content\":{\"parts\":[{\"thoughtSignature\":\"test\"},{\"text\":\"OK\"}]}}]}";
             return new(HttpStatusCode.OK) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
         }
     }

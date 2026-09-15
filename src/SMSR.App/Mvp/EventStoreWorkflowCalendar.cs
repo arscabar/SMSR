@@ -16,11 +16,11 @@ public sealed partial class EventStore
               UNION SELECT project_id, workflow_id FROM plan_nodes
               UNION SELECT project_id, workflow_id FROM agent_heartbeats
             ), activity AS (
-              SELECT project_id, workflow_id, MAX(at) updated_at FROM (
+              SELECT project_id, workflow_id, date(at, 'localtime') activity_date, MAX(at) updated_at FROM (
                 SELECT project_id, workflow_id, created_at_utc at FROM events
                 UNION ALL SELECT project_id, workflow_id, heartbeat_at_utc FROM agent_heartbeats
                 UNION ALL SELECT project_id, workflow_id, created_at_utc FROM summaries
-              ) GROUP BY project_id, workflow_id
+              ) GROUP BY project_id, workflow_id, activity_date
             )
             SELECT w.project_id, w.workflow_id,
               COALESCE(
@@ -31,7 +31,7 @@ public sealed partial class EventStore
               (SELECT COUNT(*) FROM plan_nodes p WHERE p.project_id=w.project_id AND p.workflow_id=w.workflow_id),
               (SELECT COUNT(*) FROM plan_nodes p JOIN current_state s ON s.project_id=p.project_id
                 AND s.workflow_id=p.workflow_id AND s.node_id=p.node_id WHERE p.project_id=w.project_id
-                AND p.workflow_id=w.workflow_id AND s.status IN ('SUCCESS','FAILED','BLOCKED')),
+                AND p.workflow_id=w.workflow_id AND s.status IN ('SUCCESS','FAILED','BLOCKED','CANCELLED')),
               a.updated_at
             FROM workflows w LEFT JOIN activity a ON a.project_id=w.project_id AND a.workflow_id=w.workflow_id
             ORDER BY a.updated_at IS NULL, a.updated_at DESC, w.project_id, w.workflow_id DESC LIMIT 1000;

@@ -1,6 +1,6 @@
 namespace SMSR.App.ViewModels;
 
-public sealed record CalendarDayItem(DateTime? Date, int GraphCount, int ActivityCount)
+public sealed record CalendarDayItem(DateTime? Date, int GraphCount, int ActivityCount, string SelectionKind = "")
 {
     public bool IsInMonth => Date is not null;
     public bool IsToday => Date == DateTime.Today;

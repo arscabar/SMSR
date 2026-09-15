@@ -11,6 +11,8 @@ internal static class TrackingContractSelfCheck
             || !SmsrMcpInstructions.Text.Contains("계산, 짧은 검색", StringComparison.Ordinal)
             || !SmsrMcpInstructions.Text.Contains("workflowId를 생략", StringComparison.Ordinal)
             || !SmsrMcpInstructions.Text.Contains("즉시 record_event", StringComparison.Ordinal)
+            || !SmsrMcpInstructions.Text.Contains("끝난 작업의 진행 노드를 남겨두지 마세요", StringComparison.Ordinal)
+            || !SmsrMcpInstructions.Text.Contains("CANCELLED(중단)", StringComparison.Ordinal)
             || !SmsrMcpInstructions.Text.Contains("list_workflows", StringComparison.Ordinal)
             || !SmsrMcpInstructions.Text.Contains("범위를 닫", StringComparison.Ordinal)
             || !SmsrMcpInstructions.Text.Contains("일일 활동만 기록", StringComparison.Ordinal))
@@ -36,7 +38,8 @@ internal static class TrackingContractSelfCheck
             if (dailyResult.Contains("error", StringComparison.OrdinalIgnoreCase) || dailyChanges != 2
                 || daily.Single().Files.Single() != "README.md" || daily.Single().Status != "FAILED"
                 || !(await store.GetProjectIdsAsync()).Contains("daily-project")
-                || DailyActivityValidation.Validate(new("", "project", "task", "title", "summary")) is null)
+                || DailyActivityValidation.Validate(new("", "project", "task", "title", "summary")) is null
+                || DailyActivityValidation.Validate(new("cancelled", "project", "task", "title", "summary", "CANCELLED")) is not null)
                 Fail("일일 작업 기록 계약");
             await store.DeleteProjectAsync("daily-project");
             if ((await store.GetProjectIdsAsync()).Contains("daily-project")) Fail("일일 작업 삭제 계약");

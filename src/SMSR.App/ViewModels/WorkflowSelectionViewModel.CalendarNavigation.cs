@@ -15,15 +15,15 @@ public sealed partial class WorkflowSelectionViewModel
             CalendarDays.Add(new(date, graphs, activities));
         }
         while (CalendarDays.Count % 7 != 0) CalendarDays.Add(new(null, 0, 0));
-        _selectedCalendarDay = CalendarDays.FirstOrDefault(item => item.Date == SelectedDate);
-        OnPropertyChanged(nameof(SelectedCalendarDay));
+        ApplySummarySelection();
         OnPropertyChanged(nameof(DisplayMonthLabel));
     }
 
     private async Task MoveMonthAsync(int months)
     {
         _displayMonth = _displayMonth.AddMonths(months);
-        SelectedDate = IsCurrentMonth(_displayMonth) ? DateTime.Today : _displayMonth;
+        if (SummaryStartDate is null)
+            SelectedDate = IsCurrentMonth(_displayMonth) ? DateTime.Today : _displayMonth;
         await LoadMonthActivitiesAsync();
         BuildMonthGrid();
         FilterCalendar();
@@ -32,6 +32,8 @@ public sealed partial class WorkflowSelectionViewModel
     private async Task ShowTodayAsync()
     {
         _displayMonth = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+        SummaryStartDate = null;
+        _awaitingSummaryRangeEnd = false;
         SelectedDate = DateTime.Today;
         await LoadMonthActivitiesAsync();
         BuildMonthGrid();

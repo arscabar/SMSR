@@ -53,6 +53,8 @@ internal static class CodexMcpConfigSelfCheck
                 || !context.Contains("calculations, quick lookups", StringComparison.Ordinal)
                 || !context.Contains("omit workflowId in the first save_plan", StringComparison.Ordinal)
                 || !context.Contains("A graph scope ends", StringComparison.Ordinal)
+                || !context.Contains("never leave active nodes behind", StringComparison.Ordinal)
+                || !context.Contains("Use CANCELLED when work stops unfinished", StringComparison.Ordinal)
                 || !context.Contains("Never reopen or add children to SUCCESS nodes", StringComparison.Ordinal)
                 || !context.Contains("within 30 seconds", StringComparison.Ordinal)
                 || !context.Contains("PLAN SMSR session-1", StringComparison.Ordinal)

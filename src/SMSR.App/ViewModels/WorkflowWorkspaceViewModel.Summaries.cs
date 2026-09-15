@@ -7,28 +7,48 @@ public sealed partial class WorkflowWorkspaceViewModel
 {
     private async Task GenerateSelectedDateSummaryAsync()
     {
-        if (Selection.SelectedDate is { } date) await GenerateDailySummaryAsync(date);
+        if (Selection.SelectedDate is not { } endDate) return;
+        var startDate = Selection.SummaryStartDate ?? endDate;
+        if (startDate > endDate)
+        {
+            DailySummaryMeta = "요약 시작일은 캘린더에서 선택한 종료일보다 늦을 수 없습니다.";
+            return;
+        }
+        if ((endDate - startDate).TotalDays > 366)
+        {
+            DailySummaryMeta = "요약 기간은 최대 1년까지 선택할 수 있습니다.";
+            return;
+        }
+        await GenerateSummaryAsync(startDate, endDate);
     }
 
-    private async Task GenerateDailySummaryAsync(DateTime date)
+    private async Task GenerateSummaryAsync(DateTime startDate, DateTime endDate)
     {
+        var label = DateRangeLabel(startDate, endDate);
         IsSummarizing = true;
-        DailySummaryMeta = $"{date:yyyy년 M월 d일} 자료를 모으는 중…";
+        DailySummaryMeta = $"{label} 자료를 모으는 중…";
         try
         {
-            var (start, end) = LocalDayRange(date);
+            var (start, _) = LocalDayRange(startDate);
+            var (_, end) = LocalDayRange(endDate);
             var activities = await _host.GetDailyActivitiesAsync(start, end);
             var workflows = (await _host.GetWorkflowCalendarAsync())
-                .Where(item => item.UpdatedAtUtc?.ToLocalTime().Date == date.Date).ToArray();
+                .Where(item => item.UpdatedAtUtc?.ToLocalTime().Date is { } date
+                    && date >= startDate.Date && date <= endDate.Date).ToArray();
             if (activities.Count == 0 && workflows.Length == 0)
             {
-                DailySummary = "선택한 날짜에 SMSR가 기록한 작업이 없습니다.";
-                DailySummaryMeta = $"{date:yyyy년 M월 d일} · 기록 없음";
+                DailySummary = "선택한 기간에 SMSR가 기록한 작업이 없습니다.";
+                DailySummaryMeta = $"{label} · 기록 없음";
                 return;
             }
-            var prompt = DailyWorkSummaryPrompt.Build(date, workflows, activities);
-            if (_geminiCredentials.Exists && await TryGeminiAsync(date, prompt)) return;
-            OpenCodexSummaryRequest(date, prompt);
+            var prompt = DailyWorkSummaryPrompt.Build(startDate, endDate, workflows, activities);
+            string? geminiError = null;
+            if (_geminiCredentials.Exists)
+            {
+                geminiError = await TryGeminiAsync(label, prompt);
+                if (geminiError is null) return;
+            }
+            OpenCodexSummaryRequest(endDate, label, prompt, geminiError);
         }
         catch (Exception exception)
         {
@@ -38,20 +58,24 @@ public sealed partial class WorkflowWorkspaceViewModel
         finally { IsSummarizing = false; }
     }
 
-    private async Task<bool> TryGeminiAsync(DateTime date, string prompt)
+    private async Task<string?> TryGeminiAsync(string label, string prompt)
     {
         try
         {
-            DailySummaryMeta = $"{date:yyyy년 M월 d일} · Gemini에서 요약 중…";
-            DailySummary = await _gemini.GenerateAsync(prompt);
-            DailySummaryMeta = $"{date:yyyy년 M월 d일} · Gemini {GeminiSummaryClient.Model} · 생성 {DateTime.Now:HH:mm}";
-            return true;
+            DailySummaryMeta = $"{label} · Gemini에서 요약 중…";
+            var model = _settings.Current.GeminiModel;
+            DailySummary = await _gemini.GenerateAsync(prompt, model);
+            DailySummaryMeta = $"{label} · Gemini {model} · 생성 {DateTime.Now:HH:mm}";
+            return null;
         }
         catch (Exception exception)
         {
-            DailySummaryMeta = $"Gemini 연결 실패({exception.Message}) · Codex 요청으로 전환 중…";
-            return false;
+            return exception.Message;
         }
     }
+
+    private static string DateRangeLabel(DateTime startDate, DateTime endDate)
+        => startDate.Date == endDate.Date ? $"{startDate:yyyy년 M월 d일}"
+            : $"{startDate:yyyy년 M월 d일} ~ {endDate:yyyy년 M월 d일}";
 
 }

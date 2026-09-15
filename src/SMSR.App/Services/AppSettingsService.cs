@@ -18,7 +18,8 @@ public sealed record AppSettings(
     bool TrackComplexTasksAutomatically = true,
     bool AutoUpdateEnabled = false,
     bool RequirePlanReview = true,
-    string PlanningPrompt = PlanningPromptSettings.Default);
+    string PlanningPrompt = PlanningPromptSettings.Default,
+    string GeminiModel = GeminiSummaryClient.DefaultModel);
 
 public sealed class AppSettingsService
 {
@@ -62,7 +63,8 @@ public sealed class AppSettingsService
             return loaded with
             {
                 DashboardTheme = DashboardThemes.Normalize(loaded.DashboardTheme),
-                PlanningPrompt = PlanningPromptSettings.Normalize(loaded.PlanningPrompt)
+                PlanningPrompt = PlanningPromptSettings.Normalize(loaded.PlanningPrompt),
+                GeminiModel = GeminiSummaryClient.NormalizeModel(loaded.GeminiModel)
             };
         }
         catch { return new(); }

@@ -39,12 +39,3 @@ begin
   UninstallProgressForm.Caption := CustomMessage('UninstallTitle');
   UninstallProgressForm.StatusLabel.Font.Style := [fsBold];
 end;
-
-function PrepareToInstall(var NeedsRestart: Boolean): String;
-var
-  ResultCode: Integer;
-begin
-  Exec(ExpandConstant('{sys}\taskkill.exe'), '/F /T /IM SMSR.App.exe', '',
-    SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  Result := '';
-end;

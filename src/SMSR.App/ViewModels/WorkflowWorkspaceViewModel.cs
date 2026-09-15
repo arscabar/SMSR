@@ -16,17 +16,20 @@ public sealed partial class WorkflowWorkspaceViewModel : ViewModelBase
     private readonly RelayCommand _generateSelectedDateSummaryCommand;
     private readonly GeminiCredentialStore _geminiCredentials;
     private readonly GeminiSummaryClient _gemini;
+    private readonly AppSettingsService _settings;
     private bool _isDeleting;
     private bool _isSummarizing;
     private string _statusMessage = "워크플로우를 선택하세요.";
     private string _dailySummary = "요약할 날짜를 선택하거나 금일 작업 요약을 실행하세요.";
     private string _dailySummaryMeta = "모든 프로젝트의 그래프와 일일 작업 기록을 함께 요약합니다.";
     private string? _pendingSummaryRequestId;
+    private string? _pendingSummaryLabel;
 
-    public WorkflowWorkspaceViewModel(LocalServerHost host, IPlatformActions platform)
+    public WorkflowWorkspaceViewModel(LocalServerHost host, IPlatformActions platform, AppSettingsService settings)
     {
         _host = host;
         _platform = platform;
+        _settings = settings;
         _geminiCredentials = new GeminiCredentialStore(host.DataPath);
         _gemini = new GeminiSummaryClient(_geminiCredentials);
         Selection = new WorkflowSelectionViewModel(host);
@@ -37,7 +40,7 @@ public sealed partial class WorkflowWorkspaceViewModel : ViewModelBase
         RefreshSelectionCommand = new RelayCommand(() => _ = RefreshSelectionAsync());
         RefreshMonitorCommand = new RelayCommand(() => _ = RefreshMonitorAsync(), HasWorkflowSelection);
         GenerateSummaryCommand = new RelayCommand(() => _ = GenerateSummaryAsync(), HasWorkflowSelection);
-        _generateTodaySummaryCommand = new RelayCommand(() => _ = GenerateDailySummaryAsync(DateTime.Today), CanSummarize);
+        _generateTodaySummaryCommand = new RelayCommand(() => _ = GenerateSummaryAsync(DateTime.Today, DateTime.Today), CanSummarize);
         _generateSelectedDateSummaryCommand = new RelayCommand(() => _ = GenerateSelectedDateSummaryAsync(), CanSummarizeSelectedDate);
         GenerateTodaySummaryCommand = _generateTodaySummaryCommand;
         GenerateSelectedDateSummaryCommand = _generateSelectedDateSummaryCommand;

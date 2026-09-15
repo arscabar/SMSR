@@ -3,7 +3,7 @@ namespace SMSR.App.Mvp;
 public static class EventValidation
 {
     private static readonly HashSet<string> Statuses =
-    ["PENDING", "IN_PROGRESS", "VALIDATING", "SUCCESS", "FAILED", "RETRYING", "BLOCKED"];
+    ["PENDING", "IN_PROGRESS", "VALIDATING", "SUCCESS", "FAILED", "RETRYING", "BLOCKED", "CANCELLED"];
 
     public static string? Validate(RecordEventRequest request)
     {

@@ -33,7 +33,7 @@ public sealed partial class EventStore
               (SELECT COUNT(*) FROM plan_nodes p WHERE p.project_id=$projectId AND p.workflow_id=w.workflow_id),
               (SELECT COUNT(*) FROM plan_nodes p JOIN current_state s ON s.project_id=p.project_id
                 AND s.workflow_id=p.workflow_id AND s.node_id=p.node_id WHERE p.project_id=$projectId
-                AND p.workflow_id=w.workflow_id AND s.status IN ('SUCCESS','FAILED','BLOCKED')),
+                AND p.workflow_id=w.workflow_id AND s.status IN ('SUCCESS','FAILED','BLOCKED','CANCELLED')),
               a.updated_at
             FROM workflows w LEFT JOIN activity a ON a.workflow_id=w.workflow_id
             ORDER BY a.updated_at IS NULL, a.updated_at DESC, w.workflow_id DESC LIMIT 200;

@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Data.Sqlite;
 using SMSR.App.Infrastructure;
 using SMSR.App.Services;
 using SMSR.App.ViewModels;
@@ -78,7 +79,29 @@ public static class MvpSelfCheck
                     throw new InvalidOperationException("동시 요약 저장이 실패했습니다.");
             }));
             if (!(await store.GetProjectIdsAsync()).Contains("demo") || !(await store.GetWorkflowIdsAsync("demo")).Contains("wf-1")) throw new InvalidOperationException("프로젝트·워크플로우 목록 조회가 실패했습니다.");
+            await using (var calendarConnection = new SqliteConnection($"Data Source={path};Pooling=False"))
+            {
+                await calendarConnection.OpenAsync();
+                var calendarCommand = calendarConnection.CreateCommand();
+                calendarCommand.CommandText = "UPDATE events SET created_at_utc=$at WHERE event_id='evt-1'";
+                calendarCommand.Parameters.AddWithValue("$at", DateTimeOffset.UtcNow.AddDays(-2).ToString("O"));
+                await calendarCommand.ExecuteNonQueryAsync();
+            }
+            if ((await store.GetWorkflowCalendarAsync()).Count(item => item.WorkflowId == "wf-1") < 2)
+                throw new InvalidOperationException("워크플로우 일자별 캘린더 검증이 실패했습니다.");
             if (EventValidation.Validate(first with { Status = "INVALID" }) is null) throw new InvalidOperationException("입력 검증이 실패했습니다.");
+            await store.SavePlanAsync("demo", "cancelled", [new("cancelled-node", "중단된 작업")]);
+            var cancelledEvent = first with { EventId = "evt-cancelled", WorkflowId = "cancelled", NodeId = "cancelled-node", Status = "CANCELLED", Summary = "다음 요청으로 전환" };
+            if (EventValidation.Validate(cancelledEvent) is not null || !await store.RecordAsync(cancelledEvent))
+                throw new InvalidOperationException("중단 상태 기록이 실패했습니다.");
+            var cancelledPlan = await store.GetPlanAsync("demo", "cancelled");
+            var cancelledState = await store.GetStateAsync("demo", "cancelled");
+            var cancelledPage = DashboardPage.Render(cancelledState, cancelledPlan, await store.GetRecentEventsAsync("demo", "cancelled"));
+            using var cancelledArguments = JsonDocument.Parse("{\"status\":\"CANCELLED\"}");
+            if ((await store.GetWorkflowCatalogAsync("demo")).Single(item => item.WorkflowId == "cancelled").Status != "TERMINAL"
+                || !cancelledPage.Contains("flow-node CANCELLED") || !cancelledPage.Contains("중단")
+                || !CodexActivityClassifier.IsTerminalEvent("smsr.record_event", cancelledArguments.RootElement))
+                throw new InvalidOperationException("중단 그래프 종결·표시 검증이 실패했습니다.");
             if (EventValidation.Validate(first with { Commands = Enumerable.Repeat("command", 101).ToArray() }) is null || EventValidation.ValidateWorkflowIds("", "wf-1") is null)
                 throw new InvalidOperationException("입력 크기 검증이 실패했습니다.");
             if (PlanValidation.Validate("demo", "wf-1", [new("node-a", "A", 1, ["node-a"])]) is null)
@@ -92,8 +115,15 @@ public static class MvpSelfCheck
                 throw new InvalidOperationException("기존 UUID 대시보드 표시명 검증이 실패했습니다.");
             var hierarchicalPlan = await store.GetPlanAsync("demo", "wf-1");
             if (hierarchicalPlan.Nodes.Single(node => node.NodeId == "node-1").ParentNodeId != "group") throw new InvalidOperationException("계층 계획 저장이 실패했습니다.");
-            var page = DashboardPage.Render(state with { Nodes = [state.Nodes[0] with { Summary = "<script>" }] }, hierarchicalPlan, [new RecentEvent("node-1", "agent-1", "SUCCESS", "<script>", null, DateTimeOffset.UtcNow)], null, "group", "node-1");
+            var page = DashboardPage.Render(state with { Nodes = [state.Nodes[0] with { Summary = "<script>" }] }, hierarchicalPlan,
+                [new RecentEvent("node-1", "agent-1", "SUCCESS", "<script>", null, DateTimeOffset.UtcNow),
+                    new RecentEvent("future", "agent-2", "IN_PROGRESS", "OTHER_NODE_STATUS", null, DateTimeOffset.UtcNow)],
+                null, "group", "node-1", [
+                    new(DateTimeOffset.UtcNow, "demo", "wf-1", "session", "SELECTED_NODE_ACTIVITY", "TOOL", NodeId: "node-1"),
+                    new(DateTimeOffset.UtcNow, "demo", "wf-1", "session", "OTHER_NODE_ACTIVITY", "TOOL", NodeId: "future")]);
             if (!page.Contains("&lt;script&gt;") || !page.Contains("breadcrumb") || !page.Contains("검증 통과")
+                || !page.Contains("선택 노드 활동") || !page.Contains("SELECTED_NODE_ACTIVITY")
+                || page.Contains("OTHER_NODE_ACTIVITY") || page.Contains("OTHER_NODE_STATUS")
                 || !page.Contains("new EventSource") || !page.Contains("let queued = false") || !page.Contains("void refresh()")
                 || !page.Contains("const scrollIds = ['flow', 'graph', 'details']")
                 || !page.Contains("element.scrollTop = position.top"))
@@ -268,6 +298,7 @@ public static class MvpSelfCheck
                     throw new InvalidOperationException($"로컬 서버 검증 실패: {string.Join(", ", failedChecks)}. plan={planJson}; event={recordJson}; list={listJson}");
             }
             var settings = new AppSettingsService(serverPath);
+            new GeminiCredentialStore(serverPath).Save("settings-key");
             await using (var host = new LocalServerHost(serverPath, 0, () => settings.Current.DashboardTheme))
             {
                 await host.StartAsync();
@@ -287,6 +318,8 @@ public static class MvpSelfCheck
                 await viewModel.LoadAsync();
                 if (!host.IsCodexAuthorized || !host.IsCodexConnected || !viewModel.Server.IsCodexConnected || viewModel.Server.NeedsCodexSetup)
                     throw new InvalidOperationException("Codex 연결 완료 UI 상태 복원이 실패했습니다.");
+                if (viewModel.Settings.LoadGeminiApiKey() != "settings-key")
+                    throw new InvalidOperationException("Gemini DPAPI 키 UI 복원 검증이 실패했습니다.");
                 viewModel.Settings.StartServerAutomatically = false;
                 viewModel.Settings.AutomateCodexIntegration = false;
                 viewModel.Settings.TrackComplexTasksAutomatically = false;
@@ -311,13 +344,42 @@ public static class MvpSelfCheck
                             viewModel.Workspace.Selection.SelectedDate.Value.Month)
                     || viewModel.Workspace.Selection.CalendarDays.Count(item => item.IsInMonth) > 31)
                     throw new InvalidOperationException("일일 작업 캘린더 표시 검증이 실패했습니다.");
-                if (!viewModel.Workspace.Selection.Workflows.Any(item => item.WorkflowId == opaqueWorkflow
-                    && item.DisplayName.Contains("사람이 읽는 기존 작업", StringComparison.Ordinal)))
-                    throw new InvalidOperationException("기존 UUID 워크플로우 표시명 검증이 실패했습니다.");
+                var calendarDate = viewModel.Workspace.Selection.SelectedDate!.Value;
+                var rangeDates = viewModel.Workspace.Selection.CalendarDays
+                    .Where(item => item.Date is not null).Take(3).Select(item => item.Date!.Value).ToArray();
+                viewModel.Workspace.Selection.SelectSummaryDate(rangeDates[0]);
+                if (!viewModel.Workspace.Selection.SummaryRangeLabel.StartsWith("단일 ·", StringComparison.Ordinal))
+                    throw new InvalidOperationException("캘린더 단일 선택 검증이 실패했습니다.");
+                viewModel.Workspace.Selection.SelectSummaryDate(rangeDates[2]);
+                if (viewModel.Workspace.Selection.SummaryStartDate != rangeDates[0]
+                    || viewModel.Workspace.Selection.SelectedDate != rangeDates[2]
+                    || !viewModel.Workspace.Selection.SummaryRangeLabel.StartsWith("기간 ·", StringComparison.Ordinal)
+                    || viewModel.Workspace.Selection.CalendarDays.Count(item => item.SelectionKind == "Middle") != 1
+                    || viewModel.Workspace.Selection.CalendarDays.Count(item => item.SelectionKind is "Start" or "End") != 2)
+                    throw new InvalidOperationException("캘린더 두 번 클릭 기간 선택 검증이 실패했습니다.");
+                viewModel.Workspace.Selection.SelectSummaryDate(calendarDate);
+                viewModel.Workspace.Selection.SelectSummaryDate(calendarDate);
+                viewModel.Workspace.Selection.ProjectId = "demo";
+                if (viewModel.Workspace.Selection.Workflows.Count == 0
+                    || viewModel.Workspace.Selection.SelectedWorkflow is not { } selectedWorkflow
+                    || selectedWorkflow.DisplayName != selectedWorkflow.Title
+                    || selectedWorkflow.ToString() != selectedWorkflow.Title
+                    || viewModel.Workspace.Selection.Workflows.Any(item => item.DisplayName != item.Title)
+                    || viewModel.Workspace.Selection.Workflows.Any(item => item.ProjectId != "demo"
+                        || item.ActivityDate != viewModel.Workspace.Selection.SelectedDate))
+                    throw new InvalidOperationException("선택일 워크플로우 표시명 검증이 실패했습니다.");
+                viewModel.Workspace.Selection.SelectSummaryDate(calendarDate.AddDays(-2));
+                viewModel.Workspace.Selection.SelectSummaryDate(calendarDate);
+                viewModel.Workspace.Selection.ProjectId = "demo";
+                if (!viewModel.Workspace.Selection.ProjectIds.Contains("demo")
+                    || !viewModel.Workspace.Selection.Workflows.Any(item => item.WorkflowId == "wf-1"))
+                    throw new InvalidOperationException("선택 기간 워크플로우 목록 검증이 실패했습니다.");
+                viewModel.Workspace.Selection.SelectSummaryDate(calendarDate);
+                viewModel.Workspace.Selection.SelectSummaryDate(calendarDate);
                 var projectB = viewModel.Workspace.Selection.CalendarWorkflows.SingleOrDefault(item =>
                     item.ProjectId == "project-b" && item.WorkflowId == "workflow-b");
                 if (!viewModel.Workspace.Selection.ProjectIds.Contains("project-b") || projectB is null
-                    || projectB.DisplayName.Contains("workflow-b", StringComparison.Ordinal))
+                    || projectB.DisplayName != projectB.Title)
                     throw new InvalidOperationException("다중 프로젝트 캘린더 통합 검증이 실패했습니다.");
                 await viewModel.Workspace.SelectCalendarWorkflowAsync(projectB);
                 if (viewModel.Workspace.Selection.ProjectId != "project-b"

@@ -36,19 +36,40 @@ public sealed partial class WorkflowSelectionViewModel
         _dailyCalendarSource.AddRange(items.Select(DailyActivityItem.From));
     }
 
-    private void FilterCalendar(bool selectFirst = false)
+    private void FilterCalendar()
     {
         SelectedCalendarWorkflow = null;
         SelectedDailyActivity = null;
         CalendarWorkflows.Clear();
         DailyActivities.Clear();
-        foreach (var item in _calendarSource.Where(item => item.ActivityDate == SelectedDate).Take(200))
+        var startDate = SummaryStartDate ?? SelectedDate;
+        foreach (var item in _calendarSource
+                     .Where(item => item.ActivityDate is { } date && date >= startDate && date <= SelectedDate)
+                     .GroupBy(item => (item.ProjectId, item.WorkflowId)).Select(group => group.First()).Take(200))
             CalendarWorkflows.Add(item);
+        var currentProject = ProjectId;
+        ProjectIds.Clear();
+        foreach (var projectId in CalendarWorkflows.Select(item => item.ProjectId).Distinct(StringComparer.OrdinalIgnoreCase))
+            ProjectIds.Add(projectId);
+        if (!ProjectIds.Contains(currentProject)) ProjectId = ProjectIds.FirstOrDefault() ?? "";
+        else FilterProjectWorkflows();
         foreach (var item in _dailyCalendarSource
                      .Where(item => item.RecordedAtUtc.ToLocalTime().Date == SelectedDate).Take(200))
             DailyActivities.Add(item);
         OnPropertyChanged(nameof(CalendarSummary));
         OnPropertyChanged(nameof(DailyOverview));
-        if (selectFirst && CalendarWorkflows.Count > 0) SelectedCalendarWorkflow = CalendarWorkflows[0];
+    }
+
+    private void FilterProjectWorkflows()
+    {
+        WorkflowIds.Clear();
+        Workflows.Clear();
+        foreach (var item in CalendarWorkflows.Where(item => item.ProjectId == ProjectId))
+        {
+            WorkflowIds.Add(item.WorkflowId);
+            Workflows.Add(item);
+        }
+        OnPropertyChanged(nameof(SelectedWorkflow));
+        if (!WorkflowIds.Contains(WorkflowId)) WorkflowId = WorkflowIds.FirstOrDefault() ?? "";
     }
 }

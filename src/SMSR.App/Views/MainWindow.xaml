@@ -24,10 +24,6 @@
                 <views:WorkflowPanel Margin="0,18,0,0" DataContext="{Binding Workspace}" />
             </TabItem>
             <TabItem>
-                <TabItem.Header><StackPanel Orientation="Horizontal"><TextBlock Margin="0,0,6,0" Text="◷" /><TextBlock Text="작업 요약" /></StackPanel></TabItem.Header>
-                <views:WorkflowHistoryPanel Margin="0,18,0,0" DataContext="{Binding Workspace}" />
-            </TabItem>
-            <TabItem>
                 <TabItem.Header><StackPanel Orientation="Horizontal"><TextBlock Margin="0,0,6,0" Text="⚙" /><TextBlock Text="서버 · 연결" /></StackPanel></TabItem.Header>
                 <views:ServerPanel Margin="0,18,0,0" DataContext="{Binding Server}" />
             </TabItem>

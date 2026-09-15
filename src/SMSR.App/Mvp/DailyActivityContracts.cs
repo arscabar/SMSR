@@ -29,7 +29,7 @@ public sealed record DailyActivity(
 
 public static class DailyActivityValidation
 {
-    private static readonly HashSet<string> Statuses = ["SUCCESS", "FAILED", "BLOCKED"];
+    private static readonly HashSet<string> Statuses = ["SUCCESS", "FAILED", "BLOCKED", "CANCELLED"];
 
     public static string? Validate(DailyActivityRequest request)
     {
@@ -38,7 +38,7 @@ public static class DailyActivityValidation
         if (string.IsNullOrWhiteSpace(request.Title) || request.Title.Length > 200
             || string.IsNullOrWhiteSpace(request.Summary) || request.Summary.Length > 2000)
             return "title은 1~200자, summary는 1~2,000자여야 합니다.";
-        if (!Statuses.Contains(request.Status)) return "status는 SUCCESS, FAILED, BLOCKED 중 하나여야 합니다.";
+        if (!Statuses.Contains(request.Status)) return "status는 SUCCESS, FAILED, BLOCKED, CANCELLED 중 하나여야 합니다.";
         if (request.WorkflowId?.Length > 128 || request.AgentId?.Length > 128)
             return "workflowId와 agentId는 128자 이하여야 합니다.";
         return InvalidList(request.Files) || InvalidList(request.Verifications) || InvalidList(request.Artifacts)

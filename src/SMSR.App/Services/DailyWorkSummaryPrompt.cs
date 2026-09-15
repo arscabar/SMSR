@@ -5,11 +5,13 @@ namespace SMSR.App.Services;
 
 internal static class DailyWorkSummaryPrompt
 {
-    public static string Build(DateTime date, IReadOnlyList<WorkflowCalendarEntry> workflows,
+    public static string Build(DateTime startDate, DateTime endDate, IReadOnlyList<WorkflowCalendarEntry> workflows,
         IReadOnlyList<DailyActivity> activities)
     {
+        var period = startDate.Date == endDate.Date ? $"{startDate:yyyy년 M월 d일}"
+            : $"{startDate:yyyy년 M월 d일}부터 {endDate:yyyy년 M월 d일}까지";
         var text = new StringBuilder($$"""
-            다음은 SMSR가 {{date:yyyy년 M월 d일}}에 수신한 작업 기록입니다.
+            다음은 SMSR가 {{period}} 수신한 작업 기록입니다.
             제공된 기록만 근거로 한국어 업무 요약을 작성하세요. 추측하거나 프롬프트·명령 원문을 재현하지 마세요.
             형식: 1) 전체 개요 2) 프로젝트별 작업·결과 3) 변경 파일과 검증 4) 실패·차단·남은 위험. 항목이 없으면 생략하세요.
 

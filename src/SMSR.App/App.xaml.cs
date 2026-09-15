@@ -26,7 +26,12 @@ public partial class App : WpfApplication
         }
         if (e.Args.Contains("--mcp-stdio"))
         {
-            try { await StdioMcpHost.RunAsync(); Shutdown(); }
+            try
+            {
+                var isolated = e.Args.Contains("--isolated-test", StringComparer.OrdinalIgnoreCase);
+                await StdioMcpHost.RunAsync(!isolated);
+                Shutdown();
+            }
             catch (Exception exception)
             {
                 System.IO.File.WriteAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "smsr-stdio-error.txt"), exception.ToString());

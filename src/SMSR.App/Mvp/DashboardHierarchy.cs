@@ -2,7 +2,7 @@ namespace SMSR.App.Mvp;
 
 internal static class DashboardHierarchy
 {
-    private static readonly string[] Priority = ["BLOCKED", "FAILED", "RETRYING", "IN_PROGRESS", "VALIDATING"];
+    private static readonly string[] Priority = ["BLOCKED", "FAILED", "CANCELLED", "RETRYING", "IN_PROGRESS", "VALIDATING"];
 
     public static string DisplayStatus(PlanNodeState node, IReadOnlyList<PlanNodeState> nodes)
         => DisplayStatus(node, nodes, new Dictionary<string, string>(), new HashSet<string>());

@@ -21,7 +21,7 @@ $requests = @(
 )
 $startInfo = [Diagnostics.ProcessStartInfo]::new()
 $startInfo.FileName = $resolvedApplication
-$startInfo.Arguments = "--mcp-stdio"
+$startInfo.Arguments = "--mcp-stdio --isolated-test"
 $startInfo.WorkingDirectory = [IO.Path]::GetDirectoryName($resolvedApplication)
 $startInfo.UseShellExecute = $false
 $startInfo.CreateNoWindow = $true

@@ -57,7 +57,7 @@ internal static class DashboardGraph
         return svg.Append("</svg>").ToString();
     }
 
-    private static string Status(string value) => value is "SUCCESS" or "IN_PROGRESS" or "VALIDATING" or "FAILED" or "RETRYING" or "BLOCKED" ? value : "PENDING";
+    private static string Status(string value) => value is "SUCCESS" or "IN_PROGRESS" or "VALIDATING" or "FAILED" or "RETRYING" or "BLOCKED" or "CANCELLED" ? value : "PENDING";
     private static IReadOnlyList<string> ProjectDependencies(PlanNodeState node, string? parentNodeId,
         IReadOnlyDictionary<string, PlanNodeState> map, IReadOnlySet<string> layerIds)
         => node.DependsOn.Select(id => Project(id, parentNodeId, map)).Where(id => id is not null && id != node.NodeId && layerIds.Contains(id)).Select(id => id!).Distinct().ToArray();

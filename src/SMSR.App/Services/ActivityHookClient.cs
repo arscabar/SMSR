@@ -29,7 +29,7 @@ internal sealed class ActivityHookClient(string dataPath)
             if (plan is null || plan.Nodes.Count == 0) return false;
             var parents = plan.Nodes.Where(node => node.ParentNodeId is not null).Select(node => node.ParentNodeId).ToHashSet();
             return plan.Nodes.Where(node => !parents.Contains(node.NodeId))
-                .All(node => node.Status is "SUCCESS" or "FAILED" or "BLOCKED");
+                .All(node => node.Status is "SUCCESS" or "FAILED" or "BLOCKED" or "CANCELLED");
         }
         catch { return false; }
     }

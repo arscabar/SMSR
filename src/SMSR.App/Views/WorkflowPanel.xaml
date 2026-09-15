@@ -1,7 +1,8 @@
 <UserControl x:Class="SMSR.App.Views.WorkflowPanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                  PanningMode="VerticalOnly" PreviewMouseWheel="ScrollViewer_PreviewMouseWheel">
         <StackPanel Margin="0,0,8,0">
             <Border Padding="18" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10">
                 <StackPanel>
@@ -9,9 +10,8 @@
                     <TextBlock Margin="0,16,0,6" Text="프로젝트 ID" />
                     <ComboBox IsEditable="True" ItemsSource="{Binding Selection.ProjectIds}" Text="{Binding Selection.ProjectId, UpdateSourceTrigger=PropertyChanged}" />
                     <TextBlock Margin="0,12,0,6" Text="워크플로우" />
-                    <ComboBox ItemsSource="{Binding Selection.Workflows}" SelectedValuePath="WorkflowId" SelectedValue="{Binding Selection.WorkflowId, Mode=TwoWay}">
-                        <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding DisplayName}" ToolTip="{Binding WorkflowId}" TextTrimming="CharacterEllipsis" /></DataTemplate></ComboBox.ItemTemplate>
-                    </ComboBox>
+                    <ComboBox ItemsSource="{Binding Selection.Workflows}" DisplayMemberPath="DisplayName"
+                              SelectedItem="{Binding Selection.SelectedWorkflow, Mode=TwoWay}" />
                     <StackPanel Margin="0,16,0,0" Orientation="Horizontal">
                         <Button Command="{Binding RefreshSelectionCommand}" Content="목록 새로 고침" />
                         <Button Margin="8,0,0,0" Style="{StaticResource IconButton}" Command="{Binding OpenDashboardCommand}" Content="↗" ToolTip="대시보드 열기" />
@@ -22,7 +22,7 @@
             <Border Margin="0,16,0,0" Padding="18" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10">
                 <StackPanel>
                     <TextBlock FontSize="16" FontWeight="SemiBold" Text="작업 캘린더" />
-                    <TextBlock Margin="0,4,0,14" Foreground="{DynamicResource MutedTextBrush}" Text="모든 프로젝트의 SMSR 수신 날짜를 한곳에서 찾습니다. 항목을 선택하면 해당 프로젝트와 그래프로 전환됩니다." TextWrapping="Wrap" />
+                    <TextBlock Margin="0,4,0,14" Foreground="{DynamicResource MutedTextBrush}" Text="날짜를 한 번 누르면 단일, 다른 날짜를 한 번 더 누르면 그 사이 기간이 선택됩니다." TextWrapping="Wrap" />
                     <StackPanel>
                         <Grid Margin="0,0,0,10">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
@@ -42,7 +42,8 @@
                             <TextBlock HorizontalAlignment="Center" Foreground="{DynamicResource MutedTextBrush}" Text="금" />
                             <TextBlock HorizontalAlignment="Center" Foreground="{DynamicResource MutedTextBrush}" Text="토" />
                         </UniformGrid>
-                        <ListBox ItemsSource="{Binding Selection.CalendarDays}" SelectedItem="{Binding Selection.SelectedCalendarDay, Mode=TwoWay}"
+                        <ListBox ItemsSource="{Binding Selection.CalendarDays}"
+                                 PreviewMouseLeftButtonDown="Calendar_PreviewMouseLeftButtonDown"
                                  BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                             <ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="7" /></ItemsPanelTemplate></ListBox.ItemsPanel>
                             <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem">
@@ -54,47 +55,40 @@
                                     </Border>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Cell" Property="Background" Value="{DynamicResource QuietHoverBrush}" /></Trigger>
-                                        <Trigger Property="IsSelected" Value="True"><Setter TargetName="Cell" Property="Background" Value="{DynamicResource AccentSoftBrush}" /><Setter TargetName="Cell" Property="BorderBrush" Value="{DynamicResource AccentBrush}" /><Setter TargetName="Cell" Property="BorderThickness" Value="2" /></Trigger>
-                                        <DataTrigger Binding="{Binding IsToday}" Value="True"><Setter TargetName="Cell" Property="BorderBrush" Value="{DynamicResource AccentBrush}" /></DataTrigger>
+                                        <DataTrigger Binding="{Binding SelectionKind}" Value="Middle"><Setter TargetName="Cell" Property="Background" Value="{DynamicResource AccentSoftBrush}" /><Setter TargetName="Cell" Property="BorderBrush" Value="{DynamicResource AccentBrush}" /></DataTrigger>
+                                        <DataTrigger Binding="{Binding SelectionKind}" Value="Start"><Setter TargetName="Cell" Property="Background" Value="{DynamicResource AccentSoftBrush}" /><Setter TargetName="Cell" Property="BorderBrush" Value="{DynamicResource AccentBrush}" /><Setter TargetName="Cell" Property="BorderThickness" Value="3" /></DataTrigger>
+                                        <DataTrigger Binding="{Binding SelectionKind}" Value="End"><Setter TargetName="Cell" Property="Background" Value="{DynamicResource AccentSoftBrush}" /><Setter TargetName="Cell" Property="BorderBrush" Value="{DynamicResource AccentBrush}" /><Setter TargetName="Cell" Property="BorderThickness" Value="3" /></DataTrigger>
+                                        <DataTrigger Binding="{Binding SelectionKind}" Value="Single"><Setter TargetName="Cell" Property="Background" Value="{DynamicResource AccentSoftBrush}" /><Setter TargetName="Cell" Property="BorderBrush" Value="{DynamicResource AccentBrush}" /><Setter TargetName="Cell" Property="BorderThickness" Value="3" /></DataTrigger>
                                         <DataTrigger Binding="{Binding IsInMonth}" Value="False"><Setter Property="Opacity" Value="0" /><Setter Property="IsHitTestVisible" Value="False" /></DataTrigger>
                                     </ControlTemplate.Triggers>
                                 </ControlTemplate></Setter.Value></Setter>
                             </Style></ListBox.ItemContainerStyle>
-                            <ListBox.ItemTemplate><DataTemplate><StackPanel ToolTip="{Binding AccessibleLabel}">
-                                <TextBlock FontWeight="Bold" Text="{Binding DayLabel}" />
-                                <TextBlock Margin="0,5,0,0" FontSize="11" Foreground="{DynamicResource AccentBrush}" Text="{Binding GraphLabel}" />
-                                <TextBlock FontSize="11" Foreground="{DynamicResource MutedTextBrush}" Text="{Binding ActivityLabel}" />
-                            </StackPanel></DataTemplate></ListBox.ItemTemplate>
+                            <ListBox.ItemTemplate><DataTemplate><Grid ToolTip="{Binding AccessibleLabel}">
+                                <StackPanel>
+                                    <TextBlock FontWeight="Bold" Text="{Binding DayLabel}" />
+                                    <TextBlock Margin="0,5,0,0" FontSize="11" Foreground="{DynamicResource AccentBrush}" Text="{Binding GraphLabel}" />
+                                    <TextBlock FontSize="11" Foreground="{DynamicResource MutedTextBrush}" Text="{Binding ActivityLabel}" />
+                                </StackPanel>
+                                <Border x:Name="TodayBadge" HorizontalAlignment="Right" VerticalAlignment="Top" Padding="5,1" Background="{DynamicResource AccentBrush}" CornerRadius="6" Visibility="Collapsed">
+                                    <TextBlock FontSize="10" Foreground="White" Text="오늘" />
+                                </Border>
+                            </Grid><DataTemplate.Triggers>
+                                <DataTrigger Binding="{Binding IsToday}" Value="True"><Setter TargetName="TodayBadge" Property="Visibility" Value="Visible" /></DataTrigger>
+                            </DataTemplate.Triggers></DataTemplate></ListBox.ItemTemplate>
                         </ListBox>
                         <StackPanel Margin="0,16,0,0">
                             <TextBlock FontWeight="SemiBold" Text="{Binding Selection.CalendarSummary}" />
-                            <TextBlock Margin="0,10,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="복잡한 작업 그래프" />
-                            <ListView Margin="0,10,0,0" MaxHeight="250" ItemsSource="{Binding Selection.CalendarWorkflows}" SelectedItem="{Binding Selection.SelectedCalendarWorkflow, Mode=TwoWay}">
-                                <ListView.ItemTemplate><DataTemplate><StackPanel ToolTip="{Binding WorkflowId}">
-                                    <TextBlock FontWeight="SemiBold" Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
-                                    <TextBlock Margin="0,3,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="{Binding CalendarMeta}" TextWrapping="Wrap" />
-                                </StackPanel></DataTemplate></ListView.ItemTemplate>
-                            </ListView>
-                            <TextBlock Margin="0,16,0,0" FontWeight="SemiBold" Text="일일 작업 요약" />
-                            <TextBlock Margin="0,3,0,8" Foreground="{DynamicResource MutedTextBrush}" Text="파일을 변경한 간단 작업과 그래프 작업을 날짜별로 모아봅니다." TextWrapping="Wrap" />
-                            <TextBlock Margin="0,0,0,8" Foreground="{DynamicResource AccentBrush}" Text="{Binding Selection.DailyOverview}" TextWrapping="Wrap" />
-                            <ListView MaxHeight="360" ItemsSource="{Binding Selection.DailyActivities}" SelectedItem="{Binding Selection.SelectedDailyActivity, Mode=TwoWay}">
-                                <ListView.ItemTemplate><DataTemplate>
-                                    <Border Margin="0,0,0,8" Padding="10" Background="{DynamicResource QuietBrush}" CornerRadius="7">
-                                        <StackPanel ToolTip="{Binding TaskId}">
-                                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                                <TextBlock FontWeight="SemiBold" Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
-                                                <TextBlock Grid.Column="1" Margin="10,0,0,0" Foreground="{DynamicResource AccentBrush}" Text="{Binding StatusLabel}" />
-                                            </Grid>
-                                            <TextBlock Margin="0,3,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="{Binding Meta}" />
-                                            <TextBlock Margin="0,6,0,0" Text="{Binding Summary}" TextWrapping="Wrap" />
-                                            <TextBlock Margin="0,6,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="{Binding FileLabel}" TextWrapping="Wrap" />
-                                            <TextBlock Margin="0,3,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="{Binding VerificationLabel}" TextWrapping="Wrap" />
-                                            <TextBlock Margin="0,5,0,0" Foreground="{DynamicResource AccentBrush}" Text="{Binding GraphLabel}" />
-                                        </StackPanel>
-                                    </Border>
-                                </DataTemplate></ListView.ItemTemplate>
-                            </ListView>
+                            <TextBlock Margin="0,8,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="{Binding Selection.SummaryRangeLabel}" />
+                            <WrapPanel Margin="0,12,0,0">
+                                <Button Command="{Binding GenerateTodaySummaryCommand}" Content="오늘 전체 요약" />
+                                <Button Margin="8,0,0,0" Command="{Binding GenerateSelectedDateSummaryCommand}" Content="선택 기간 요약" />
+                            </WrapPanel>
+                            <Border Margin="0,12,0,0" Padding="14" MinHeight="100" Background="{DynamicResource QuietBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8">
+                                <StackPanel>
+                                    <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" Text="{Binding DailySummaryMeta}" TextWrapping="Wrap" />
+                                    <TextBlock Margin="0,10,0,0" Text="{Binding DailySummary}" TextWrapping="Wrap" LineHeight="23" />
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </StackPanel>
                 </StackPanel>
