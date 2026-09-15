@@ -1649,3 +1649,12 @@
 - 검증 결과: 앱·설치 파일 `1.4.1.0`, Release 빌드 경고 0·오류 0, 자체검사 종료 코드 0, protocol `2025-11-25`와 도구 12개를 확인했다. 설치 파일은 63,427,689 bytes, SHA-256 `B0924891E81B2EBE5E293A4ABFB88E4CF5CD39C0C07ABF0E4FF41058DB503CC8`이다. 패키징·stdio 검사 중 기존 SMSR PID `39932`가 유지됐고 신규 프로세스는 0개였다.
 - 남은 위험: 설치 파일은 코드 서명되지 않았고 실제 설치 실행·WPF 수동 확인은 생략했다. GitHub CLI는 로그인되어 있지 않다.
 - 다음 조치: 커밋·태그를 원격에 전송하고 GitHub Release에 설치 파일과 체크섬을 게시한다.
+
+## 2026-09-15 - v1.4.1 GitHub 게시
+
+- 변경 파일: `docs/development-log.md`
+- 변경 사유: 최종 원격 게시 결과와 자산 검증을 기록한다.
+- 실행 명령: `git push origin main`, `git push origin v1.4.1`, GitHub Release 생성·조회
+- 검증 결과: 릴리스 커밋 `fc28fd4`와 태그 `v1.4.1`을 전송하고 정식 최신 릴리스를 게시했다. 원격 자산은 설치 EXE 63,427,689 bytes와 SHA-256 파일 96 bytes이며 설치 EXE digest는 `B0924891E81B2EBE5E293A4ABFB88E4CF5CD39C0C07ABF0E4FF41058DB503CC8`로 일치한다.
+- 남은 위험: 코드 서명이 없고 실제 설치 실행·WPF 수동 확인은 남아 있다.
+- 다음 조치: 설치 환경에서 업그레이드 후 Codex를 완전히 다시 시작한다.
