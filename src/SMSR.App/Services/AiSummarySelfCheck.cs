@@ -44,7 +44,8 @@ internal static class AiSummarySelfCheck
         if (!GeminiSummaryClient.CanOfferFallback("Gemini 응답 오류(503)")
             || GeminiSummaryClient.CanOfferFallback("Gemini 응답 오류(403)")
             || GeminiSummaryClient.SelectFallbackModel("gemini-3.8-flash",
-                ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-2.0-flash"]) != "gemini-2.5-flash")
+                ["gemini-2.5-flash", "gemini-3.1-flash-lite", "gemini-3.8-flash", "gemini-3.6-flash"])
+                != "gemini-3.6-flash")
             throw new InvalidOperationException("Gemini 대체 모델 선택 검증이 실패했습니다.");
         credentials.Delete();
         if (credentials.Exists) throw new InvalidOperationException("Gemini 키 삭제 검증이 실패했습니다.");

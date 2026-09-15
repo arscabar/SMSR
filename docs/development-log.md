@@ -1766,3 +1766,21 @@
 - 검증 결과: 릴리스 커밋 `43e3311`과 태그 `v1.4.5`를 전송하고 정식 릴리스를 게시했다. 원격 설치 EXE는 63,417,904 bytes이며 digest `759C44A277FA5DB97BABB1261DFDE11B06B731425E3C728861E0ED40E97C1720`가 로컬과 일치한다.
 - 남은 위험: 코드 서명이 없고 실제 설치 화면에서 한글 IME와 Gemini 503 대체 확인창을 수동 확인해야 한다.
 - 다음 조치: v1.4.5로 업그레이드하고 SMSR·Codex를 완전히 다시 시작한다.
+
+## 2026-09-15 - Gemini 대체 모델 최신 버전 선택
+
+- 변경 파일: `GeminiSummaryClient.cs`, `AiSummarySelfCheck.cs`, 버전·릴리스 문서
+- 변경 사유: 일시 장애가 난 현재 모델 대신 계정에서 지원 종료된 `gemini-2.5-flash`를 제안해 재시도가 404로 실패했다.
+- 실행 명령: Release 빌드, 전체 자체검사, 격리 stdio 검사
+- 검증 결과: 모델 목록에서 현재 모델과 Preview를 제외한 Flash 버전을 내림차순으로 선택하고, 같은 버전이면 일반 Flash를 Lite보다 우선하도록 수정했다.
+- 남은 위험: 실제 Gemini 계정별 모델 호출 가능 여부는 서버 응답에 따라 달라진다.
+- 다음 조치: v1.4.6 설치본을 생성하고 격리 검증 후 게시한다.
+
+## 2026-09-15 - v1.4.6 최종 패키징
+
+- 변경 파일: `docs/releases/v1.4.6.md`, `docs/test-report-2026-09-15-v1.4.6.md`, `docs/development-log.md`, `artifacts/installer` 생성물
+- 변경 사유: Gemini 대체 모델 선택 수정을 설치 가능한 정식 버전으로 배포한다.
+- 실행 명령: Release 빌드·test·전체 자체검사, 격리 stdio 검사, `scripts/build-installer.ps1`, publish 앱 자체검사·stdio 검사, 버전·SHA-256 확인
+- 검증 결과: 앱·설치 파일 `1.4.6.0`, Release 빌드 경고 0·오류 0, Release·publish 자체검사 종료 코드 0, protocol `2025-11-25`와 도구 12개를 확인했다. 설치 파일은 63,434,183 bytes, SHA-256 `117265D8826BD5977F4A4737AFCF597DB4CD9FE25B93B43BA16E06A76774612C`다. 검사 전후 기존 PID `3904`, `4356`가 유지됐고 새 프로세스가 남지 않았다.
+- 남은 위험: 설치 파일은 코드 서명되지 않았고 실제 계정의 Gemini 호출 결과는 서버 가용성에 좌우된다.
+- 다음 조치: 커밋·태그·GitHub Release를 게시한다.
