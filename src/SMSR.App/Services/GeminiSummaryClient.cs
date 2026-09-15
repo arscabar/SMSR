@@ -72,6 +72,16 @@ internal sealed class GeminiSummaryClient(GeminiCredentialStore credentials, Htt
         => model.StartsWith("gemini-3", StringComparison.Ordinal)
             || model.EndsWith("-latest", StringComparison.Ordinal);
 
+    internal static bool CanOfferFallback(string error)
+        => new[] { "(404)", "(429)", "(503)" }.Any(error.Contains);
+
+    internal static string? SelectFallbackModel(string current, IReadOnlyList<string> models)
+        => models.FirstOrDefault(model => model.Equals("gemini-2.5-flash", StringComparison.OrdinalIgnoreCase)
+                && !model.Equals(current, StringComparison.OrdinalIgnoreCase))
+            ?? models.FirstOrDefault(model => model.Contains("flash", StringComparison.OrdinalIgnoreCase)
+                && !model.Contains("preview", StringComparison.OrdinalIgnoreCase)
+                && !model.Equals(current, StringComparison.OrdinalIgnoreCase));
+
     private HttpRequestMessage CreateRequest(HttpMethod method, string uri)
     {
         var apiKey = credentials.Read();

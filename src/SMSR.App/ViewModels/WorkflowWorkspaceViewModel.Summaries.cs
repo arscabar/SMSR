@@ -55,17 +55,32 @@ public sealed partial class WorkflowWorkspaceViewModel
 
     private async Task<string?> TryGeminiAsync(string label, string prompt)
     {
+        var model = _settings.Current.GeminiModel;
         try
         {
             DailySummaryMeta = $"{label} · Gemini에서 처리 중…";
-            var model = _settings.Current.GeminiModel;
             DailySummary = await _gemini.GenerateAsync(prompt, model);
             DailySummaryMeta = $"{label} · Gemini {model} · 생성 {DateTime.Now:HH:mm}";
             return null;
         }
         catch (Exception exception)
         {
-            return exception.Message;
+            if (!GeminiSummaryClient.CanOfferFallback(exception.Message)) return exception.Message;
+            try
+            {
+                var fallback = GeminiSummaryClient.SelectFallbackModel(model, await _gemini.GetModelsAsync());
+                if (fallback is null || !_platform.Confirm("Gemini 대체 모델 사용",
+                        $"현재 모델 '{model}'을 사용할 수 없습니다.\n\n이번 요청만 '{fallback}'로 다시 시도할까요?\n기본 모델 설정은 변경되지 않습니다."))
+                    return exception.Message;
+                DailySummaryMeta = $"{label} · Gemini {fallback}로 다시 처리 중…";
+                DailySummary = await _gemini.GenerateAsync(prompt, fallback);
+                DailySummaryMeta = $"{label} · Gemini {fallback} · 생성 {DateTime.Now:HH:mm}";
+                return null;
+            }
+            catch (Exception fallbackException)
+            {
+                return $"{exception.Message} / 대체 모델 실패: {fallbackException.Message}";
+            }
         }
     }
 

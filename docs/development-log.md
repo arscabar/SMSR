@@ -1739,3 +1739,21 @@
 - 검증 결과: 릴리스 커밋 `dab8b43`과 태그 `v1.4.4`를 전송하고 정식 릴리스를 게시했다. 원격 설치 EXE는 63,435,617 bytes이며 digest `1F9898467FE1FE44A4AFFB63B263767DF177F1CEF4E03CBDA83296053EE05F57`가 로컬과 일치한다.
 - 남은 위험: 코드 서명이 없고 실제 설치 화면에서 한글 IME 입력을 수동 확인해야 한다.
 - 다음 조치: v1.4.4로 업그레이드하고 SMSR·Codex를 완전히 다시 시작한다.
+
+## 2026-09-15 - Gemini 대체 모델 확인과 한글 IME 재수정
+
+- 변경 파일: `GeminiSummaryClient.cs`, `WorkflowWorkspaceViewModel.Summaries.cs`, `WorkflowPanel.xaml`, `WorkflowPanel.xaml.cs`, `AiSummarySelfCheck.cs`, 버전·릴리스 문서
+- 변경 사유: Gemini 503 후 곧바로 Codex로 전환되어 다른 모델 선택 기회가 없었고, 투명 WPF Popup 내부 질의 TextBox에서 한글 조합이 계속 끊겼다.
+- 실행 명령: Release 빌드, 전체 자체검사, 격리 stdio 검사
+- 검증 결과: 404·429·503에서 사용 가능한 대체 Flash 모델을 찾아 현재 요청만 재시도할지 확인한다. 별도 투명 Popup HWND를 제거하고 같은 창의 모달 오버레이와 LostFocus 바인딩으로 교체했다. Release 빌드 경고 0·오류 0, 자체검사 종료 코드 0, protocol `2025-11-25`와 도구 12개를 확인했다.
+- 남은 위험: 실제 Windows 한글 IME 키보드 입력과 Gemini 실 API의 503 대체 확인창은 설치 환경에서 수동 확인이 필요하다.
+- 다음 조치: v1.4.5 설치본을 생성하고 격리 검증 후 게시한다.
+
+## 2026-09-15 - v1.4.5 최종 패키징
+
+- 변경 파일: `docs/releases/v1.4.5.md`, `docs/test-report-2026-09-15-v1.4.5.md`, `docs/development-log.md`, `artifacts/installer` 생성물
+- 변경 사유: Gemini 대체 모델 확인과 한글 IME 재수정을 설치 가능한 정식 버전으로 배포한다.
+- 실행 명령: Release 빌드·test·전체 자체검사, 격리 stdio 검사, `scripts/build-installer.ps1`, publish 앱 자체검사·stdio 검사, 버전·SHA-256 확인
+- 검증 결과: 앱·설치 파일 `1.4.5.0`, Release 빌드 경고 0·오류 0, Release·publish 자체검사 종료 코드 0, protocol `2025-11-25`와 도구 12개를 확인했다. 설치 파일은 63,417,904 bytes, SHA-256 `759C44A277FA5DB97BABB1261DFDE11B06B731425E3C728861E0ED40E97C1720`다. 검사 전후 `SMSR.Bridge:41432`, `SMSR.App:42248`가 유지됐고 새 프로세스가 남지 않았다.
+- 남은 위험: 설치 파일은 코드 서명되지 않았고 실제 한글 IME와 Gemini 503 대체 확인창의 수동 확인은 남아 있다.
+- 다음 조치: 커밋·태그·GitHub Release를 게시한다.
