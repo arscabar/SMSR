@@ -35,6 +35,12 @@ internal static class AiSummarySelfCheck
         var periodPrompt = DailyWorkSummaryPrompt.Build(new(2026, 9, 1), new(2026, 9, 15), [], []);
         if (!periodPrompt.Contains("2026년 9월 1일부터 2026년 9월 15일까지", StringComparison.Ordinal))
             throw new InvalidOperationException("Gemini 기간 요약 프롬프트 검증이 실패했습니다.");
+        var questionPrompt = DailyWorkSummaryPrompt.BuildQuestion(new(2026, 9, 15), new(2026, 9, 15),
+            "SMSR", [], [], "왜 필요한가요?");
+        if (!questionPrompt.Contains("SMSR 프로젝트", StringComparison.Ordinal)
+            || !questionPrompt.Contains("왜 필요한가요?", StringComparison.Ordinal)
+            || !questionPrompt.Contains("이유나 필요성이 기록되지 않았다면", StringComparison.Ordinal))
+            throw new InvalidOperationException("프로젝트 기간 질의 프롬프트 검증이 실패했습니다.");
         credentials.Delete();
         if (credentials.Exists) throw new InvalidOperationException("Gemini 키 삭제 검증이 실패했습니다.");
 

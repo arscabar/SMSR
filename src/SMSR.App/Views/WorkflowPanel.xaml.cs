@@ -11,6 +11,9 @@ public partial class WorkflowPanel : WpfUserControl
 {
     public WorkflowPanel() => InitializeComponent();
 
+    private void OpenSummaryPopup_Click(object sender, RoutedEventArgs eventArgs) => SummaryPopup.IsOpen = true;
+    private void CloseSummaryPopup_Click(object sender, RoutedEventArgs eventArgs) => SummaryPopup.IsOpen = false;
+
     private void Calendar_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs eventArgs)
     {
         if (sender is not System.Windows.Controls.ListBox

@@ -1685,3 +1685,21 @@
 - 검증 결과: 릴리스 커밋 `fd4bc68`과 태그 `v1.4.2`를 전송하고 정식 최신 릴리스를 게시했다. 원격 설치 EXE는 63,435,431 bytes이며 digest `DBFEC3A7C2F23BD8B75BAFE46DAF5AB96E44CA236805EA90626F196DCCA65814`가 로컬과 일치한다.
 - 남은 위험: 코드 서명이 없고 실제 설치 화면의 수동 확인은 남아 있다.
 - 다음 조치: v1.4.2로 업그레이드한 뒤 Codex를 완전히 다시 시작한다.
+
+## 2026-09-15 - 프로젝트 기간 AI 요약·질의 팝업
+
+- 변경 파일: `WorkflowPanel.xaml`, `WorkflowPanel.xaml.cs`, `WorkflowWorkspaceViewModel*.cs`, `DailyWorkSummaryPrompt.cs`, `AiSummarySelfCheck.cs`, 버전·릴리스 문서
+- 변경 사유: 캘린더 본문의 요약 UI를 단순화하고 선택한 프로젝트·기간 기록에 대해 작업 이유와 필요성을 질문할 수 있게 한다.
+- 실행 명령: `dotnet build SMSR.slnx -c Release --no-restore`, `dotnet test SMSR.slnx -c Release --no-build`, Release 앱 `--self-test`, 격리 stdio 검사
+- 검증 결과: Release 빌드 경고 0·오류 0, 자체검사 종료 코드 0, protocol `2025-11-25`와 도구 12개를 확인했다. 질문 길이·기간 검증과 기록 외 추측 방지 프롬프트 자체검사를 추가했다.
+- 남은 위험: 실제 설치본 팝업의 화면 크기별 수동 확인이 필요하다.
+- 다음 조치: v1.4.3 설치본을 생성하고 격리 검증 후 게시한다.
+
+## 2026-09-15 - v1.4.3 최종 패키징
+
+- 변경 파일: `docs/releases/v1.4.3.md`, `docs/test-report-2026-09-15-v1.4.3.md`, `docs/development-log.md`, `artifacts/installer` 생성물
+- 변경 사유: 프로젝트 기간 AI 요약·질의 팝업을 설치 가능한 정식 버전으로 배포한다.
+- 실행 명령: Release 빌드·test·전체 자체검사, 격리 stdio 검사, `scripts/build-installer.ps1`, publish 앱 자체검사·stdio 검사, 버전·SHA-256 확인
+- 검증 결과: 앱·설치 파일 `1.4.3.0`, Release 빌드 경고 0·오류 0, Release·publish 자체검사 종료 코드 0, protocol `2025-11-25`와 도구 12개를 확인했다. 설치 파일은 63,427,814 bytes, SHA-256 `AD3EE82D6D2752B9F7438166B35DAC805AB8CB484A67AC9D99790A7B194C483F`다. 기존 SMSR PID `18904`가 유지됐고 신규 프로세스는 0개였다.
+- 남은 위험: 설치 파일은 코드 서명되지 않았고 실제 설치 실행·팝업 수동 확인은 생략했다.
+- 다음 조치: 커밋·태그·GitHub Release를 게시한다.

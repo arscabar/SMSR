@@ -14,6 +14,7 @@ public sealed partial class WorkflowWorkspaceViewModel : ViewModelBase
     private readonly RelayCommand _deleteAllCommand;
     private readonly RelayCommand _generateTodaySummaryCommand;
     private readonly RelayCommand _generateSelectedDateSummaryCommand;
+    private readonly RelayCommand _askSummaryQuestionCommand;
     private readonly GeminiCredentialStore _geminiCredentials;
     private readonly GeminiSummaryClient _gemini;
     private readonly AppSettingsService _settings;
@@ -21,7 +22,8 @@ public sealed partial class WorkflowWorkspaceViewModel : ViewModelBase
     private bool _isSummarizing;
     private string _statusMessage = "워크플로우를 선택하세요.";
     private string _dailySummary = "요약할 날짜를 선택하거나 금일 작업 요약을 실행하세요.";
-    private string _dailySummaryMeta = "모든 프로젝트의 그래프와 일일 작업 기록을 함께 요약합니다.";
+    private string _dailySummaryMeta = "선택한 프로젝트의 그래프와 일일 작업 기록을 함께 사용합니다.";
+    private string _summaryQuestion = "";
     private string? _pendingSummaryRequestId;
     private string? _pendingSummaryLabel;
 
@@ -42,8 +44,10 @@ public sealed partial class WorkflowWorkspaceViewModel : ViewModelBase
         GenerateSummaryCommand = new RelayCommand(() => _ = GenerateSummaryAsync(), HasWorkflowSelection);
         _generateTodaySummaryCommand = new RelayCommand(() => _ = GenerateSummaryAsync(DateTime.Today, DateTime.Today), CanSummarize);
         _generateSelectedDateSummaryCommand = new RelayCommand(() => _ = GenerateSelectedDateSummaryAsync(), CanSummarizeSelectedDate);
+        _askSummaryQuestionCommand = new RelayCommand(() => _ = AskSummaryQuestionAsync(), CanAskSummaryQuestion);
         GenerateTodaySummaryCommand = _generateTodaySummaryCommand;
         GenerateSelectedDateSummaryCommand = _generateSelectedDateSummaryCommand;
+        AskSummaryQuestionCommand = _askSummaryQuestionCommand;
         ExportCommand = new RelayCommand(() => _ = ExportAsync(), HasWorkflowSelection);
         _openDashboardCommand = new RelayCommand(OpenDashboard, HasWorkflowSelection);
         OpenDashboardCommand = _openDashboardCommand;
@@ -67,6 +71,7 @@ public sealed partial class WorkflowWorkspaceViewModel : ViewModelBase
     public ICommand GenerateSummaryCommand { get; }
     public ICommand GenerateTodaySummaryCommand { get; }
     public ICommand GenerateSelectedDateSummaryCommand { get; }
+    public ICommand AskSummaryQuestionCommand { get; }
     public ICommand ExportCommand { get; }
     public ICommand OpenDashboardCommand { get; }
     public ICommand DeleteWorkflowCommand { get; }
@@ -75,6 +80,11 @@ public sealed partial class WorkflowWorkspaceViewModel : ViewModelBase
     public string StatusMessage { get => _statusMessage; private set => SetField(ref _statusMessage, value); }
     public string DailySummary { get => _dailySummary; private set => SetField(ref _dailySummary, value); }
     public string DailySummaryMeta { get => _dailySummaryMeta; private set => SetField(ref _dailySummaryMeta, value); }
+    public string SummaryQuestion
+    {
+        get => _summaryQuestion;
+        set { if (SetField(ref _summaryQuestion, value)) _askSummaryQuestionCommand.NotifyCanExecuteChanged(); }
+    }
     public bool IsSummarizing { get => _isSummarizing; private set { if (SetField(ref _isSummarizing, value)) NotifyCommandStates(); } }
 
     public async Task LoadAsync()
@@ -90,8 +100,9 @@ public sealed partial class WorkflowWorkspaceViewModel : ViewModelBase
     private bool HasWorkflowSelection() => !_isDeleting && HasProjectSelection() && !string.IsNullOrWhiteSpace(Selection.WorkflowId);
     private bool HasProjectSelection() => !_isDeleting && _host.IsRunning && !string.IsNullOrWhiteSpace(Selection.ProjectId);
     private bool CanDeleteAll() => !_isDeleting && _host.IsRunning && Selection.ProjectIds.Count > 0;
-    private bool CanSummarize() => !_isSummarizing && _host.IsRunning;
+    private bool CanSummarize() => !_isSummarizing && HasProjectSelection();
     private bool CanSummarizeSelectedDate() => CanSummarize() && Selection.SelectedDate is not null;
+    private bool CanAskSummaryQuestion() => CanSummarizeSelectedDate() && !string.IsNullOrWhiteSpace(SummaryQuestion);
 
     private void NotifyCommandStates()
     {
@@ -100,5 +111,6 @@ public sealed partial class WorkflowWorkspaceViewModel : ViewModelBase
             ((RelayCommand)command).NotifyCanExecuteChanged();
         _generateTodaySummaryCommand.NotifyCanExecuteChanged();
         _generateSelectedDateSummaryCommand.NotifyCanExecuteChanged();
+        _askSummaryQuestionCommand.NotifyCanExecuteChanged();
     }
 }
