@@ -1658,3 +1658,21 @@
 - 검증 결과: 릴리스 커밋 `fc28fd4`와 태그 `v1.4.1`을 전송하고 정식 최신 릴리스를 게시했다. 원격 자산은 설치 EXE 63,427,689 bytes와 SHA-256 파일 96 bytes이며 설치 EXE digest는 `B0924891E81B2EBE5E293A4ABFB88E4CF5CD39C0C07ABF0E4FF41058DB503CC8`로 일치한다.
 - 남은 위험: 코드 서명이 없고 실제 설치 실행·WPF 수동 확인은 남아 있다.
 - 다음 조치: 설치 환경에서 업그레이드 후 Codex를 완전히 다시 시작한다.
+
+## 2026-09-15 - 노드별 이력 카드와 에이전트 표시
+
+- 변경 파일: `EventStoreStateQueries.cs`, `LocalServerEndpoints.cs`, `DashboardHistoryCards.cs`, `DashboardPanels.cs`, `DashboardStyles.cs`, `MvpSelfCheck.cs`, 버전·릴리스 문서
+- 변경 사유: 선택 노드 상세가 해당 노드의 최신 상태 한 장만 표시했고, 에이전트 카드가 내부 ID·역할·상태를 그대로 노출해 읽기 어려웠다.
+- 실행 명령: Release 빌드, 전체 자체검사
+- 검증 결과: 선택 노드는 DB에서 직접 최근 이력 최대 50건을 조회해 상태 변경별 카드로 표시하고 다른 노드 이력을 제외한다. 전체 화면은 노드당 최신 카드 한 장을 유지한다. 에이전트 카드에는 한국어 이름·역할·상태와 실제 작업 제목을 우선 표시한다. Release 빌드 경고 0·오류 0, 자체검사 종료 코드 0이다.
+- 남은 위험: 실제 설치본 화면과 매우 긴 작업 제목은 수동 확인이 필요하다.
+- 다음 조치: v1.4.2 설치본을 검증하고 게시한다.
+
+## 2026-09-15 - v1.4.2 최종 패키징
+
+- 변경 파일: `docs/test-report-2026-09-15-v1.4.2.md`, `docs/development-log.md`, `artifacts/installer` 생성물
+- 변경 사유: 노드별 이력과 에이전트 표시 개선을 설치 가능한 정식 버전으로 배포한다.
+- 실행 명령: Release 빌드·test·전체 자체검사, 격리 stdio 검사, `scripts/build-installer.ps1`, publish 앱 자체검사·stdio 검사, 버전·SHA-256 확인
+- 검증 결과: 앱·설치 파일 `1.4.2.0`, Release 빌드 경고 0·오류 0, 자체검사 종료 코드 0, protocol `2025-11-25`와 도구 12개를 확인했다. 설치 파일은 63,435,431 bytes, SHA-256 `DBFEC3A7C2F23BD8B75BAFE46DAF5AB96E44CA236805EA90626F196DCCA65814`다. 기존 SMSR PID `18904`가 유지됐고 신규 프로세스는 0개였다.
+- 남은 위험: 설치 파일은 코드 서명되지 않았고 실제 설치 실행·WPF 수동 확인은 생략했다.
+- 다음 조치: 커밋·태그·GitHub Release를 게시한다.

@@ -27,6 +27,9 @@ public sealed partial class EventStore
     }
 
     public async Task<IReadOnlyList<RecentEvent>> GetRecentEventsAsync(string projectId, string workflowId, CancellationToken cancellationToken = default)
+        => await GetRecentEventsAsync(projectId, workflowId, null, cancellationToken);
+
+    public async Task<IReadOnlyList<RecentEvent>> GetRecentEventsAsync(string projectId, string workflowId, string? nodeId, CancellationToken cancellationToken = default)
     {
         await using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync(cancellationToken);
@@ -34,10 +37,13 @@ public sealed partial class EventStore
         command.CommandText = """
             SELECT node_id, agent_id, status, summary, error, created_at_utc, payload_json FROM events
             WHERE project_id = $projectId AND workflow_id = $workflowId
-            ORDER BY created_at_utc DESC, rowid DESC LIMIT 10;
+              AND ($nodeId IS NULL OR node_id = $nodeId)
+            ORDER BY created_at_utc DESC, rowid DESC LIMIT $limit;
             """;
         command.Parameters.AddWithValue("$projectId", projectId);
         command.Parameters.AddWithValue("$workflowId", workflowId);
+        command.Parameters.AddWithValue("$nodeId", nodeId ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("$limit", nodeId is null ? 10 : 50);
         var events = new List<RecentEvent>();
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))

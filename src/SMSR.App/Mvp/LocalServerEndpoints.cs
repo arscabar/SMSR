@@ -58,7 +58,7 @@ internal static class LocalServerEndpoints
                 return Results.BadRequest(new { error = "projectId와 workflowId가 필요합니다." });
             var state = await events.GetStateAsync(projectId, workflowId, ct);
             var plan = await events.GetPlanAsync(projectId, workflowId, ct);
-            var recent = await events.GetRecentEventsAsync(projectId, workflowId, ct);
+            var recent = await events.GetRecentEventsAsync(projectId, workflowId, selectedNodeId, ct);
             return Results.Content(DashboardPage.Render(state, plan, recent, dashboardTheme?.Invoke(), parentNodeId,
                 selectedNodeId, activity.ReadLatest(projectId, workflowId)), "text/html; charset=utf-8");
         });

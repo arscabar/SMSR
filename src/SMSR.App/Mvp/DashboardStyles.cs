@@ -16,9 +16,9 @@ internal static class DashboardStyles
         #agents{border-right:1px solid var(--border)}#details{border-left:1px solid var(--border)}#flow{padding:18px;background:var(--bg)}
         .flow-heading{display:flex;justify-content:space-between;margin-bottom:12px}.breadcrumb{display:flex;gap:7px;align-items:center;margin:3px 0 7px;font-size:12px;color:var(--muted)}
         .breadcrumb a{color:#62adff;text-decoration:none}.agent{padding:11px;margin:8px 0;border:1px solid var(--border2);border-radius:8px;background:var(--surface)}
-        .agent.active{border-color:#61a8ff;background:var(--active)}.agent.error{border-color:#dd5668}.agent-line{display:flex;align-items:center;justify-content:space-between;gap:8px}
-        .agent-name{font-weight:700}.agent-role{margin-top:4px;font-size:12px;font-weight:700;color:#62adff}
-        .badge{padding:3px 7px;border-radius:999px;background:var(--pending-stroke);font-size:10px;font-weight:700}.active .badge{background:#124d88;color:#cce7ff}.error .badge{background:#7f2837;color:#ffe0e3}.task{margin-top:7px}
+        .agent.active{border-color:#61a8ff;background:var(--active)}.agent.error{border-color:#dd5668}.agent.stale{border-color:#a4937d}.agent-line{display:flex;align-items:center;justify-content:space-between;gap:8px}
+        .agent-name{font-weight:700}.agent-role{margin-top:4px;font-size:12px;font-weight:700;color:#62adff}.agent-task{margin-top:8px;font-size:13px;font-weight:700;line-height:1.35}
+        .badge{padding:3px 7px;border-radius:999px;background:var(--pending-stroke);font-size:10px;font-weight:700}.active .badge{background:#124d88;color:#cce7ff}.error .badge{background:#7f2837;color:#ffe0e3}.stale .badge{background:#665b4e;color:#fff1df}.task{margin-top:7px}
         #graph{min-height:500px;padding:20px;overflow:auto;border:1px solid var(--border);border-radius:10px;background:var(--graph)}
         .detail{margin:0;padding:12px;border:1px solid var(--border2);border-radius:8px;background:var(--surface)}.detail dt{margin-top:11px;color:var(--muted);font-size:12px}.detail dt:first-child{margin-top:0}
         .detail dd{margin:3px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}.history-title{margin-top:20px}.history{padding-left:19px;color:var(--muted);font-size:12px}.history li{margin:7px 0}.empty{color:var(--muted);font-size:13px}

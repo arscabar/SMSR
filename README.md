@@ -80,6 +80,8 @@ Self-check는 MCP `record_daily_activity`·`save_plan`·`record_event`·`record_
 ## Documents
 
 - [일일 기록과 복잡 작업 그래프 안내](docs/graph-tracking-guide.md)
+- [SMSR v1.4.2 릴리즈 노트](docs/releases/v1.4.2.md)
+- [SMSR v1.4.2 통합 테스트 보고서](docs/test-report-2026-09-15-v1.4.2.md)
 - [SMSR v1.4.1 릴리즈 노트](docs/releases/v1.4.1.md)
 - [SMSR v1.4.1 통합 테스트 보고서](docs/test-report-2026-09-15-v1.4.1.md)
 - [SMSR v1.4.0 릴리즈 노트](docs/releases/v1.4.0.md)

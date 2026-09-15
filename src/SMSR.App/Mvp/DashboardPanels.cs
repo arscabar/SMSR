@@ -15,9 +15,10 @@ internal static class DashboardPanels
         var html = new StringBuilder();
         foreach (var agent in agents.OrderBy(item => item.IsStale ? 1 : item.Status == "ACTIVE" ? 0 : 2))
         {
-            var kind = agent.IsStale || agent.Status == "FAILED" ? " error" : agent.Status == "ACTIVE" ? " active" : "";
-            var status = agent.IsStale ? "STALE" : agent.Status;
-            html.Append($"<article class=\"agent{kind}\"><div class=\"agent-line\"><span class=\"agent-name\">{Encode(agent.AgentId)}</span><span class=\"badge\">{Encode(status)}</span></div><div class=\"agent-role\">{Encode(agent.AgentRole)}</div><div class=\"task muted\">{Encode(agent.NodeId ?? "대기")} · 재시도 {agent.RetryCount}회<br>{agent.LastHeartbeatAt:HH:mm:ss} heartbeat</div></article>");
+            var kind = agent.IsStale ? " stale" : agent.Status == "FAILED" ? " error" : agent.Status == "ACTIVE" ? " active" : "";
+            var nodeTitle = plan.Nodes.FirstOrDefault(node => node.NodeId == agent.NodeId)?.Title ?? "배정된 작업 없음";
+            var agentName = agent.AgentId == "root" ? "주 에이전트" : $"에이전트 {Short(agent.AgentId)}";
+            html.Append($"<article class=\"agent{kind}\"><div class=\"agent-line\"><span class=\"agent-name\">{Encode(agentName)}</span><span class=\"badge\">{Encode(AgentStatus(agent))}</span></div><div class=\"agent-role\">{Encode(Role(agent.AgentRole))}</div><div class=\"agent-task\">{Encode(nodeTitle)}</div><div class=\"task muted\">ID {Encode(agent.AgentId)} · 노드 {Encode(agent.NodeId ?? "-")} · 재시도 {agent.RetryCount}회<br>{agent.LastHeartbeatAt.ToLocalTime():HH:mm:ss} 마지막 신호</div></article>");
         }
         return html.ToString();
     }
@@ -33,7 +34,7 @@ internal static class DashboardPanels
     }
 
     public static string RenderHistory(IReadOnlyList<RecentEvent> events, WorkflowPlan plan, string? nodeId = null)
-        => DashboardHistoryCards.Render(nodeId is null ? events : events.Where(item => item.NodeId == nodeId).ToArray(), plan);
+        => DashboardHistoryCards.Render(nodeId is null ? events : events.Where(item => item.NodeId == nodeId).ToArray(), plan, nodeId is not null);
 
     public static string RenderActivities(IReadOnlyList<ActivityRecord> activities, string? nodeId = null)
     {
@@ -50,4 +51,18 @@ internal static class DashboardPanels
     }
 
     public static string Encode(string value) => WebUtility.HtmlEncode(value);
+
+    private static string AgentStatus(AgentState agent) => agent.IsStale ? "응답 지연" : agent.Status switch
+    {
+        "ACTIVE" => "작업 중", "IDLE" => "대기", "STOPPED" => "종료", "FAILED" => "실패", _ => agent.Status
+    };
+
+    private static string Role(string role) => role switch
+    {
+        "implementation-validation" => "구현 · 검증", "coordinator" => "조정", "implementer" or "implementation" => "구현",
+        "validator" or "validation" or "tester" => "검증", "reviewer" or "review" => "검토", "release" => "배포",
+        _ => role.Replace("-", " · ")
+    };
+
+    private static string Short(string value) => value.Length <= 18 ? value : $"{value[..8]}…{value[^4..]}";
 }

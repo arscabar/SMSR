@@ -72,6 +72,8 @@ public static class MvpSelfCheck
             var concurrent = await Task.WhenAll(Enumerable.Range(0, 16).Select(index => store.RecordAsync(first with { EventId = $"evt-load-{index}", NodeId = $"node-load-{index}" })));
             if (concurrent.Any(inserted => !inserted) || (await store.GetStateAsync("demo", "wf-1")).Nodes.Count != 17)
                 throw new InvalidOperationException("동시 이벤트 기록이 실패했습니다.");
+            if ((await store.GetRecentEventsAsync("demo", "wf-1", "node-1")).Count != 2)
+                throw new InvalidOperationException("노드별 상태 이력 조회가 실패했습니다.");
             await Task.WhenAll(Enumerable.Range(0, 8).Select(async index =>
             {
                 await store.SaveSummaryAsync(new WorkflowSummary("demo", "wf-1", $"요약 {index}", DateTimeOffset.UtcNow), null);
@@ -115,15 +117,22 @@ public static class MvpSelfCheck
                 throw new InvalidOperationException("기존 UUID 대시보드 표시명 검증이 실패했습니다.");
             var hierarchicalPlan = await store.GetPlanAsync("demo", "wf-1");
             if (hierarchicalPlan.Nodes.Single(node => node.NodeId == "node-1").ParentNodeId != "group") throw new InvalidOperationException("계층 계획 저장이 실패했습니다.");
-            var page = DashboardPage.Render(state with { Nodes = [state.Nodes[0] with { Summary = "<script>" }] }, hierarchicalPlan,
-                [new RecentEvent("node-1", "agent-1", "SUCCESS", "<script>", null, DateTimeOffset.UtcNow),
+            var page = DashboardPage.Render(state with
+                {
+                    Nodes = [state.Nodes[0] with { Summary = "<script>" }],
+                    Agents = [new("root", "implementation-validation", "ACTIVE", "node-1", null, 0, DateTimeOffset.UtcNow, false)]
+                }, hierarchicalPlan,
+                [new RecentEvent("node-1", "agent-1", "SUCCESS", "SELECTED_HISTORY_NEW", null, DateTimeOffset.UtcNow),
+                    new RecentEvent("node-1", "agent-1", "IN_PROGRESS", "SELECTED_HISTORY_OLD", null, DateTimeOffset.UtcNow.AddMinutes(-1)),
                     new RecentEvent("future", "agent-2", "IN_PROGRESS", "OTHER_NODE_STATUS", null, DateTimeOffset.UtcNow)],
                 null, "group", "node-1", [
                     new(DateTimeOffset.UtcNow, "demo", "wf-1", "session", "SELECTED_NODE_ACTIVITY", "TOOL", NodeId: "node-1"),
                     new(DateTimeOffset.UtcNow, "demo", "wf-1", "session", "OTHER_NODE_ACTIVITY", "TOOL", NodeId: "future")]);
             if (!page.Contains("&lt;script&gt;") || !page.Contains("breadcrumb") || !page.Contains("검증 통과")
                 || !page.Contains("선택 노드 활동") || !page.Contains("SELECTED_NODE_ACTIVITY")
+                || !page.Contains("SELECTED_HISTORY_NEW") || !page.Contains("SELECTED_HISTORY_OLD")
                 || page.Contains("OTHER_NODE_ACTIVITY") || page.Contains("OTHER_NODE_STATUS")
+                || !page.Contains("주 에이전트") || !WebUtility.HtmlDecode(page).Contains("구현 · 검증") || !page.Contains("코드 변경") || !page.Contains("작업 중")
                 || !page.Contains("new EventSource") || !page.Contains("let queued = false") || !page.Contains("void refresh()")
                 || !page.Contains("const scrollIds = ['flow', 'graph', 'details']")
                 || !page.Contains("element.scrollTop = position.top"))

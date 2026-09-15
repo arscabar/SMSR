@@ -4,14 +4,15 @@ namespace SMSR.App.Mvp;
 
 internal static class DashboardHistoryCards
 {
-    public static string Render(IReadOnlyList<RecentEvent> events, WorkflowPlan plan)
+    public static string Render(IReadOnlyList<RecentEvent> events, WorkflowPlan plan, bool allEvents = false)
     {
         if (events.Count == 0) return "<p class=\"empty\">최근 기록이 없습니다.</p>";
-        var latest = events.GroupBy(item => item.NodeId, StringComparer.Ordinal)
-            .Select(group => group.OrderByDescending(item => item.CreatedAt).First())
-            .OrderByDescending(item => item.CreatedAt).Take(12).ToArray();
+        var visible = allEvents ? events.OrderByDescending(item => item.CreatedAt).Take(50).ToArray()
+            : events.GroupBy(item => item.NodeId, StringComparer.Ordinal)
+                .Select(group => group.OrderByDescending(item => item.CreatedAt).First())
+                .OrderByDescending(item => item.CreatedAt).Take(12).ToArray();
         var html = new StringBuilder("<div class=\"history-tools\"><button id=\"toggle-status-cards\" type=\"button\">전체 접기</button></div><div class=\"status-cards\">");
-        foreach (var item in latest)
+        foreach (var item in visible)
         {
             var status = StatusLabel(item.Status);
             var title = plan.Nodes.FirstOrDefault(node => node.NodeId == item.NodeId)?.Title ?? item.NodeId;
