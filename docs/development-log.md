@@ -1712,3 +1712,21 @@
 - 검증 결과: 릴리스 커밋 `9dea037`과 태그 `v1.4.3`을 전송하고 정식 릴리스를 게시했다. 원격 설치 EXE는 63,427,814 bytes이며 digest `AD3EE82D6D2752B9F7438166B35DAC805AB8CB484A67AC9D99790A7B194C483F`가 로컬과 일치한다.
 - 남은 위험: 코드 서명이 없고 실제 설치 화면의 수동 확인은 남아 있다.
 - 다음 조치: v1.4.3으로 업그레이드한 뒤 팝업 요약·질의를 확인한다.
+
+## 2026-09-15 - 그래프 사용자 요청 요약과 한글 질의 입력
+
+- 변경 파일: `SmsrMcpInstructions.cs`, `CodexAutoTrackingContext.cs`, `WorkflowTools.cs`, `StdioWorkflowTools.cs`, `WorkflowPanel.xaml`, `WorkflowWorkspaceViewModel.cs`, 자체검사와 관련 문서
+- 변경 사유: 지정된 그래프에 최초·관련 후속 사용자 요청의 맥락을 남기고, AI 질의 입력 중 한글 조합이 끊기는 현상을 해결한다.
+- 실행 명령: Release 빌드, 전체 자체검사
+- 검증 결과: 요청 원문 대신 1~2문장 요약만 노드 시작 이력에 기록하도록 MCP·Codex 훅 지침과 도구 설명을 통일했다. TextBox의 매 글자 소스 갱신과 질문 내용 기반 명령 재평가를 제거하고 실행 시 입력 검증은 유지했다. Release 빌드 경고 0·오류 0, 자체검사 종료 코드 0이다.
+- 남은 위험: 이미 완료된 그래프에는 과거 요청 요약이 소급 생성되지 않는다.
+- 다음 조치: v1.4.4 설치본을 생성하고 격리 검증 후 게시한다.
+
+## 2026-09-15 - v1.4.4 최종 패키징
+
+- 변경 파일: `docs/releases/v1.4.4.md`, `docs/test-report-2026-09-15-v1.4.4.md`, `docs/development-log.md`, `artifacts/installer` 생성물
+- 변경 사유: 그래프 요청 이력과 한글 질의 입력 개선을 설치 가능한 정식 버전으로 배포한다.
+- 실행 명령: Release 빌드·test·전체 자체검사, 격리 stdio 검사, `scripts/build-installer.ps1`, publish 앱 자체검사·stdio 검사, 버전·SHA-256 확인
+- 검증 결과: 앱·설치 파일 `1.4.4.0`, Release 빌드 경고 0·오류 0, Release·publish 자체검사 종료 코드 0, protocol `2025-11-25`와 도구 12개를 확인했다. 설치 파일은 63,435,617 bytes, SHA-256 `1F9898467FE1FE44A4AFFB63B263767DF177F1CEF4E03CBDA83296053EE05F57`다. 검사 전후 SMSR 프로세스는 없었고 새 프로세스가 남지 않았다.
+- 남은 위험: 설치 파일은 코드 서명되지 않았고 실제 한글 IME 수동 입력 확인은 생략했다.
+- 다음 조치: 커밋·태그·GitHub Release를 게시한다.

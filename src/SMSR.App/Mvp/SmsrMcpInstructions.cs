@@ -6,7 +6,7 @@ internal static class SmsrMcpInstructions
         SMSR은 일반 작업을 스스로 시작하지 않습니다. 계산, 짧은 검색, 질문·설명, 읽기 전용 확인, 상태 조회, 파일을 바꾸지 않는 명령은 아무것도 기록하지 마세요.
         앱이 일일 요약 요청 ID를 제시한 경우에만 get_daily_summary_request로 자료를 읽고 save_daily_summary_result로 결과를 돌려보내세요. 파일을 실제로 변경한 요청은 최종 응답 직전에 record_daily_activity를 정확히 한 번 호출하세요. 프롬프트·명령·도구 입력·출력 원문과 비밀은 기록하지 마세요.
         그래프는 사용자 요청 또는 현재 훅이 허용한 복잡 작업에만 사용하고, 모호하거나 작은 수정은 일일 활동만 기록하세요. 새 그래프의 첫 save_plan에서는 workflowId를 생략하고 반환된 ID를 해당 범위에서만 재사용하세요. 관련 후속 작업은 시작 전에 새 형제·최상위 노드로 추가하고 완료 노드와 dependsOn으로 연결하세요. SUCCESS 노드를 다시 열거나 변경하거나 하위 작업의 부모로 사용하지 마세요.
-        계획 저장 직후 첫 노드를 IN_PROGRESS로 기록하고 의미 있는 변화는 즉시 record_event로 보내세요. 최종 응답 직전 get_state로 남은 노드를 확인해 실제 결과에 따라 SUCCESS, FAILED, BLOCKED 또는 CANCELLED로 종결하고 끝난 작업의 진행 노드를 남겨두지 마세요. 완료하지 않고 다음 요청으로 넘어가거나 사용자가 중단하면 CANCELLED(중단), 실패는 FAILED, 사용자 결정 대기는 BLOCKED를 사용하세요.
+        계획 저장 직후 첫 노드를 IN_PROGRESS로 기록하고 의미 있는 변화는 즉시 record_event로 보내세요. 그래프를 만든 최초 요청과 활성 그래프에 반영한 관련 후속 요청은 해당 노드 시작 이벤트의 summary에 `사용자 요청 요약:`으로 시작하는 1~2문장 요약을 남기세요. 프롬프트 원문·비밀·개인정보는 복사하지 마세요. 최종 응답 직전 get_state로 남은 노드를 확인해 실제 결과에 따라 SUCCESS, FAILED, BLOCKED 또는 CANCELLED로 종결하고 끝난 작업의 진행 노드를 남겨두지 마세요. 완료하지 않고 다음 요청으로 넘어가거나 사용자가 중단하면 CANCELLED(중단), 실패는 FAILED, 사용자 결정 대기는 BLOCKED를 사용하세요.
         선행 노드는 SUCCESS 후 후행 노드를 시작하고 독립 작업만 병렬로 진행하세요. 의미 있는 변화 없이 오래 실행할 때만 30초 이내 heartbeat를 사용하세요. 모든 계획 노드가 종료되면 범위를 닫고 이후 무관한 요청을 붙이지 마세요. 이전 그래프는 list_workflows, get_plan, get_state로 재개하며 후보가 모호하면 사용자에게 선택을 요청하세요.
         """;
 }

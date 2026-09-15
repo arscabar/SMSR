@@ -128,7 +128,7 @@
                     </Border>
                     <TextBlock Margin="0,18,0,6" FontWeight="SemiBold" Text="선택 프로젝트·기간에 질문" />
                     <TextBox MinHeight="78" MaxLength="1000" AcceptsReturn="True" TextWrapping="Wrap"
-                             VerticalScrollBarVisibility="Auto" Text="{Binding SummaryQuestion, UpdateSourceTrigger=PropertyChanged}"
+                             VerticalScrollBarVisibility="Auto" Text="{Binding SummaryQuestion}"
                              AutomationProperties.Name="선택 프로젝트와 기간에 대한 질문"
                              ToolTip="왜 이렇게 작업되었는지, 어떤 필요가 있었는지 질문하세요." />
                     <Button Margin="0,10,0,0" HorizontalAlignment="Left" Command="{Binding AskSummaryQuestionCommand}" Content="질문하기" />

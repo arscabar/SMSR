@@ -369,6 +369,9 @@ public static class MvpSelfCheck
                 viewModel.Workspace.Selection.SelectSummaryDate(calendarDate);
                 viewModel.Workspace.Selection.SelectSummaryDate(calendarDate);
                 viewModel.Workspace.Selection.ProjectId = "demo";
+                viewModel.Workspace.SummaryQuestion = "";
+                if (!viewModel.Workspace.AskSummaryQuestionCommand.CanExecute(null))
+                    throw new InvalidOperationException("한글 IME용 지연 질의 입력 검증이 실패했습니다.");
                 if (viewModel.Workspace.Selection.Workflows.Count == 0
                     || viewModel.Workspace.Selection.SelectedWorkflow is not { } selectedWorkflow
                     || selectedWorkflow.DisplayName != selectedWorkflow.Title

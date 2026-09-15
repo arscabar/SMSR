@@ -83,7 +83,7 @@ public sealed partial class WorkflowWorkspaceViewModel : ViewModelBase
     public string SummaryQuestion
     {
         get => _summaryQuestion;
-        set { if (SetField(ref _summaryQuestion, value)) _askSummaryQuestionCommand.NotifyCanExecuteChanged(); }
+        set => SetField(ref _summaryQuestion, value);
     }
     public bool IsSummarizing { get => _isSummarizing; private set { if (SetField(ref _isSummarizing, value)) NotifyCommandStates(); } }
 
@@ -102,7 +102,7 @@ public sealed partial class WorkflowWorkspaceViewModel : ViewModelBase
     private bool CanDeleteAll() => !_isDeleting && _host.IsRunning && Selection.ProjectIds.Count > 0;
     private bool CanSummarize() => !_isSummarizing && HasProjectSelection();
     private bool CanSummarizeSelectedDate() => CanSummarize() && Selection.SelectedDate is not null;
-    private bool CanAskSummaryQuestion() => CanSummarizeSelectedDate() && !string.IsNullOrWhiteSpace(SummaryQuestion);
+    private bool CanAskSummaryQuestion() => CanSummarizeSelectedDate();
 
     private void NotifyCommandStates()
     {
