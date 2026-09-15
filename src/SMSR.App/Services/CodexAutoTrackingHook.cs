@@ -8,7 +8,7 @@ namespace SMSR.App.Services;
 internal static partial class CodexAutoTrackingHook
 {
     private const string Marker = "SMSR automatic tracking";
-    private static readonly string[] OwnedEvents = ["SessionStart", "SessionEnd", "UserPromptSubmit", "PostToolUse", "Stop", "SubagentStart", "SubagentStop"];
+    private static readonly string[] OwnedEvents = ["SessionStart", "SessionEnd", "UserPromptSubmit", "PreToolUse", "PostToolUse", "Stop", "SubagentStart", "SubagentStop"];
 
     public static bool IsRegistered(string configPath) => IsRegistered(configPath, CurrentExecutable());
     public static string? Register(string configPath) => Register(configPath, CurrentExecutable());

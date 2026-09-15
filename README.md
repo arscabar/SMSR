@@ -79,6 +79,8 @@ Self-check는 MCP `record_daily_activity`·`save_plan`·`record_event`·`record_
 
 ## Documents
 
+- [SMSR v1.4.7 릴리즈 노트](docs/releases/v1.4.7.md)
+- [SMSR v1.4.7 통합 테스트 보고서](docs/test-report-2026-09-15-v1.4.7.md)
 - [SMSR v1.4.6 릴리즈 노트](docs/releases/v1.4.6.md)
 - [SMSR v1.4.6 통합 테스트 보고서](docs/test-report-2026-09-15-v1.4.6.md)
 - [SMSR v1.4.5 릴리즈 노트](docs/releases/v1.4.5.md)

@@ -36,7 +36,8 @@ internal static class CodexMcpConfigSelfCheck
             var hooksText = File.ReadAllText(hooksPath);
             if (!CodexAutoTrackingHook.IsRegistered(path, fakeExecutable)
                 || !hooksText.Contains("other.exe", StringComparison.Ordinal)
-                || hooksText.Split("SMSR automatic tracking", StringSplitOptions.None).Length != 8
+                || hooksText.Split("SMSR automatic tracking", StringSplitOptions.None).Length != 9
+                || !hooksText.Contains("PreToolUse", StringComparison.Ordinal)
                 || !hooksText.Contains("PostToolUse", StringComparison.Ordinal)
                 || !hooksText.Contains("SubagentStart", StringComparison.Ordinal)
                 || !hooksText.Contains("SessionEnd", StringComparison.Ordinal)

@@ -14,6 +14,10 @@ internal static class ActivitySelfCheck
              "tool_response":{"content":[{"type":"text","text":"{\"workflowId\":\"activity-wf\"}"}]}}
             """), dataPath);
         await CodexActivityHook.ProcessAsync(HookJsonDocument.Parse("""
+            {"session_id":"activity-session","turn_id":"turn-1","hook_event_name":"PreToolUse",
+             "tool_name":"apply_patch","tool_use_id":"tool-2","tool_input":{"command":"SECRET-CONTENT"}}
+            """), dataPath);
+        await CodexActivityHook.ProcessAsync(HookJsonDocument.Parse("""
             {"session_id":"activity-session","turn_id":"turn-1","hook_event_name":"PostToolUse",
              "tool_name":"apply_patch","tool_use_id":"tool-2","tool_input":{"command":"SECRET-CONTENT"}}
             """), dataPath);
@@ -29,14 +33,21 @@ internal static class ActivitySelfCheck
         var store = new ActivityJsonlStore(dataPath);
         var records = store.ReadLatest("demo", "activity-wf", 10);
         var text = File.ReadAllText(store.PathFor("demo", "activity-wf"));
-        if (records.Count != 3 || records[0].Event != "AGENT_STARTED"
-            || records[1].Category != "FILE_EDIT" || records[2].Category != "SMSR"
+        if (records.Count != 4 || records[0].Event != "AGENT_STARTED"
+            || records[1].Event != "TOOL_COMPLETED" || records[1].Category != "FILE_EDIT"
+            || records[2].Event != "TOOL_STARTED" || records[2].Category != "FILE_EDIT"
+            || records[3].Category != "SMSR"
             || text.Contains("SECRET-CONTENT", StringComparison.Ordinal)
             || text.Contains("SHOULD-NOT-EXIST", StringComparison.Ordinal)
             || new TrackingSessionStore(dataPath).Load(session)?.WorkflowId != "activity-wf"
             || new TrackingSessionStore(dataPath).Load("agent-child")?.WorkflowId != "activity-wf")
             throw new InvalidOperationException("Codex 훅 활동 JSONL 검증이 실패했습니다.");
-        if (store.Append(records[0]) || store.ReadLatest("demo", "activity-wf", 10).Count != 3)
+        var liveActivity = DashboardPanels.RenderActivities([records[2]], new("demo", "activity-wf", []));
+        if (!liveActivity.Contains("작업 시작", StringComparison.Ordinal)
+            || !liveActivity.Contains("running-time", StringComparison.Ordinal)
+            || !liveActivity.Contains("파일 변경", StringComparison.Ordinal))
+            throw new InvalidOperationException("실시간 도구 시작 표시 검증이 실패했습니다.");
+        if (store.Append(records[0]) || store.ReadLatest("demo", "activity-wf", 10).Count != 4)
             throw new InvalidOperationException("Codex 훅 활동 중복 방지가 실패했습니다.");
 
         await CodexActivityHook.ProcessAsync(HookJsonDocument.Parse("""
@@ -57,7 +68,7 @@ internal static class ActivitySelfCheck
              "agent_id":"agent-child","agent_type":"worker"}
             """), dataPath);
         if (new TrackingSessionStore(dataPath).Load("agent-child") is not null
-            || store.ReadLatest("demo", "activity-wf", 10).Count != 3
+            || store.ReadLatest("demo", "activity-wf", 10).Count != 4
             || store.ReadLatest("project-b", "workflow-b", 10).Count != 3)
             throw new InvalidOperationException("하위 에이전트 활동 매핑 정리가 실패했습니다.");
         var isolated = await CodexHookRunner.ProcessAsync("""

@@ -1793,3 +1793,21 @@
 - 검증 결과: 릴리스 커밋 `a650cc4`와 태그 `v1.4.6`을 전송하고 정식 릴리스를 게시했다. 원격 설치 EXE는 63,434,183 bytes이며 digest `117265D8826BD5977F4A4737AFCF597DB4CD9FE25B93B43BA16E06A76774612C`가 로컬과 일치한다.
 - 남은 위험: 코드 서명이 없고 실제 Gemini 계정의 모델 가용성은 호출 시점에 따라 달라진다.
 - 다음 조치: v1.4.6으로 업그레이드하고 SMSR·Codex를 완전히 다시 시작한다.
+
+## 2026-09-15 - 도구 실행 시작 실시간 표시
+
+- 변경 파일: `CodexAutoTrackingHook.cs`, `CodexActivityClassifier.cs`, `DashboardPage.cs`, `DashboardPanels.cs`, `DashboardLiveUpdates.cs`, `DashboardStyles.cs`, 자체검사와 릴리스 문서
+- 변경 사유: 기존 훅은 `PostToolUse`만 기록해 오래 실행되는 명령이 끝난 뒤에야 대시보드에 나타났다.
+- 실행 명령: Release 빌드, 전체 자체검사, 격리 stdio 검사
+- 검증 결과: `PreToolUse`를 `TOOL_STARTED`로 기록하고 기존 추적 세션의 활성 노드에 연결한다. 대시보드는 작업 제목·한국어 활동명·진행 경과 시간·SSE 연결 상태를 표시한다. Release 빌드 경고 0·오류 0, 자체검사 종료 코드 0, protocol `2025-11-25`와 도구 12개를 확인했다.
+- 남은 위험: 이미 실행 중인 Codex에는 새 훅 정의가 반영되지 않으므로 설치 후 재시작이 필요하다.
+- 다음 조치: v1.4.7 설치본을 생성하고 격리 검증 후 게시한다.
+
+## 2026-09-15 - v1.4.7 최종 패키징
+
+- 변경 파일: `docs/releases/v1.4.7.md`, `docs/test-report-2026-09-15-v1.4.7.md`, `docs/development-log.md`, `artifacts/installer` 생성물
+- 변경 사유: 실시간 도구 시작 표시를 설치 가능한 정식 버전으로 배포한다.
+- 실행 명령: Release 빌드·test·전체 자체검사, 격리 stdio 검사, `scripts/build-installer.ps1`, publish 앱 자체검사·stdio 검사, 버전·SHA-256 확인
+- 검증 결과: 앱·설치 파일 `1.4.7.0`, Release 빌드 경고 0·오류 0, Release·publish 자체검사 종료 코드 0, protocol `2025-11-25`와 도구 12개를 확인했다. 설치 파일은 63,416,657 bytes, SHA-256 `E3C62BCB317DB2529D2098B7B94A62CF2560F1328F8BD34207CAE8EF22BFAA72`다. 검사 전후 기존 PID 6개가 유지됐고 새 프로세스가 남지 않았다.
+- 남은 위험: 설치 파일은 코드 서명되지 않았고 기존 Codex 작업은 재시작 전까지 새 훅을 사용하지 않는다.
+- 다음 조치: 커밋·태그·GitHub Release를 게시한다.

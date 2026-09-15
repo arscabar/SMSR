@@ -36,16 +36,24 @@ internal static class DashboardPanels
     public static string RenderHistory(IReadOnlyList<RecentEvent> events, WorkflowPlan plan, string? nodeId = null)
         => DashboardHistoryCards.Render(nodeId is null ? events : events.Where(item => item.NodeId == nodeId).ToArray(), plan, nodeId is not null);
 
-    public static string RenderActivities(IReadOnlyList<ActivityRecord> activities, string? nodeId = null)
+    public static string RenderActivities(IReadOnlyList<ActivityRecord> activities, WorkflowPlan plan, string? nodeId = null)
     {
         if (nodeId is not null) activities = activities.Where(item => item.NodeId == nodeId).ToArray();
         if (activities.Count == 0) return "<p class=\"empty\">활성 그래프의 에이전트 활동이 없습니다.</p>";
         var html = new StringBuilder("<ul class=\"history activity\">");
+        var completedTools = activities.Where(item => item.Event == "TOOL_COMPLETED" && item.ToolUseId is not null)
+            .Select(item => item.ToolUseId!).ToHashSet(StringComparer.Ordinal);
         foreach (var item in activities.Take(12))
         {
-            var subject = item.NodeId ?? item.AgentId ?? item.SessionId;
-            var detail = item.ToolName is null ? item.Category : $"{item.Category} · {item.ToolName}";
-            html.Append($"<li><b>{Encode(subject)}</b> {Encode(item.Event)}<br>{Encode(detail)} · {item.TimestampUtc.ToLocalTime():HH:mm:ss}</li>");
+            var subject = plan.Nodes.FirstOrDefault(node => node.NodeId == item.NodeId)?.Title
+                ?? item.NodeId ?? item.AgentId ?? item.SessionId;
+            var category = ActivityCategory(item.Category);
+            var detail = item.ToolName is null ? category : $"{category} · {item.ToolName}";
+            var running = item.Event == "TOOL_STARTED" && item.ToolUseId is not null
+                && !completedTools.Contains(item.ToolUseId);
+            var live = running
+                ? $" · <span class=\"running-time\" data-start=\"{item.TimestampUtc.ToUnixTimeMilliseconds()}\">진행 중</span>" : "";
+            html.Append($"<li{(running ? " class=\"running\"" : "")}><b>{Encode(subject)}</b> {Encode(ActivityEvent(item.Event))}<br>{Encode(detail)} · {item.TimestampUtc.ToLocalTime():HH:mm:ss}{live}</li>");
         }
         return html.Append("</ul>").ToString();
     }
@@ -55,6 +63,19 @@ internal static class DashboardPanels
     private static string AgentStatus(AgentState agent) => agent.IsStale ? "응답 지연" : agent.Status switch
     {
         "ACTIVE" => "작업 중", "IDLE" => "대기", "STOPPED" => "종료", "FAILED" => "실패", _ => agent.Status
+    };
+
+    private static string ActivityEvent(string value) => value switch
+    {
+        "TOOL_STARTED" => "작업 시작", "TOOL_COMPLETED" => "작업 완료",
+        "AGENT_STARTED" => "에이전트 시작", "AGENT_STOPPED" => "에이전트 종료",
+        "TURN_STARTED" => "요청 시작", "TURN_STOPPED" => "요청 종료", _ => value
+    };
+
+    private static string ActivityCategory(string value) => value switch
+    {
+        "COMMAND" => "명령 실행", "FILE_EDIT" => "파일 변경", "VALIDATION" => "검증",
+        "SMSR" => "SMSR 기록", "TOOL" => "도구", "LIFECYCLE" => "상태", _ => value
     };
 
     private static string Role(string role) => role switch

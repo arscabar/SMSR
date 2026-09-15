@@ -15,8 +15,18 @@ internal static class DashboardLiveUpdates
               let connected = false;
               let refreshing = false;
               let queued = false;
+              let liveStatus = '실시간 연결 중';
               const scrollIds = ['flow', 'graph', 'details'];
               const cardStateKey = 'smsr-status-cards:{{project}}:{{workflow}}';
+              const setLiveStatus = value => {
+                liveStatus = value;
+                const element = document.getElementById('live-connection');
+                if (element) element.textContent = value;
+              };
+              const updateRunningTimes = () => document.querySelectorAll('.running-time').forEach(element => {
+                const seconds = Math.max(0, Math.floor((Date.now() - Number(element.dataset.start)) / 1000));
+                element.textContent = `진행 중 · ${seconds}초`;
+              });
               const captureScroll = () => new Map(scrollIds.map(id => {
                 const element = document.getElementById(id);
                 return [id, { top: element?.scrollTop || 0, left: element?.scrollLeft || 0 }];
@@ -62,6 +72,7 @@ internal static class DashboardLiveUpdates
                     const scroll = captureScroll();
                     saveCardState();
                     document.querySelector('header')?.replaceWith(next.querySelector('header'));
+                    setLiveStatus(liveStatus);
                     document.querySelector('main')?.replaceWith(next.querySelector('main'));
                     restoreScroll(scroll);
                     restoreCardState();
@@ -78,6 +89,8 @@ internal static class DashboardLiveUpdates
                 if (!connected) { connected = true; return; }
                 void refresh();
               });
+              stream.addEventListener('open', () => setLiveStatus('실시간 연결됨'));
+              stream.addEventListener('error', () => setLiveStatus('실시간 재연결 중'));
               document.addEventListener('click', event => {
                 const toggle = event.target.closest?.('#toggle-status-cards');
                 if (toggle) {
@@ -105,6 +118,8 @@ internal static class DashboardLiveUpdates
                 if (event.target.matches?.('.status-card')) saveCardState();
               }, true);
               restoreCardState();
+              updateRunningTimes();
+              setInterval(updateRunningTimes, 1000);
             })();
             </script>
             """;

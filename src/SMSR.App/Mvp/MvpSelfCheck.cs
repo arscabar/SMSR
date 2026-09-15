@@ -294,13 +294,14 @@ public static class MvpSelfCheck
                         && summaryResultDocument.RootElement.GetProperty("saved").GetBoolean()
                         && completedSummary?.Content == "MCP 일일 요약 완료"),
                     ("initial-http-sse", stateResponse.IsSuccessStatusCode && dashboardResponse.IsSuccessStatusCode && streamResponse.IsSuccessStatusCode && initialEvent == "event: state" && initialData == "data: changed" && changedEvent == "event: state"),
-                    ("activity", activityResponse.IsSuccessStatusCode && activityJson.Contains("TOOL_COMPLETED") && recordedDashboard.Contains("TOOL_COMPLETED")),
+                    ("activity", activityResponse.IsSuccessStatusCode && activityJson.Contains("TOOL_COMPLETED")
+                        && recordedDashboard.Contains("작업 완료") && recordedDashboard.Contains("파일 변경")),
                     ("mcp-http", recordResponse.IsSuccessStatusCode && planResponse.IsSuccessStatusCode && listResponse.IsSuccessStatusCode),
                     ("mcp-payload", recordJson.Contains("evt-mcp-1") && planJson.Contains("nodeCount") && listJson.Contains("wf-1") && listJson.Contains("ACTIVE")),
                     ("state", stateRecorded),
                     ("plan", planRecorded),
                     ("dashboard-content", decodedDashboard.Contains("계층형 작업 흐름") && recordedDashboard.Contains("id=\"agents\"") && decodedDashboard.Contains("실시간 활동") && recordedDashboard.Contains("flow-svg") && decodedDashboard.Contains("MCP 계획 노드")),
-                    ("dashboard-live", !recordedDashboard.Contains("http-equiv=\"refresh\"") && recordedDashboard.Contains("new EventSource") && recordedDashboard.Contains("smsr-graph-nav") && recordedDashboard.Contains("getAttribute('href')"))
+                    ("dashboard-live", !recordedDashboard.Contains("http-equiv=\"refresh\"") && recordedDashboard.Contains("new EventSource") && recordedDashboard.Contains("live-connection") && recordedDashboard.Contains("running-time") && recordedDashboard.Contains("smsr-graph-nav") && recordedDashboard.Contains("getAttribute('href')"))
                 };
                 var failedChecks = localChecks.Where(check => !check.Passed).Select(check => check.Name).ToArray();
                 if (failedChecks.Length > 0)

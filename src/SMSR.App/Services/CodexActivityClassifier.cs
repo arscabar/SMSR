@@ -8,6 +8,7 @@ internal static class CodexActivityClassifier
 {
     public static string Event(string name) => name switch
     {
+        "PreToolUse" => "TOOL_STARTED",
         "PostToolUse" => "TOOL_COMPLETED",
         "SubagentStart" => "AGENT_STARTED",
         "SubagentStop" => "AGENT_STOPPED",
@@ -18,7 +19,7 @@ internal static class CodexActivityClassifier
         _ => "AGENT_ACTIVITY"
     };
 
-    public static string Category(string eventName, string tool) => eventName != "PostToolUse" ? "LIFECYCLE"
+    public static string Category(string eventName, string tool) => eventName is not ("PreToolUse" or "PostToolUse") ? "LIFECYCLE"
         : tool == "Bash" ? "COMMAND" : tool == "apply_patch" ? "FILE_EDIT"
         : tool.Contains("smsr", StringComparison.OrdinalIgnoreCase) ? "SMSR"
         : tool.Contains("test", StringComparison.OrdinalIgnoreCase) ? "VALIDATION" : "TOOL";
@@ -30,7 +31,7 @@ internal static class CodexActivityClassifier
     public static string Identity(string eventName, string sessionId, string turnId,
         string agentId, string toolName, string toolUseId)
     {
-        if (eventName != "PostToolUse" || toolUseId.Length == 0) return Guid.NewGuid().ToString("N");
+        if (eventName is not ("PreToolUse" or "PostToolUse") || toolUseId.Length == 0) return Guid.NewGuid().ToString("N");
         var source = string.Join('\n', eventName, sessionId, turnId, agentId, toolName, toolUseId);
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(source)))[..32];
     }
