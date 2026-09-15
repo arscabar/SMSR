@@ -1757,3 +1757,12 @@
 - 검증 결과: 앱·설치 파일 `1.4.5.0`, Release 빌드 경고 0·오류 0, Release·publish 자체검사 종료 코드 0, protocol `2025-11-25`와 도구 12개를 확인했다. 설치 파일은 63,417,904 bytes, SHA-256 `759C44A277FA5DB97BABB1261DFDE11B06B731425E3C728861E0ED40E97C1720`다. 검사 전후 `SMSR.Bridge:41432`, `SMSR.App:42248`가 유지됐고 새 프로세스가 남지 않았다.
 - 남은 위험: 설치 파일은 코드 서명되지 않았고 실제 한글 IME와 Gemini 503 대체 확인창의 수동 확인은 남아 있다.
 - 다음 조치: 커밋·태그·GitHub Release를 게시한다.
+
+## 2026-09-15 - v1.4.5 GitHub 게시
+
+- 변경 파일: `docs/development-log.md`
+- 변경 사유: 최종 게시 결과와 원격 자산 검증을 기록한다.
+- 실행 명령: `git push origin main`, `git push origin v1.4.5`, GitHub Release 생성·조회
+- 검증 결과: 릴리스 커밋 `43e3311`과 태그 `v1.4.5`를 전송하고 정식 릴리스를 게시했다. 원격 설치 EXE는 63,417,904 bytes이며 digest `759C44A277FA5DB97BABB1261DFDE11B06B731425E3C728861E0ED40E97C1720`가 로컬과 일치한다.
+- 남은 위험: 코드 서명이 없고 실제 설치 화면에서 한글 IME와 Gemini 503 대체 확인창을 수동 확인해야 한다.
+- 다음 조치: v1.4.5로 업그레이드하고 SMSR·Codex를 완전히 다시 시작한다.
