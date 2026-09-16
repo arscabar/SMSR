@@ -9,7 +9,7 @@ public sealed partial class WorkflowWorkspaceViewModel
         try
         {
             await Selection.LoadAsync();
-            RefreshSummaryProjectScopes(await _host.GetProjectIdsAsync());
+            await RefreshSummaryProjectScopesAsync();
             StatusMessage = Selection.ProjectIds.Count == 0
                 ? "저장된 프로젝트가 없습니다. ID를 직접 입력하세요." : "저장 목록을 새로 고쳤습니다.";
         }
@@ -49,7 +49,9 @@ public sealed partial class WorkflowWorkspaceViewModel
     {
         if (eventArgs.PropertyName is nameof(WorkflowSelectionViewModel.ProjectId)
             or nameof(WorkflowSelectionViewModel.WorkflowId)
-            or nameof(WorkflowSelectionViewModel.SelectedDate)) NotifyCommandStates();
+            or nameof(WorkflowSelectionViewModel.SelectedDate)
+            or nameof(WorkflowSelectionViewModel.SummaryStartDate))
+            NotifyCommandStates();
     }
 
     private void OnHostStateChanged(object? sender, EventArgs eventArgs)

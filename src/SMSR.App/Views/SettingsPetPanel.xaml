@@ -4,17 +4,38 @@
     <Border Margin="0,14,0,0" Padding="18" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10">
         <StackPanel>
             <TextBlock FontSize="16" FontWeight="SemiBold" Text="작업 펫" />
-            <TextBlock Margin="0,5,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="사용자가 등록한 한 마리가 작업 현황에서 선택한 그래프의 상태를 표시합니다." TextWrapping="Wrap" />
             <CheckBox Margin="0,14,0,0" IsChecked="{Binding PetEnabled}" Content="펫 표시" />
             <TextBlock Margin="0,12,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="이름" />
             <TextBox MaxLength="40" Text="{Binding PetName, UpdateSourceTrigger=LostFocus}" />
-            <TextBlock Margin="0,12,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="등록 이미지" />
-            <TextBlock Margin="0,4,0,0" Text="{Binding PetImageLabel}" TextWrapping="Wrap" />
+            <TextBlock Margin="0,12,0,6" Foreground="{DynamicResource MutedTextBrush}" Text="진행률별 미디어" />
+            <ListBox ItemsSource="{Binding PetMediaRules}" SelectedItem="{Binding SelectedPetMediaRule}"
+                     MinHeight="82" BorderThickness="0" Background="Transparent"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                <ListBox.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate></ListBox.ItemsPanel>
+                <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem">
+                    <Setter Property="Margin" Value="2" /><Setter Property="Padding" Value="0" />
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Segment" Padding="10" Background="{DynamicResource QuietBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="7">
+                            <ContentPresenter />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True"><Setter TargetName="Segment" Property="BorderBrush" Value="{DynamicResource AccentBrush}" /><Setter TargetName="Segment" Property="BorderThickness" Value="2" /></Trigger>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Segment" Property="Background" Value="{DynamicResource QuietHoverBrush}" /></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate></Setter.Value></Setter>
+                </Style></ListBox.ItemContainerStyle>
+                <ListBox.ItemTemplate><DataTemplate><StackPanel>
+                    <TextBlock FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" Text="{Binding RangeLabel}" />
+                    <TextBlock Margin="0,7,0,0" Text="{Binding FileName}" TextTrimming="CharacterEllipsis" ToolTip="{Binding MediaPath}" />
+                </StackPanel></DataTemplate></ListBox.ItemTemplate>
+            </ListBox>
             <WrapPanel Margin="0,12,0,0">
-                <Button Command="{Binding RegisterPetCommand}" Content="이미지 등록·교체" />
-                <Button Margin="8,0,0,0" Style="{StaticResource QuietButton}" Command="{Binding RemovePetCommand}" Content="등록 해제" />
+                <Button Command="{Binding RegisterPetCommand}" Content="미디어 추가" />
+                <Button Margin="8,0,0,0" Style="{StaticResource QuietButton}" Command="{Binding RemovePetMediaRuleCommand}" Content="선택 삭제" />
+                <Button Margin="8,0,0,0" Style="{StaticResource QuietButton}" Command="{Binding RemovePetCommand}" Content="전체 해제" />
             </WrapPanel>
-            <TextBlock Margin="0,9,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="10MB 이하 PNG, JPG, BMP만 허용합니다. 원본 대신 SMSR 데이터 폴더의 안전한 복사본을 사용합니다." TextWrapping="Wrap" />
         </StackPanel>
     </Border>
 </UserControl>

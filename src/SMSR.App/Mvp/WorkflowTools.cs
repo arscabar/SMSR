@@ -5,9 +5,10 @@ using ModelContextProtocol.Server;
 namespace SMSR.App.Mvp;
 
 [McpServerToolType]
-public sealed class WorkflowTools(EventStore events, WorkflowEventNotifier notifier, WorkflowSummaryService summaries, WorkflowExportService exports)
+public sealed class WorkflowTools(EventStore events, WorkflowEventNotifier notifier, WorkflowSummaryService summaries,
+    WorkflowExportService exports, OperatorInstructionQueue? instructions = null)
 {
-    [McpServerTool(Name = "record_event"), Description("노드 상태 변경 즉시 호출합니다. 그래프의 최초·관련 후속 요청은 시작 이벤트 summary에 원문이 아닌 1~2문장 사용자 요청 요약을 포함하세요. 최종 응답 전 남은 노드를 SUCCESS, FAILED, BLOCKED 또는 CANCELLED로 종결하세요.")]
+    [McpServerTool(Name = "record_event"), Description("노드 상태 변경 즉시 호출합니다. 응답에 operatorInstruction이 있으면 사용자가 대시보드에서 선택한 지시이므로 즉시 반영합니다. 최종 응답 전 남은 노드를 종결하세요.")]
     public async Task<string> RecordEvent(
         string eventId, string projectId, string workflowId, string nodeId, string agentId,
         string eventType, string status, string? summary = null, string? error = null,
@@ -23,7 +24,11 @@ public sealed class WorkflowTools(EventStore events, WorkflowEventNotifier notif
             return JsonSerializer.Serialize(new { error = dependencyError });
         var inserted = await events.RecordAsync(request);
         if (inserted) notifier.Publish(projectId, workflowId);
-        return JsonSerializer.Serialize(new { eventId, duplicate = !inserted });
+        if (status is not ("IN_PROGRESS" or "VALIDATING" or "RETRYING"))
+            instructions?.Remove(projectId, workflowId, nodeId);
+        var instruction = status is "IN_PROGRESS" or "VALIDATING" or "RETRYING"
+            ? instructions?.Take(projectId, workflowId, nodeId) : null;
+        return JsonSerializer.Serialize(new { eventId, duplicate = !inserted, operatorInstruction = instruction });
     }
 
     [McpServerTool(Name = "get_state"), Description("프로젝트 워크플로우의 최신 노드 상태를 조회합니다.")]

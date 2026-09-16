@@ -6,7 +6,7 @@ namespace SMSR.App.Mvp;
 [McpServerToolType]
 public sealed class StdioWorkflowTools(McpHttpGateway gateway)
 {
-    [McpServerTool(Name = "record_event"), Description("노드 상태 변경 즉시 호출합니다. 그래프의 최초·관련 후속 요청은 시작 이벤트 summary에 원문이 아닌 1~2문장 사용자 요청 요약을 포함하세요. 최종 응답 전 남은 노드를 SUCCESS, FAILED, BLOCKED 또는 CANCELLED로 종결하세요.")]
+    [McpServerTool(Name = "record_event"), Description("노드 상태 변경 즉시 호출합니다. 응답에 operatorInstruction이 있으면 사용자가 선택한 지시이므로 즉시 반영합니다. 최종 응답 전 남은 노드를 종결하세요.")]
     public Task<string> RecordEvent(
         string eventId, string projectId, string workflowId, string nodeId, string agentId,
         string eventType, string status, string? summary = null, string? error = null,

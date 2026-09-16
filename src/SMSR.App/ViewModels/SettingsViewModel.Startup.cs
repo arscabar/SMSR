@@ -47,7 +47,6 @@ public sealed partial class SettingsViewModel
         OnPropertyChanged(nameof(PetEnabled));
         OnPropertyChanged(nameof(PetName));
         OnPropertyChanged(nameof(PetImagePath));
-        OnPropertyChanged(nameof(PetImageLabel));
         OnPropertyChanged(nameof(HasPetImage));
         _removePetCommand.NotifyCanExecuteChanged();
     }

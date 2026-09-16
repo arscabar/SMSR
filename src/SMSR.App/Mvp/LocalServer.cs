@@ -60,6 +60,7 @@ public sealed class LocalServer(WebApplication app, EventStore events, WorkflowS
         var connections = new McpConnectionTracker();
         var dailyActivities = new DailyActivityNotifier();
         var dailySummaries = new DailySummaryCoordinator();
+        var operatorInstructions = new OperatorInstructionQueue();
         var summaries = new WorkflowSummaryService(store);
         var exports = new WorkflowExportService(store, activity, Path.Combine(dataPath, "exports"), dashboardTheme);
         var builder = WebApplication.CreateSlimBuilder();
@@ -71,6 +72,7 @@ public sealed class LocalServer(WebApplication app, EventStore events, WorkflowS
         builder.Services.AddSingleton(connections);
         builder.Services.AddSingleton(dailyActivities);
         builder.Services.AddSingleton(dailySummaries);
+        builder.Services.AddSingleton(operatorInstructions);
         builder.Services.AddMcpServer(options => options.ServerInstructions = SmsrMcpInstructions.Text)
             .WithHttpTransport(options => options.Stateless = true)
             .WithTools<WorkflowTools>()
@@ -79,7 +81,8 @@ public sealed class LocalServer(WebApplication app, EventStore events, WorkflowS
             .WithTools<DailyActivityTools>()
             .WithTools<DailySummaryTools>();
         var app = builder.Build();
-        LocalServerEndpoints.Map(app, oauth, bridgeToken, flows, oauthAudit, connections, notifier, activity, activityToken, dashboardTheme);
+        LocalServerEndpoints.Map(app, oauth, bridgeToken, flows, oauthAudit, connections, notifier, activity,
+            activityToken, operatorInstructions, dashboardTheme);
         await app.StartAsync();
         return new(app, store, summaries, exports, notifier, activity, oauth, connections, dailyActivities, dailySummaries);
     }

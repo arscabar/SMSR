@@ -25,7 +25,7 @@ internal sealed class PetController : IDisposable
         Refresh();
     }
 
-    public bool CanShow => File.Exists(_settings.Current.PetImagePath);
+    public bool CanShow => PetMediaSelector.Rules(_settings.Current).Count > 0;
     public bool IsVisible => _window?.IsVisible == true;
 
     public void Toggle()
@@ -42,7 +42,9 @@ internal sealed class PetController : IDisposable
             return;
         }
         var value = _settings.Current;
-        if (!value.PetEnabled || !File.Exists(value.PetImagePath))
+        var presentation = PetPresentation.From(_workspace.Monitor.Nodes, _workspace.Monitor.PlanNodes);
+        var mediaPath = PetMediaSelector.Select(value, presentation.Progress);
+        if (!value.PetEnabled || mediaPath is null)
         {
             _window?.Hide();
             return;
@@ -53,8 +55,7 @@ internal sealed class PetController : IDisposable
             var graphTitle = _workspace.Selection.SelectedWorkflow?.Title
                 ?? _workspace.Selection.WorkflowId;
             if (string.IsNullOrWhiteSpace(graphTitle)) graphTitle = "그래프를 선택하세요";
-            _window.UpdatePet(value.PetImagePath, value.PetName, graphTitle,
-                PetPresentation.From(_workspace.Monitor.Nodes, _workspace.Monitor.PlanNodes));
+            _window.UpdatePet(mediaPath, value.PetName, graphTitle, presentation);
             if (!_window.IsVisible) _window.Show();
         }
         catch { _window?.Hide(); }

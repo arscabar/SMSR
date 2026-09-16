@@ -92,6 +92,23 @@ internal static class DashboardLiveUpdates
               stream.addEventListener('open', () => setLiveStatus('자동 갱신 연결됨'));
               stream.addEventListener('error', () => setLiveStatus('자동 갱신 재연결 중'));
               document.addEventListener('click', event => {
+                const action = event.target.closest?.('.node-action');
+                if (action) {
+                  const panel = action.closest('.node-actions');
+                  const buttons = [...(panel?.querySelectorAll('.node-action') || [])];
+                  buttons.forEach(button => button.disabled = true);
+                  const status = panel?.querySelector('.node-action-status');
+                  if (status) status.textContent = '전달 중…';
+                  void fetch('/api/operator-instruction', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({projectId: action.dataset.project, workflowId: action.dataset.workflow,
+                      nodeId: action.dataset.node, action: action.dataset.action})
+                  }).then(async response => {
+                    if (status) status.textContent = response.ok ? 'Codex 전달 대기 중' : (await response.json()).error || '전달 실패';
+                    if (!response.ok) buttons.forEach(button => button.disabled = false);
+                  }).catch(() => { if (status) status.textContent = '전달 실패'; buttons.forEach(button => button.disabled = false); });
+                  return;
+                }
                 const toggle = event.target.closest?.('#toggle-status-cards');
                 if (toggle) {
                   const cards = [...document.querySelectorAll('.status-card')];

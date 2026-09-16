@@ -31,6 +31,8 @@ public static class MvpSelfCheck
             await File.WriteAllBytesAsync(petSource, Convert.FromBase64String(
                 "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="));
             var petPath = PetAssetStore.Register(petSource, serverPath);
+            var secondPetPath = PetAssetStore.Register(petSource, serverPath);
+            var thirdPetPath = PetAssetStore.Register(petSource, serverPath);
             var rejectedPet = Path.Combine(serverPath, "invalid.png");
             await File.WriteAllTextAsync(rejectedPet, "MZ executable");
             try
@@ -49,6 +51,16 @@ public static class MvpSelfCheck
             if (!File.Exists(petPath) || !petPath.StartsWith(Path.Combine(serverPath, "Pet"), StringComparison.OrdinalIgnoreCase)
                 || pet.Status != "BLOCKED" || pet.Label != "확인이 필요해요" || pet.Progress != 70)
                 throw new InvalidOperationException("단일 펫 자산·상태 표시 검증이 실패했습니다.");
+            var petRules = PetMediaSelector.Distribute([petPath, secondPetPath]);
+            var threePetRules = PetMediaSelector.Distribute([petPath, secondPetPath, thirdPetPath]);
+            var petSettings = new AppSettings(PetMediaRules: petRules);
+            if (petRules.Count != 2 || petRules[0].StartProgress != 0 || petRules[0].EndProgress != 49
+                || petRules[1].StartProgress != 50 || petRules[1].EndProgress != 100
+                || threePetRules.Select(rule => (rule.StartProgress, rule.EndProgress))
+                    .SequenceEqual([(0, 32), (33, 66), (67, 100)]) == false
+                || PetMediaSelector.Validate(petRules) is not null || PetMediaSelector.Select(petSettings, 50) != secondPetPath
+                || PetMediaSelector.Validate([new(0, 40, petPath), new(50, 100, petPath)]) is null)
+                throw new InvalidOperationException("펫 진행률 자동 구간 선택·검증이 실패했습니다.");
             CodexMcpConfigSelfCheck.Run();
             OAuthPersistenceSelfCheck.Run(serverPath);
             await ActivitySelfCheck.RunAsync(serverPath);
@@ -201,10 +213,17 @@ public static class MvpSelfCheck
             {
                 Nodes = highlightState.Nodes.Select(node => node with { UpdatedAt = DateTimeOffset.UtcNow.AddMinutes(-2) }).ToArray(),
                 Agents = []
-            }, highlightPlan, []);
+            }, highlightPlan, [], null, null, "older");
+            var activeActionPage = DashboardPage.Render(highlightState with
+            {
+                Agents = [new("agent", "worker", "ACTIVE", "older", null, 0, DateTimeOffset.UtcNow, false)]
+            }, highlightPlan, [], null, null, "older");
             if (!stalledPage.Contains("정체 가능 2") || !stalledPage.Contains("확인 필요 0")
                 || !stalledPage.Contains(">자동 갱신 연결 중</span>")
-                || !stalledPage.Contains("실패 0"))
+                || !stalledPage.Contains("실패 0") || stalledPage.Contains("class=\"node-action\"")
+                || !activeActionPage.Contains("작업 중인 Codex에 요청")
+                || !activeActionPage.Contains("data-action=\"redesign\"")
+                || activeActionPage.Contains("codex://threads/new?prompt="))
                 throw new InvalidOperationException("활성 그래프 상태 요약 검증이 실패했습니다.");
             var gatedPlan = new WorkflowPlan("demo", "gated", [
                 new("first", "선행", 1, [], "IN_PROGRESS", null, null, null),
@@ -300,6 +319,23 @@ public static class MvpSelfCheck
                 var planJson = await planResponse.Content.ReadAsStringAsync();
                 var recordResponse = await client.SendAsync(recordEvent);
                 var recordJson = await recordResponse.Content.ReadAsStringAsync();
+                var operatorGateway = new McpHttpGateway(server.Address, serverPath);
+                await operatorGateway.CallAsync("record_heartbeat", new
+                {
+                    projectId = "demo", workflowId = "wf-1", agentId = "agent-1",
+                    agentRole = "implementer", status = "ACTIVE", nodeId = "mcp-node"
+                });
+                using var operatorRequest = new HttpRequestMessage(HttpMethod.Post, $"{server.Address}/api/operator-instruction")
+                {
+                    Content = JsonContent.Create(new OperatorInstructionRequest("demo", "wf-1", "mcp-node", "redesign"))
+                };
+                operatorRequest.Headers.Add("Origin", server.Address);
+                using var operatorResponse = await client.SendAsync(operatorRequest);
+                var operatorDelivery = await operatorGateway.CallAsync("record_heartbeat", new
+                {
+                    projectId = "demo", workflowId = "wf-1", agentId = "agent-1",
+                    agentRole = "implementer", status = "ACTIVE", nodeId = "mcp-node"
+                });
                 using var listWorkflows = new HttpRequestMessage(HttpMethod.Post, $"{server.Address}/mcp")
                 {
                     Content = new StringContent("{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"list_workflows\",\"arguments\":{\"projectId\":\"demo\"},\"_meta\":{\"io.modelcontextprotocol/protocolVersion\":\"2026-07-28\",\"io.modelcontextprotocol/clientInfo\":{\"name\":\"self-test\",\"version\":\"1.0\"},\"io.modelcontextprotocol/clientCapabilities\":{}}}}", Encoding.UTF8, "application/json")
@@ -313,7 +349,7 @@ public static class MvpSelfCheck
                 var listJson = await listResponse.Content.ReadAsStringAsync();
                 var recordedState = await client.GetStringAsync($"{server.Address}/api/state?projectId=demo&workflowId=wf-1");
                 var recordedPlan = await client.GetStringAsync($"{server.Address}/api/plan?projectId=demo&workflowId=wf-1");
-                var recordedDashboard = await client.GetStringAsync($"{server.Address}/dashboard?projectId=demo&workflowId=wf-1");
+                var recordedDashboard = await client.GetStringAsync($"{server.Address}/dashboard?projectId=demo&workflowId=wf-1&selectedNodeId=mcp-node");
                 using var stateDocument = JsonDocument.Parse(recordedState);
                 using var planDocument = JsonDocument.Parse(recordedPlan);
                 var stateRecorded = stateDocument.RootElement.GetProperty("nodes").EnumerateArray().Any(node =>
@@ -339,9 +375,11 @@ public static class MvpSelfCheck
                     ("activity", activityResponse.IsSuccessStatusCode && activityJson.Contains("TOOL_COMPLETED")),
                     ("mcp-http", recordResponse.IsSuccessStatusCode && planResponse.IsSuccessStatusCode && listResponse.IsSuccessStatusCode),
                     ("mcp-payload", recordJson.Contains("evt-mcp-1") && planJson.Contains("nodeCount") && listJson.Contains("wf-1") && listJson.Contains("ACTIVE")),
+                    ("operator-instruction", operatorResponse.StatusCode == HttpStatusCode.Accepted
+                        && operatorDelivery.Contains("operatorInstruction") && operatorDelivery.Contains("redesign")),
                     ("state", stateRecorded),
                     ("plan", planRecorded),
-                    ("dashboard-content", decodedDashboard.Contains("계층형 작업 흐름") && recordedDashboard.Contains("id=\"agents\"") && decodedDashboard.Contains("실시간 활동") && recordedDashboard.Contains("flow-svg") && decodedDashboard.Contains("MCP 계획 노드")),
+                    ("dashboard-content", decodedDashboard.Contains("계층형 작업 흐름") && recordedDashboard.Contains("id=\"agents\"") && decodedDashboard.Contains("선택 노드 활동") && recordedDashboard.Contains("flow-svg") && decodedDashboard.Contains("MCP 계획 노드") && recordedDashboard.Contains("class=\"node-action\"")),
                     ("dashboard-live", !recordedDashboard.Contains("http-equiv=\"refresh\"") && recordedDashboard.Contains("new EventSource") && recordedDashboard.Contains("live-connection") && recordedDashboard.Contains("running-time") && recordedDashboard.Contains("smsr-graph-nav") && recordedDashboard.Contains("getAttribute('href')"))
                 };
                 var failedChecks = localChecks.Where(check => !check.Passed).Select(check => check.Name).ToArray();
@@ -365,6 +403,16 @@ public static class MvpSelfCheck
                 await legacyStore.RecordDailyActivityAsync(new("daily-simple", "simple-project", "simple-task",
                     "단일 문서 수정", "안내 문구 한 곳을 수정했습니다.", Files: ["README.md"],
                     Verifications: ["문서 렌더링 확인"]));
+                await legacyStore.RecordDailyActivityAsync(new("daily-old", "old-project", "old-task",
+                    "이전 기록", "선택일 밖의 기록입니다."));
+                await using (var oldActivityConnection = new SqliteConnection($"Data Source={Path.Combine(serverPath, "smsr.db")};Pooling=False"))
+                {
+                    await oldActivityConnection.OpenAsync();
+                    var oldActivityCommand = oldActivityConnection.CreateCommand();
+                    oldActivityCommand.CommandText = "UPDATE daily_activities SET recorded_at_utc=$at WHERE activity_id='daily-old';";
+                    oldActivityCommand.Parameters.AddWithValue("$at", DateTimeOffset.UtcNow.AddDays(-30).ToString("O"));
+                    await oldActivityCommand.ExecuteNonQueryAsync();
+                }
                 await OAuthSelfCheck.RunAsync(host.Address);
                 var platform = new TestPlatformActions();
                 var viewModel = new MainWindowViewModel(host, platform, settings);
@@ -392,10 +440,13 @@ public static class MvpSelfCheck
                 if (!viewModel.Workspace.SummaryProjectScopes.Any(item => item.ProjectId is null)
                     || !viewModel.Workspace.SummaryProjectScopes.Any(item => item.ProjectId == "demo")
                     || !viewModel.Workspace.SummaryProjectScopes.Any(item => item.ProjectId == "project-b")
+                    || viewModel.Workspace.SummaryProjectScopes.Any(item => item.ProjectId == "old-project")
                     || viewModel.Workspace.SummaryProjectScopes.Count(item =>
-                        item.Label == WorkflowWorkspaceViewModel.AllProjectsSummaryScope) != 2)
+                        item.Label == WorkflowWorkspaceViewModel.AllProjectsSummaryScope) != 1)
                     throw new InvalidOperationException("AI 요약 프로젝트 범위 목록 검증이 실패했습니다: "
                         + string.Join(", ", viewModel.Workspace.SummaryProjectScopes.Select(item => $"{item.Label}/{item.ProjectId ?? "ALL"}")));
+                if (viewModel.Workspace.SummaryProjectScopes.Any(item => item.ToString() != item.Label))
+                    throw new InvalidOperationException("AI 요약 프로젝트 범위 표시명 검증이 실패했습니다.");
                 viewModel.Workspace.SummaryProjectScope = viewModel.Workspace.SummaryProjectScopes[0];
                 if (!viewModel.Workspace.IsAllSummaryProjects
                     || !viewModel.Workspace.GenerateTodaySummaryCommand.CanExecute(null))

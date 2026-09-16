@@ -6,7 +6,6 @@ namespace SMSR.App.Mvp;
 internal static class DashboardPanels
 {
     private static readonly HashSet<string> Active = ["IN_PROGRESS", "VALIDATING", "RETRYING"];
-    private static readonly HashSet<string> Error = ["FAILED", "BLOCKED", "RETRYING"];
 
     public static string RenderAgents(WorkflowState state, WorkflowPlan plan)
     {
@@ -46,6 +45,7 @@ internal static class DashboardPanels
               {DetailSection(currentLabel, stateNode?.Error ?? stateNode?.Summary, "primary")}
               {CriteriaSection(planNode?.CompletionCriteria)}
               {ArtifactSection(stateNode?.Artifacts)}
+              {NodeActions(state, nodeId, status, selectedNodeId is not null)}
               <time class="detail-updated">마지막 갱신 {stateNode?.UpdatedAt.ToLocalTime().ToString("MM-dd HH:mm") ?? "-"}</time>
             </article>
             """;
@@ -86,6 +86,15 @@ internal static class DashboardPanels
 
     private static string ArtifactSection(IReadOnlyList<string>? artifacts)
         => artifacts is not { Count: > 0 } ? "" : $"<section class=\"detail-section\"><h4>산출물</h4><ul>{string.Join("", artifacts.Select(item => $"<li>{Encode(item)}</li>"))}</ul></section>";
+
+    private static string NodeActions(WorkflowState state, string nodeId, string status, bool selected)
+    {
+        var activeAgent = (state.Agents ?? []).Any(agent => agent.NodeId == nodeId
+            && agent.Status == "ACTIVE" && !agent.IsStale);
+        if (!selected || !Active.Contains(status) || !activeAgent) return "";
+        var data = $"data-project=\"{Encode(state.ProjectId)}\" data-workflow=\"{Encode(state.WorkflowId)}\" data-node=\"{Encode(nodeId)}\"";
+        return $"<section class=\"node-actions\"><h4>작업 중인 Codex에 요청</h4><div><button class=\"node-action\" data-action=\"resume\" {data}>이어 진행</button><button class=\"node-action\" data-action=\"accelerate\" {data}>더 빠르게</button><button class=\"node-action\" data-action=\"redesign\" {data}>재설계</button></div><p class=\"node-action-status\">다음 상태 기록 또는 heartbeat 응답으로 전달됩니다.</p></section>";
+    }
 
     private static string AgentName(string value)
         => value == "root" ? "주 에이전트" : value == "-" ? "미지정" : $"에이전트 {Short(value)}";

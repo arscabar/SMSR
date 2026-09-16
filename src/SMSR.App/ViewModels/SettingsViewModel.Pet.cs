@@ -1,11 +1,33 @@
+using System.Collections.ObjectModel;
 using System.IO;
 using SMSR.App.Infrastructure;
 using SMSR.App.Services;
 
 namespace SMSR.App.ViewModels;
 
+public sealed class PetMediaRuleEditor(int startProgress, int endProgress, string mediaPath)
+{
+    public int StartProgress { get; } = startProgress;
+    public int EndProgress { get; } = endProgress;
+    public string MediaPath { get; } = mediaPath;
+    public string FileName => Path.GetFileName(MediaPath);
+    public string RangeLabel => $"{StartProgress} ~ {(EndProgress == 100 ? 100 : EndProgress + 1)}%";
+}
+
 public sealed partial class SettingsViewModel
 {
+    private PetMediaRuleEditor? _selectedPetMediaRule;
+    private readonly RelayCommand _registerPetCommand;
+    private readonly RelayCommand _removePetCommand;
+    private readonly RelayCommand _removePetMediaRuleCommand;
+
+    public ObservableCollection<PetMediaRuleEditor> PetMediaRules { get; } = [];
+    public PetMediaRuleEditor? SelectedPetMediaRule
+    {
+        get => _selectedPetMediaRule;
+        set { if (SetField(ref _selectedPetMediaRule, value)) _removePetMediaRuleCommand.NotifyCanExecuteChanged(); }
+    }
+
     public bool PetEnabled
     {
         get => _settings.Current.PetEnabled;
@@ -24,30 +46,17 @@ public sealed partial class SettingsViewModel
     }
 
     public string PetImagePath => _settings.Current.PetImagePath;
-    public bool HasPetImage => File.Exists(PetImagePath);
-    public string PetImageLabel => HasPetImage ? PetImagePath : "등록되지 않음";
+    public bool HasPetImage => PetMediaSelector.Rules(_settings.Current).Count > 0;
     public RelayCommand RegisterPetCommand => _registerPetCommand;
     public RelayCommand RemovePetCommand => _removePetCommand;
+    public RelayCommand RemovePetMediaRuleCommand => _removePetMediaRuleCommand;
 
-    private readonly RelayCommand _registerPetCommand;
-    private readonly RelayCommand _removePetCommand;
-
-    private void RegisterPet()
+    private void LoadPetRules()
     {
-        var dialog = new Microsoft.Win32.OpenFileDialog { Filter = "이미지|*.png;*.jpg;*.jpeg;*.bmp", CheckFileExists = true };
-        if (dialog.ShowDialog() != true) return;
-        try
-        {
-            var path = PetAssetStore.Register(dialog.FileName, DataPath);
-            _settings.Save(_settings.Current with { PetImagePath = path, PetEnabled = true });
-            StatusMessage = "펫 이미지를 등록하고 표시했습니다.";
-        }
-        catch (Exception exception) { StatusMessage = $"펫 이미지를 등록하지 못했습니다: {exception.Message}"; }
+        SelectedPetMediaRule = null;
+        PetMediaRules.Clear();
+        foreach (var rule in PetMediaSelector.Distribute(PetMediaSelector.Rules(_settings.Current).Select(item => item.MediaPath)))
+            PetMediaRules.Add(new(rule.StartProgress, rule.EndProgress, rule.MediaPath));
     }
 
-    private void RemovePet()
-    {
-        _settings.Save(_settings.Current with { PetEnabled = false, PetImagePath = "" });
-        StatusMessage = "펫 등록을 해제했습니다. 복사된 이미지는 데이터 폴더에 보존됩니다.";
-    }
 }

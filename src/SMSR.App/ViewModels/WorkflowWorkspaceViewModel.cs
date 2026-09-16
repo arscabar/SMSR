@@ -28,6 +28,7 @@ public sealed partial class WorkflowWorkspaceViewModel : ViewModelBase
     private string _summaryQuestion = "";
     private SummaryProjectScopeOption _summaryProjectScope = new(AllProjectsSummaryScope, null);
     private bool _summaryScopeInitialized;
+    private int _summaryScopeRefreshVersion;
     private string? _pendingSummaryRequestId;
     private string? _pendingSummaryLabel;
 

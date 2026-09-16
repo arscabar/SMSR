@@ -1,8 +1,6 @@
-using System.IO;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Animation;
-using System.Windows.Media.Imaging;
 using SMSR.App.Services;
 
 namespace SMSR.App.Views;
@@ -10,17 +8,20 @@ namespace SMSR.App.Views;
 public partial class PetWindow : Window
 {
     private string _imagePath = "";
+    private readonly PetImagePlayer _imagePlayer;
     public PetWindow()
     {
         InitializeComponent();
+        _imagePlayer = new(PetImage);
         Loaded += (_, _) => PlaceBottomRight();
+        Closed += (_, _) => _imagePlayer.Dispose();
     }
 
     internal void UpdatePet(string imagePath, string name, string graphTitle, PetPresentation presentation)
     {
         if (_imagePath != imagePath)
         {
-            PetImage.Source = LoadImage(imagePath);
+            LoadMedia(imagePath);
             _imagePath = imagePath;
         }
         PetNameText.Text = string.IsNullOrWhiteSpace(name) ? "SMSR 펫" : name;
@@ -34,7 +35,7 @@ public partial class PetWindow : Window
         PetScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty, null);
         PetScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty, null);
         PetMove.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, null);
-        PetImage.BeginAnimation(OpacityProperty, null);
+        PetVisual.BeginAnimation(OpacityProperty, null);
         var repeat = RepeatBehavior.Forever;
         if (status is "IN_PROGRESS" or "VALIDATING" or "RETRYING")
         {
@@ -43,21 +44,30 @@ public partial class PetWindow : Window
             PetScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty, pulse);
         }
         else if (status is "BLOCKED" or "FAILED")
-            PetImage.BeginAnimation(OpacityProperty, new DoubleAnimation(1, .55, TimeSpan.FromMilliseconds(500)) { AutoReverse = true, RepeatBehavior = repeat });
+            PetVisual.BeginAnimation(OpacityProperty, new DoubleAnimation(1, .55, TimeSpan.FromMilliseconds(500)) { AutoReverse = true, RepeatBehavior = repeat });
         else if (status == "SUCCESS")
             PetMove.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, new DoubleAnimation(0, -8, TimeSpan.FromMilliseconds(450)) { AutoReverse = true, RepeatBehavior = new(3) });
     }
 
-    private static BitmapImage LoadImage(string path)
+    private void LoadMedia(string path)
     {
-        using var stream = File.OpenRead(path);
-        var image = new BitmapImage();
-        image.BeginInit();
-        image.CacheOption = BitmapCacheOption.OnLoad;
-        image.StreamSource = stream;
-        image.EndInit();
-        image.Freeze();
-        return image;
+        PetVideo.Stop();
+        var video = System.IO.Path.GetExtension(path).Equals(".mp4", StringComparison.OrdinalIgnoreCase);
+        PetImage.Visibility = video ? Visibility.Collapsed : Visibility.Visible;
+        PetVideo.Visibility = video ? Visibility.Visible : Visibility.Collapsed;
+        if (video)
+        {
+            _imagePlayer.Dispose();
+            PetVideo.Source = new Uri(path, UriKind.Absolute);
+            PetVideo.Play();
+        }
+        else _imagePlayer.Load(path);
+    }
+
+    private void PetVideo_MediaEnded(object sender, RoutedEventArgs e)
+    {
+        PetVideo.Position = TimeSpan.Zero;
+        PetVideo.Play();
     }
 
     private void PlaceBottomRight()

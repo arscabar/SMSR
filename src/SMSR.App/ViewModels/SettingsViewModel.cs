@@ -31,6 +31,8 @@ public sealed partial class SettingsViewModel : ViewModelBase
         CheckForUpdatesCommand = new RelayCommand(() => _ = CheckForUpdatesAsync(false), () => !_isCheckingForUpdates);
         _registerPetCommand = new RelayCommand(RegisterPet);
         _removePetCommand = new RelayCommand(RemovePet, () => HasPetImage);
+        _removePetMediaRuleCommand = new RelayCommand(RemoveSelectedPetMediaRule, () => SelectedPetMediaRule is not null);
+        LoadPetRules();
         _startWithWindows = ReadStartupState();
         _settings.Changed += OnSettingsChanged;
     }

@@ -8,7 +8,7 @@ internal static class LocalServerEndpoints
 {
     public static void Map(WebApplication app, LocalOAuthStore oauth, McpBridgeToken bridgeToken, OAuthFlowStore flows,
         OAuthAuditLog audit, McpConnectionTracker connections, WorkflowEventNotifier notifier, ActivityJsonlStore activity,
-        ActivityHookToken activityToken, Func<string>? dashboardTheme)
+        ActivityHookToken activityToken, OperatorInstructionQueue operatorInstructions, Func<string>? dashboardTheme)
     {
         app.Use(async (context, next) =>
         {
@@ -39,6 +39,25 @@ internal static class LocalServerEndpoints
         app.MapGet("/api/state", (string? projectId, string? workflowId, EventStore events, CancellationToken ct) => GetStateAsync(projectId, workflowId, events, ct));
         app.MapGet("/api/plan", (string? projectId, string? workflowId, EventStore events, CancellationToken ct) => GetPlanAsync(projectId, workflowId, events, ct));
         app.MapGet("/api/summary", (string? projectId, string? workflowId, EventStore events, CancellationToken ct) => GetSummaryAsync(projectId, workflowId, events, ct));
+        app.MapPost("/api/operator-instruction", async (OperatorInstructionRequest request, HttpRequest http,
+            EventStore events, CancellationToken ct) =>
+        {
+            if (!SameOrigin(http)) return Results.Unauthorized();
+            if (EventValidation.ValidateWorkflowIds(request.ProjectId, request.WorkflowId) is { } idError)
+                return Results.BadRequest(new { error = idError });
+            if (string.IsNullOrWhiteSpace(request.NodeId) || request.NodeId.Length > 128)
+                return Results.BadRequest(new { error = "nodeId는 1~128자여야 합니다." });
+            if (request.Action is not ("resume" or "accelerate" or "redesign"))
+                return Results.BadRequest(new { error = "지원하지 않는 작업 요청입니다." });
+            var state = await events.GetStateAsync(request.ProjectId, request.WorkflowId, ct);
+            var activeNode = state.Nodes.Any(node => node.NodeId == request.NodeId
+                && node.Status is "IN_PROGRESS" or "VALIDATING" or "RETRYING");
+            var activeAgent = (state.Agents ?? []).Any(agent => agent.NodeId == request.NodeId
+                && agent.Status == "ACTIVE" && !agent.IsStale);
+            if (!activeNode || !activeAgent) return Results.Conflict(new { error = "현재 Codex가 작업 중인 노드가 아닙니다." });
+            var queued = operatorInstructions.Set(request.ProjectId, request.WorkflowId, request.NodeId, request.Action);
+            return Results.Accepted(value: new { status = "queued", queued.Action });
+        });
         app.MapGet("/api/daily-activities", async (DateTimeOffset? startUtc, DateTimeOffset? endUtc,
             EventStore events, CancellationToken ct) => startUtc is null || endUtc is null
                 ? Results.BadRequest(new { error = "startUtc와 endUtc가 필요합니다." })
@@ -65,6 +84,10 @@ internal static class LocalServerEndpoints
         });
         app.MapMcp("/mcp");
     }
+
+    private static bool SameOrigin(HttpRequest request)
+        => Uri.TryCreate(request.Headers.Origin.ToString(), UriKind.Absolute, out var origin)
+            && origin.Host == "127.0.0.1" && origin.Port == request.Host.Port;
 
     private static bool IsAuthorized(HttpRequest request, LocalOAuthStore oauth, McpBridgeToken bridgeToken)
     {

@@ -11,14 +11,23 @@ public partial class WorkflowPanel : WpfUserControl
 {
     public WorkflowPanel() => InitializeComponent();
 
-    private void OpenSummaryPopup_Click(object sender, RoutedEventArgs eventArgs)
+    private async void OpenSummaryPopup_Click(object sender, RoutedEventArgs eventArgs)
     {
+        if (DataContext is WorkflowWorkspaceViewModel workspace)
+            await workspace.RefreshSummaryProjectScopesAsync();
         SummaryOverlay.Visibility = Visibility.Visible;
         SummaryQuestionTextBox.Focus();
     }
 
     private void CloseSummaryPopup_Click(object sender, RoutedEventArgs eventArgs)
         => SummaryOverlay.Visibility = Visibility.Collapsed;
+
+    private void WorkflowRoot_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs eventArgs)
+    {
+        if (eventArgs.Key != Key.Escape || SummaryOverlay.Visibility != Visibility.Visible) return;
+        SummaryOverlay.Visibility = Visibility.Collapsed;
+        eventArgs.Handled = true;
+    }
 
     private void Calendar_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs eventArgs)
     {

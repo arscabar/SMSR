@@ -10,6 +10,8 @@ public static class DashboardThemes
     public static string Normalize(string? value) => value is Light or "Light" ? Light : Dark;
 }
 
+public sealed record PetMediaRule(int StartProgress, int EndProgress, string MediaPath);
+
 public sealed record AppSettings(
     bool StartServerAutomatically = true,
     bool MinimizeToTray = true,
@@ -22,7 +24,8 @@ public sealed record AppSettings(
     string GeminiModel = GeminiSummaryClient.DefaultModel,
     bool PetEnabled = false,
     string PetName = "",
-    string PetImagePath = "");
+    string PetImagePath = "",
+    IReadOnlyList<PetMediaRule>? PetMediaRules = null);
 
 public sealed class AppSettingsService
 {

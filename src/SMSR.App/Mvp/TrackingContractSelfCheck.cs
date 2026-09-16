@@ -11,6 +11,7 @@ internal static class TrackingContractSelfCheck
             || !SmsrMcpInstructions.Text.Contains("계산, 짧은 검색", StringComparison.Ordinal)
             || !SmsrMcpInstructions.Text.Contains("workflowId를 생략", StringComparison.Ordinal)
             || !SmsrMcpInstructions.Text.Contains("즉시 record_event", StringComparison.Ordinal)
+            || !SmsrMcpInstructions.Text.Contains("operatorInstruction", StringComparison.Ordinal)
             || !SmsrMcpInstructions.Text.Contains("사용자 요청 요약:", StringComparison.Ordinal)
             || !SmsrMcpInstructions.Text.Contains("프롬프트 원문·비밀·개인정보", StringComparison.Ordinal)
             || !SmsrMcpInstructions.Text.Contains("끝난 작업의 진행 노드를 남겨두지 마세요", StringComparison.Ordinal)
@@ -161,7 +162,8 @@ internal static class TrackingContractSelfCheck
                 || !root.Contains("toggle-status-cards") || !root.Contains("status-card")
                 || !root.Contains("smsr-status-cards")
                 || !root.Contains("<span class=\"status-card-title\">계약 확장</span>", StringComparison.Ordinal)
-                || !child.Contains("계약 검사 통과") || !child.Contains("src/SMSR.App/Mvp/Contracts.cs"))
+                || !child.Contains("계약 검사 통과") || !child.Contains("src/SMSR.App/Mvp/Contracts.cs")
+                || !child.Contains("작업 중인 Codex에 요청") || child.Contains("codex://threads/new?prompt="))
                 Fail("계층 드릴다운 렌더링");
         }
         finally

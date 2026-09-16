@@ -3,20 +3,23 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Width="190" Height="230" WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ShowInTaskbar="False" Topmost="True" ResizeMode="NoResize" WindowStartupLocation="Manual">
-    <Grid MouseLeftButtonDown="Window_MouseLeftButtonDown">
-        <Border Padding="10" VerticalAlignment="Bottom" Background="#E6111823" BorderBrush="#5562ADFF" BorderThickness="1" CornerRadius="16">
-            <StackPanel>
-                <Grid Height="145">
-                    <Image x:Name="PetImage" Stretch="Uniform" RenderTransformOrigin="0.5,0.5">
-                        <Image.RenderTransform>
-                            <TransformGroup><ScaleTransform x:Name="PetScale" /><TranslateTransform x:Name="PetMove" /></TransformGroup>
-                        </Image.RenderTransform>
-                    </Image>
-                </Grid>
+    <Grid MouseLeftButtonDown="Window_MouseLeftButtonDown" Background="Transparent">
+        <StackPanel VerticalAlignment="Bottom">
+            <Grid x:Name="PetVisual" Height="160" Background="Transparent" RenderTransformOrigin="0.5,0.5">
+                <Grid.RenderTransform>
+                    <TransformGroup><ScaleTransform x:Name="PetScale" /><TranslateTransform x:Name="PetMove" /></TransformGroup>
+                </Grid.RenderTransform>
+                <Image x:Name="PetImage" Stretch="Uniform" />
+                <MediaElement x:Name="PetVideo" Visibility="Collapsed" Stretch="Uniform" IsMuted="True"
+                              LoadedBehavior="Manual" UnloadedBehavior="Manual" MediaEnded="PetVideo_MediaEnded" />
+            </Grid>
+            <Border Padding="10,7" Background="#D9111823" BorderBrush="#5562ADFF" BorderThickness="1" CornerRadius="12">
+                <StackPanel>
                 <TextBlock x:Name="PetNameText" HorizontalAlignment="Center" Foreground="White" FontWeight="Bold" TextTrimming="CharacterEllipsis" />
                 <TextBlock x:Name="PetStatusText" Margin="0,3,0,0" HorizontalAlignment="Center" Foreground="#FF9FCBFF" FontSize="12" />
                 <ProgressBar x:Name="PetProgress" Height="5" Margin="5,8,5,0" Minimum="0" Maximum="100" />
-            </StackPanel>
-        </Border>
+                </StackPanel>
+            </Border>
+        </StackPanel>
     </Grid>
 </Window>
