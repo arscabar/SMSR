@@ -17,6 +17,9 @@ internal static class TrackingContractSelfCheck
             || !SmsrMcpInstructions.Text.Contains("CANCELLED(중단)", StringComparison.Ordinal)
             || !SmsrMcpInstructions.Text.Contains("list_workflows", StringComparison.Ordinal)
             || !SmsrMcpInstructions.Text.Contains("범위를 닫", StringComparison.Ordinal)
+            || !SmsrMcpInstructions.Text.Contains("두 개 이상의 실행 결과", StringComparison.Ordinal)
+            || !SmsrMcpInstructions.Text.Contains("포괄적인 A를 리프로 남기지", StringComparison.Ordinal)
+            || !SmsrMcpInstructions.Text.Contains("기간만 길다는 이유", StringComparison.Ordinal)
             || !SmsrMcpInstructions.Text.Contains("일일 활동만 기록", StringComparison.Ordinal))
             Fail("요청형 그래프 지침");
 
@@ -91,6 +94,21 @@ internal static class TrackingContractSelfCheck
                 || updatedPlan.Nodes.Single(node => node.NodeId == "review").Status != "PENDING")
                 Fail("작업 중 계획 순서·노드 추가");
 
+            var nestedResult = await planTools.SavePlan("SMSR",
+            [
+                new("broad", "포괄 작업", Children:
+                [
+                    new("broad-1", "환경 확인"),
+                    new("broad-2", "구현", DependsOn: ["broad-1"])
+                ])
+            ], "nested-task");
+            var nestedPlan = await store.GetPlanAsync("SMSR", "nested-task");
+            if (nestedResult.Contains("error", StringComparison.OrdinalIgnoreCase)
+                || nestedPlan.Nodes.Count != 3
+                || nestedPlan.Nodes.Where(node => node.NodeId.StartsWith("broad-", StringComparison.Ordinal))
+                    .Any(node => node.ParentNodeId != "broad"))
+                Fail("하위 계획 자동 전개");
+
             var plan = await store.GetPlanAsync("SMSR", "task-1");
             var state = await store.GetStateAsync("SMSR", "task-1");
             var recent = await store.GetRecentEventsAsync("SMSR", "task-1");
@@ -99,9 +117,9 @@ internal static class TrackingContractSelfCheck
             if (plan.Nodes.Single(item => item.NodeId == "contract").ParentNodeId != "implementation"
                 || node.AgentRole != "implementer" || node.ProgressPercentage != 60 || node.RetryCount != 2
                 || node.Artifacts?.Single() != "src/SMSR.App/Mvp/Contracts.cs" || state.Agents?.Count != 2
-                || recent.Single(item => item.NodeId == "contract").RetryCount != 2 || workflows.Single().WorkflowId != "task-1"
-                || workflows.Single().Title != "구현" || workflows.Single().NodeCount != 3
-                || workflows.Single().Status != "ACTIVE")
+                || recent.Single(item => item.NodeId == "contract").RetryCount != 2 || workflows.Single(item => item.WorkflowId == "task-1").Title != "구현"
+                || workflows.Single(item => item.WorkflowId == "task-1").NodeCount != 3
+                || workflows.Single(item => item.WorkflowId == "task-1").Status != "ACTIVE")
                 Fail("확장 계약 조회");
 
             foreach (var nodeId in new[] { "contract", "review", "implementation" })

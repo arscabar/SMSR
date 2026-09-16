@@ -17,8 +17,14 @@ internal static class DashboardPanels
         {
             var kind = agent.IsStale ? " stale" : agent.Status == "FAILED" ? " error" : agent.Status == "ACTIVE" ? " active" : "";
             var nodeTitle = plan.Nodes.FirstOrDefault(node => node.NodeId == agent.NodeId)?.Title ?? "배정된 작업 없음";
-            var agentName = agent.AgentId == "root" ? "주 에이전트" : $"에이전트 {Short(agent.AgentId)}";
-            html.Append($"<article class=\"agent{kind}\"><div class=\"agent-line\"><span class=\"agent-name\">{Encode(agentName)}</span><span class=\"badge\">{Encode(AgentStatus(agent))}</span></div><div class=\"agent-role\">{Encode(Role(agent.AgentRole))}</div><div class=\"agent-task\">{Encode(nodeTitle)}</div><div class=\"task muted\">ID {Encode(agent.AgentId)} · 노드 {Encode(agent.NodeId ?? "-")} · 재시도 {agent.RetryCount}회<br>{agent.LastHeartbeatAt.ToLocalTime():HH:mm:ss} 마지막 신호</div></article>");
+            html.Append($"""
+                <article class="agent{kind}">
+                  <div class="agent-line"><span class="agent-name">{Encode(AgentName(agent.AgentId))}</span><span class="badge">{Encode(AgentStatus(agent))}</span></div>
+                  <div class="agent-focus"><span>현재 담당</span><strong>{Encode(nodeTitle)}</strong></div>
+                  <div class="agent-facts"><div><span>역할</span><strong>{Encode(Role(agent.AgentRole))}</strong></div><div><span>마지막 신호</span><strong>{agent.LastHeartbeatAt.ToLocalTime():HH:mm:ss}</strong></div></div>
+                  <details class="tech-details"><summary>기술 정보</summary><code>에이전트 {Encode(agent.AgentId)}</code><code>노드 {Encode(agent.NodeId ?? "-")}</code><span>재시도 {agent.RetryCount}회</span></details>
+                </article>
+                """);
         }
         return html.ToString();
     }
@@ -29,8 +35,20 @@ internal static class DashboardPanels
         var planNode = plan.Nodes.FirstOrDefault(item => item.NodeId == (selectedNodeId ?? stateNode?.NodeId));
         if (planNode is null && stateNode is null) return "<p class=\"empty\">노드를 선택하면 상세 정보가 표시됩니다.</p>";
         var nodeId = planNode?.NodeId ?? stateNode!.NodeId;
-        var artifacts = stateNode?.Artifacts is { Count: > 0 } ? string.Join("\n", stateNode.Artifacts) : "-";
-        return $"<dl class=\"detail\"><dt>작업</dt><dd>{Encode(nodeId)} · {Encode(planNode?.Title ?? nodeId)}</dd><dt>상태 / 진행률</dt><dd>{Encode(stateNode?.Status ?? "PENDING")} · {WorkflowProgress.Value(stateNode)}%</dd><dt>담당 / 역할</dt><dd>{Encode(stateNode?.AgentId ?? planNode?.AssignedAgentId ?? "-")} · {Encode(stateNode?.AgentRole ?? planNode?.AgentRole ?? "-")}</dd><dt>재시도</dt><dd>{stateNode?.RetryCount ?? 0}회</dd><dt>현재 작업</dt><dd>{Encode(stateNode?.Error ?? stateNode?.Summary ?? "-")}</dd><dt>다음 작업</dt><dd>{Encode(stateNode?.NextAction ?? "-")}</dd><dt>완료 조건</dt><dd>{Encode(planNode?.CompletionCriteria ?? "-")}</dd><dt>산출물</dt><dd>{Encode(artifacts)}</dd><dt>갱신</dt><dd>{stateNode?.UpdatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") ?? "-"}</dd></dl>";
+        var status = stateNode?.Status ?? planNode?.Status ?? "PENDING";
+        var agentId = stateNode?.AgentId ?? planNode?.AssignedAgentId ?? "-";
+        var role = stateNode?.AgentRole ?? planNode?.AgentRole ?? "-";
+        var currentLabel = stateNode?.Error is not null ? "문제 내용" : status == "SUCCESS" ? "결과" : "현재 작업";
+        return $"""
+            <article class="detail-card">
+              <div class="detail-head"><h3>{Encode(planNode?.Title ?? nodeId)}</h3><span class="detail-status {StatusClass(status)}">{StatusLabel(status)} · {WorkflowProgress.Value(stateNode)}%</span></div>
+              <div class="detail-meta"><div><span>담당 · 역할</span><strong>{Encode(AgentName(agentId))} · {Encode(Role(role))}</strong></div><span>재시도 {(stateNode?.RetryCount ?? 0)}회</span></div>
+              {DetailSection(currentLabel, stateNode?.Error ?? stateNode?.Summary, "primary")}
+              {CriteriaSection(planNode?.CompletionCriteria)}
+              {ArtifactSection(stateNode?.Artifacts)}
+              <time class="detail-updated">마지막 갱신 {stateNode?.UpdatedAt.ToLocalTime().ToString("MM-dd HH:mm") ?? "-"}</time>
+            </article>
+            """;
     }
 
     public static string RenderHistory(IReadOnlyList<RecentEvent> events, WorkflowPlan plan, string? nodeId = null)
@@ -60,6 +78,30 @@ internal static class DashboardPanels
 
     public static string Encode(string value) => WebUtility.HtmlEncode(value);
 
+    private static string DetailSection(string title, string? content, string kind = "")
+        => string.IsNullOrWhiteSpace(content) ? "" : $"<section class=\"detail-section {kind}\"><h4>{Encode(title)}</h4><p>{Encode(content)}</p></section>";
+
+    private static string CriteriaSection(string? content)
+        => string.IsNullOrWhiteSpace(content) ? "" : $"<details class=\"detail-criteria\"><summary>완료 기준</summary><p>{Encode(content)}</p></details>";
+
+    private static string ArtifactSection(IReadOnlyList<string>? artifacts)
+        => artifacts is not { Count: > 0 } ? "" : $"<section class=\"detail-section\"><h4>산출물</h4><ul>{string.Join("", artifacts.Select(item => $"<li>{Encode(item)}</li>"))}</ul></section>";
+
+    private static string AgentName(string value)
+        => value == "root" ? "주 에이전트" : value == "-" ? "미지정" : $"에이전트 {Short(value)}";
+
+    private static string StatusClass(string status) => status switch
+    {
+        "SUCCESS" => "success", "FAILED" or "BLOCKED" => "error",
+        "IN_PROGRESS" or "VALIDATING" or "RETRYING" => "active", "CANCELLED" => "cancelled", _ => "pending"
+    };
+
+    private static string StatusLabel(string status) => status switch
+    {
+        "SUCCESS" => "완료", "FAILED" => "실패", "BLOCKED" => "확인 필요", "CANCELLED" => "중단",
+        "IN_PROGRESS" => "진행 중", "VALIDATING" => "검증 중", "RETRYING" => "재시도", _ => "대기"
+    };
+
     private static string AgentStatus(AgentState agent) => agent.IsStale ? "응답 지연" : agent.Status switch
     {
         "ACTIVE" => "작업 중", "IDLE" => "대기", "STOPPED" => "종료", "FAILED" => "실패", _ => agent.Status
@@ -80,8 +122,9 @@ internal static class DashboardPanels
 
     private static string Role(string role) => role switch
     {
+        "primary" => "주 작업", "worker" => "보조 작업", "analysis" => "분석", "design" => "설계",
         "implementation-validation" => "구현 · 검증", "coordinator" => "조정", "implementer" or "implementation" => "구현",
-        "validator" or "validation" or "tester" => "검증", "reviewer" or "review" => "검토", "release" => "배포",
+        "validator" or "validation" or "tester" => "검증", "reviewer" or "review" => "검토", "release" => "배포", "-" => "미지정",
         _ => role.Replace("-", " · ")
     };
 

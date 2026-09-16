@@ -8,7 +8,8 @@ public sealed record PlanNodeDefinition(
     string? ParentNodeId = null,
     string? AssignedAgentId = null,
     string? AgentRole = null,
-    string? CompletionCriteria = null);
+    string? CompletionCriteria = null,
+    IReadOnlyList<PlanNodeDefinition>? Children = null);
 
 public sealed record PlanNodeState(
     string NodeId, string Title, int Weight, IReadOnlyList<string> DependsOn,

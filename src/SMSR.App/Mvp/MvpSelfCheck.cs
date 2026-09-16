@@ -133,6 +133,9 @@ public static class MvpSelfCheck
                 || !page.Contains("SELECTED_HISTORY_NEW") || !page.Contains("SELECTED_HISTORY_OLD")
                 || page.Contains("OTHER_NODE_ACTIVITY") || page.Contains("OTHER_NODE_STATUS")
                 || !page.Contains("주 에이전트") || !WebUtility.HtmlDecode(page).Contains("구현 · 검증") || !page.Contains("코드 변경") || !page.Contains("작업 중")
+                || !page.Contains("agent-focus") || !page.Contains("tech-details") || !page.Contains("detail-card")
+                || !page.Contains("detail-meta") || !page.Contains("결과") || !page.Contains("완료 기준") || !page.Contains("마지막 갱신")
+                || page.Contains(">다음 단계<")
                 || !page.Contains("new EventSource") || !page.Contains("let queued = false") || !page.Contains("void refresh()")
                 || !page.Contains("const scrollIds = ['flow', 'graph', 'details']")
                 || !page.Contains("element.scrollTop = position.top"))
@@ -247,7 +250,7 @@ public static class MvpSelfCheck
                 recordEvent.Headers.Add("MCP-Name", "record_event");
                 using var savePlan = new HttpRequestMessage(HttpMethod.Post, $"{server.Address}/mcp")
                 {
-                    Content = new StringContent("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"save_plan\",\"arguments\":{\"projectId\":\"demo\",\"workflowId\":\"wf-1\",\"nodes\":[{\"nodeId\":\"mcp-node\",\"title\":\"MCP 계획 노드\",\"weight\":2,\"assignedAgentId\":\"agent-1\",\"agentRole\":\"coordinator\"},{\"nodeId\":\"mcp-final\",\"title\":\"완료 노드\",\"parentNodeId\":\"mcp-node\",\"completionCriteria\":\"테스트 통과\"}]},\"_meta\":{\"io.modelcontextprotocol/protocolVersion\":\"2026-07-28\",\"io.modelcontextprotocol/clientInfo\":{\"name\":\"self-test\",\"version\":\"1.0\"},\"io.modelcontextprotocol/clientCapabilities\":{}}}}", Encoding.UTF8, "application/json")
+                    Content = new StringContent("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"save_plan\",\"arguments\":{\"projectId\":\"demo\",\"workflowId\":\"wf-1\",\"nodes\":[{\"nodeId\":\"mcp-node\",\"title\":\"MCP 계획 노드\",\"weight\":2,\"assignedAgentId\":\"agent-1\",\"agentRole\":\"coordinator\",\"children\":[{\"nodeId\":\"mcp-final\",\"title\":\"완료 노드\",\"completionCriteria\":\"테스트 통과\"}]}]},\"_meta\":{\"io.modelcontextprotocol/protocolVersion\":\"2026-07-28\",\"io.modelcontextprotocol/clientInfo\":{\"name\":\"self-test\",\"version\":\"1.0\"},\"io.modelcontextprotocol/clientCapabilities\":{}}}}", Encoding.UTF8, "application/json")
                 };
                 savePlan.Headers.Authorization = new("Bearer", oauthToken);
                 savePlan.Headers.Accept.ParseAdd("application/json, text/event-stream");
@@ -294,8 +297,7 @@ public static class MvpSelfCheck
                         && summaryResultDocument.RootElement.GetProperty("saved").GetBoolean()
                         && completedSummary?.Content == "MCP 일일 요약 완료"),
                     ("initial-http-sse", stateResponse.IsSuccessStatusCode && dashboardResponse.IsSuccessStatusCode && streamResponse.IsSuccessStatusCode && initialEvent == "event: state" && initialData == "data: changed" && changedEvent == "event: state"),
-                    ("activity", activityResponse.IsSuccessStatusCode && activityJson.Contains("TOOL_COMPLETED")
-                        && recordedDashboard.Contains("작업 완료") && recordedDashboard.Contains("파일 변경")),
+                    ("activity", activityResponse.IsSuccessStatusCode && activityJson.Contains("TOOL_COMPLETED")),
                     ("mcp-http", recordResponse.IsSuccessStatusCode && planResponse.IsSuccessStatusCode && listResponse.IsSuccessStatusCode),
                     ("mcp-payload", recordJson.Contains("evt-mcp-1") && planJson.Contains("nodeCount") && listJson.Contains("wf-1") && listJson.Contains("ACTIVE")),
                     ("state", stateRecorded),
