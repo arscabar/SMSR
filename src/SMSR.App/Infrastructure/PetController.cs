@@ -83,7 +83,7 @@ internal sealed class PetController : IDisposable
     private void OnChanged(object? sender, EventArgs e) => Refresh();
     private PetWindow CreateWindow()
     {
-        var window = new PetWindow { Owner = System.Windows.Application.Current.MainWindow };
+        var window = new PetWindow();
         window.CompletionAcknowledged += OnCompletionAcknowledged;
         window.OpenRequested += (_, _) => _showMainWindow();
         return window;

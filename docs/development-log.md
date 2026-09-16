@@ -2036,3 +2036,12 @@
 - 검증 결과: 기능 커밋 `7403cbb30e1f99d9e895c14ef89c9927d6344b6d`과 `v1.6.4` 태그를 전송하고 정식 릴리스를 게시했다. 원격 설치 EXE는 63,463,906 bytes이며 digest `sha256:c96850fa2af23315499d43a7022cdecb8b641c2e8bc06f0bdf2ef43cab06a38a`로 로컬 SHA-256과 일치한다.
 - 남은 위험: 설치 파일은 코드 서명되지 않았다.
 - 다음 조치: 실제 `Alt+Tab` 전환 화면과 선택 없음 IDLE 표시를 사용자 화면에서 확인한다.
+
+## 2026-09-16 - v1.6.4 펫 최소화 회귀 수정
+
+- 변경 파일: `PetController.cs`, `PetWindow.xaml.cs`, `README.md`, v1.6.4 릴리스 노트·개발 로그
+- 변경 사유: 펫을 SMSR 메인 창의 소유 창으로 지정한 방식은 `Alt+Tab`에서는 제외되지만 메인 창 최소화 시 펫도 함께 숨겼다.
+- 실행 명령: Release 빌드, 자체검사 4종, `scripts/build-installer.ps1`, v1.6.4 무인 재설치, Win32 창 스타일·최소화 동작 검사, HTTP health 확인
+- 검증 결과: 메인 창 소유 관계를 제거하고 펫 자체에 `WS_EX_TOOLWINDOW`를 적용했다. 실행 중 펫 창은 `ToolWindow=True`이며 메인 창을 실제 최소화한 동안에도 `Visible=True`를 유지했다. 설치 파일은 63,472,110 bytes, SHA-256 `FB365D0F1DC0AF515F748E0D967CFEC014CFBA3D41738C6AE8073FD5CCF50EB2`이다. 설치본 자체검사 4종 종료 코드 0, 설정·DB·Gemini 키 파일 보존, 설치 버전 1.6.4.0을 확인했다.
+- 남은 위험: 설치 파일은 코드 서명되지 않았다.
+- 다음 조치: 수정 커밋으로 v1.6.4 태그를 갱신하고 기존 GitHub Release 설치 파일·체크섬을 교체한다.
