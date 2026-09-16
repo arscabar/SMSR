@@ -44,8 +44,9 @@ internal sealed class PetController : IDisposable
             return;
         }
         var value = _settings.Current;
-        var presentation = PetPresentation.From(_workspace.Monitor.Nodes, _workspace.Monitor.PlanNodes);
         var workflowKey = CurrentWorkflowKey();
+        var presentation = PetPresentation.From(
+            _workspace.Monitor.Nodes, _workspace.Monitor.PlanNodes, workflowKey.Length > 0);
         var acknowledged = value.PetAcknowledgedWorkflowKey == workflowKey && workflowKey.Length > 0;
         if (acknowledged && presentation.Status is not ("SUCCESS" or "PENDING"))
         {
@@ -82,7 +83,7 @@ internal sealed class PetController : IDisposable
     private void OnChanged(object? sender, EventArgs e) => Refresh();
     private PetWindow CreateWindow()
     {
-        var window = new PetWindow();
+        var window = new PetWindow { Owner = System.Windows.Application.Current.MainWindow };
         window.CompletionAcknowledged += OnCompletionAcknowledged;
         window.OpenRequested += (_, _) => _showMainWindow();
         return window;
@@ -98,11 +99,13 @@ internal sealed class PetController : IDisposable
     private string CurrentWorkflowKey()
         => string.IsNullOrWhiteSpace(_workspace.Selection.ProjectId)
             || string.IsNullOrWhiteSpace(_workspace.Selection.WorkflowId)
+            || _workspace.Selection.SelectedWorkflow is null
             ? "" : $"{_workspace.Selection.ProjectId}\n{_workspace.Selection.WorkflowId}";
     private void OnNodesChanged(object? sender, NotifyCollectionChangedEventArgs e) => QueueRefresh();
     private void OnSelectionChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(WorkflowSelectionViewModel.WorkflowId)
+        if (e.PropertyName is nameof(WorkflowSelectionViewModel.ProjectId)
+            or nameof(WorkflowSelectionViewModel.WorkflowId)
             or nameof(WorkflowSelectionViewModel.SelectedWorkflow)) QueueRefresh();
     }
 

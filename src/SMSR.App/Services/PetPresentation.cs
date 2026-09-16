@@ -7,8 +7,10 @@ internal sealed record PetPresentation(string Status, string Label, int Progress
     private static readonly string[] Priority =
         ["BLOCKED", "FAILED", "RETRYING", "VALIDATING", "IN_PROGRESS", "CANCELLED", "PENDING", "SUCCESS"];
 
-    public static PetPresentation From(IReadOnlyList<StateNode> nodes, IReadOnlyList<PlanNodeState>? planNodes = null)
+    public static PetPresentation From(IReadOnlyList<StateNode> nodes,
+        IReadOnlyList<PlanNodeState>? planNodes = null, bool hasSelection = true)
     {
+        if (!hasSelection) return new("IDLE", "대기 중", 0);
         if (nodes.Count == 0) return new("PENDING", "대기 중", 0);
         var status = Priority.FirstOrDefault(value => nodes.Any(node => node.Status == value)) ?? "PENDING";
         var progress = planNodes is { Count: > 0 }

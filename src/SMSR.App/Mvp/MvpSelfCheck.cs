@@ -56,6 +56,8 @@ public static class MvpSelfCheck
             var movedPetRules = PetMediaSelector.MoveBoundary(threePetRules, 0, 20);
             var petSettings = new AppSettings(PetMediaRules: petRules);
             var idlePet = new PetPresentation("SUCCESS", "작업 완료", 100).AsIdle();
+            var unselectedPet = PetPresentation.From([
+                new("stale", "agent", "SUCCESS", null, null, DateTimeOffset.UtcNow)], [], false);
             var petSettingsPath = Path.Combine(serverPath, "pet-settings");
             new AppSettingsService(petSettingsPath).Save(new(PetSizePercent: 999, PetIdleMediaPath: thirdPetPath));
             var storedPetSettings = new AppSettingsService(petSettingsPath).Current;
@@ -66,6 +68,7 @@ public static class MvpSelfCheck
                 || movedPetRules.Select(rule => (rule.StartProgress, rule.EndProgress))
                     .SequenceEqual([(0, 19), (20, 66), (67, 100)]) == false
                 || idlePet.Status != "IDLE" || idlePet.Label != "대기 중"
+                || unselectedPet.Status != "IDLE" || unselectedPet.Progress != 0
                 || storedPetSettings.PetSizePercent != 180 || storedPetSettings.PetIdleMediaPath != thirdPetPath
                 || PetMediaSelector.Validate(petRules) is not null || PetMediaSelector.Select(petSettings, 50) != secondPetPath
                 || PetMediaSelector.Validate([new(0, 40, petPath), new(50, 100, petPath)]) is null)
