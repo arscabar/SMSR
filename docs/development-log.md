@@ -1847,3 +1847,48 @@
 - 검증 결과: 커밋 `579cb08`과 태그 `v1.4.8`을 전송하고 정식 릴리스를 게시했다. 설치 EXE 63,437,826 bytes와 SHA-256 `E30119836CA39B8928533F49662C07383AB7D905BB67E616559730A19E378B18`의 원격 digest가 로컬과 일치한다.
 - 남은 위험: 설치 파일은 코드 서명되지 않았다.
 - 다음 조치: v1.4.8 설치본으로 업그레이드하고 SMSR·Codex를 다시 시작한다.
+
+## 2026-09-16 - 기능 확장 개발계획서 작성
+
+- 변경 파일: `docs/smsr-feature-development-plan.md`, `docs/smsr-feature-development-plan.html`, `README.md`
+- 변경 사유: 상태 신뢰성·정체 감지·계획 분해·요약 질의·사용자 등록 펫을 하나의 단계형 개발계획으로 정리한다.
+- 실행 명령: 문서 구조·HTML 반응형 스타일·링크·`git diff --check` 확인
+- 검증 결과: Markdown과 단일 HTML 문서에 범위·역할·단계 게이트·자원·리스크·QA·방법론·에이전트 분할을 모두 포함했다. 날짜 기반 일정과 벡터화는 계획에서 제외했다.
+- 남은 위험: 실제 구현 우선순위와 각 단계의 완료 시점은 계획 승인 후 확정한다.
+- 다음 조치: 사용자가 계획 범위와 P0 단계의 완료 기준을 승인하면 상태·정체 감지부터 구현한다.
+
+## 2026-09-16 - 요약 범위·상태 요약·단일 작업 펫 1차 구현
+
+- 변경 파일: AI 요약·질의 ViewModel/XAML, 대시보드 상태 요약, 펫 설정·자산 검증·오버레이·트레이, 자체검사, README와 기능 확장 계획서
+- 변경 사유: 요약·질의 팝업에서 특정 프로젝트와 전체 프로젝트를 선택하고, 현재 그래프의 정체·차단·실패를 빠르게 확인하며, 사용자가 등록한 펫 한 마리로 선택 그래프 상태를 볼 수 있게 한다.
+- 실행 명령: `dotnet build SMSR.slnx -c Release --no-restore`, Release 앱 `--self-test`, `git diff --check`
+- 검증 결과: 특정/전체 프로젝트 범위와 오늘/선택 기간 명령을 분리했다. 대시보드에 정체 가능·확인 필요·실패 수와 작업명 기반 차단 링크를 추가했다. 10MB 이하 PNG·JPG·BMP 시그니처 검사, 단일 펫 등록, 선택 그래프 상태·진행률 표시, 트레이 표시·숨김을 구현했다. Release 빌드 경고 0·오류 0과 자체검사 종료 코드 0을 확인했다.
+- 남은 위험: 펫 1차 버전은 정적 이미지에 상태별 WPF 움직임을 적용하며 스프라이트 애니메이션·크기·투명도·움직임 감소 설정은 후속 단계다. 실제 사용자 이미지와 다중 모니터 배치는 수동 확인이 필요하다.
+- 다음 조치: 팝업·펫을 실제 화면에서 확인한 뒤 운영 검색·인수인계 또는 펫 접근성 설정 중 우선 항목을 진행한다.
+
+## 2026-09-16 - 완료 그래프와 연결·진행 상태 문구 분리
+
+- 변경 파일: `DashboardPage.cs`, `DashboardLiveUpdates.cs`, `DashboardPanels.cs`, `DashboardHistoryCards.cs`, `DashboardGraph.cs`, `PetPresentation.cs`, `MvpSelfCheck.cs`
+- 변경 사유: 완료된 그래프에도 `실시간 연결됨`과 에이전트 `작업 중`이 표시돼 현재도 AI가 작업하는 것처럼 보였다.
+- 실행 명령: `dotnet build SMSR.slnx -c Release --no-restore`, Release 앱 `--self-test`, `--tracking-self-test`, `git diff --check`
+- 검증 결과: 모든 계획 노드가 완료된 그래프는 `그래프 완료`로 고정하고 SSE 연결 문구가 덮어쓰지 않게 했다. 활성 그래프의 SSE는 `자동 갱신 연결됨`, heartbeat의 ACTIVE는 `연결됨`, 저장된 IN_PROGRESS는 `진행 상태`, 실제 미완료 도구 실행만 `실행 중`으로 구분했다.
+- 남은 위험: 오래된 클라이언트가 종료 이벤트를 보내지 않아 실제 IN_PROGRESS 상태가 남은 경우에는 `정체 가능` 수치와 상태 기록을 함께 확인해야 한다.
+- 다음 조치: 실제 완료·차단·대기 그래프에서 상단 문구와 에이전트 카드를 수동 확인한다.
+
+## 2026-09-16 - 목표·그래프 IN/OUT 토큰 표시
+
+- 변경 파일: `ActivityContracts.cs`, `ActivityJsonlStore.cs`, `ActivityEndpoints.cs`, `ActivitySelfCheck.cs`, `DashboardPage.cs`, `DashboardStyles.cs`, `LocalServerEndpoints.cs`, `WorkflowExportService.cs`, `CodexActivityHook.cs`, `CodexTokenUsageReader.cs`, `README.md`
+- 변경 사유: 현재 Codex 목표 작업의 전체 사용량과 선택 그래프가 연결된 뒤 사용한 토큰을 구분해 확인할 수 없었다.
+- 실행 명령: Release 빌드, 전체·tracking 자체검사, `git diff --check`
+- 검증 결과: Codex 로컬 세션의 누적 `input_tokens`·`output_tokens`를 읽고 세션별 최신값을 합산한다. 목표 작업은 전체 누적값, 그래프는 연결 시점 기준값을 뺀 값을 표시하며 하위 에이전트 사용량도 같은 목표·그래프에 합산한다. 사용량이 없으면 추정하지 않고 `수집 대기`로 표시한다.
+- 남은 위험: Codex 로컬 세션 JSONL 형식은 공개 훅 계약이 아니므로 향후 형식이 바뀌면 `수집 대기`로 안전하게 폴백한다. 기존 기록은 토큰 스냅샷이 없어 소급 계산하지 않는다.
+- 다음 조치: 실제 설치 환경의 새 그래프에서 턴 종료 후 목표·그래프 IN/OUT 갱신을 확인한다.
+
+## 2026-09-16 - v1.5.0 문서·설치본 확정
+
+- 변경 파일: `README.md`, 기능 확장 계획서 Markdown·HTML, `SMSR.App.csproj`, 설치 안내, v1.5.0 릴리스 노트·통합 테스트 보고서, 설치본 생성물
+- 변경 사유: 요약 범위, 상태 의미, 단일 펫, 목표·그래프 토큰 기능을 하나의 신규 릴리스로 문서화하고 후속 작업과 배포 산출물을 확정한다.
+- 실행 명령: Release 빌드·test, 소스·publish config/tracking/OAuth/전체 자체검사, `scripts/build-installer.ps1`, publish stdio 검사, 버전·SHA-256·프로세스 확인
+- 검증 결과: 소스·publish 자체검사 8개와 MCP protocol `2025-11-25`·도구 12개를 확인했다. 설치 파일 `1.5.0.0`은 63,448,762 bytes, SHA-256 `3CD18ACBAE0679BC8EEFC2D8B0322D9D74AC5B96CB425E48047952D5D02CB067`이며 검사 전후 기존·신규 SMSR 프로세스가 없었다.
+- 남은 위험: 토큰 입력은 Codex 로컬 세션 형식에 의존하고 기존 그래프는 소급 계산하지 않는다. 한국어 IME와 다중 모니터 펫 배치는 실제 설치 환경 수동 검사가 남았다. 설치 파일은 코드 서명되지 않았다.
+- 다음 조치: 변경을 커밋하고 v1.5.0 태그·GitHub Release와 설치본·체크섬을 게시한 뒤 원격 digest를 확인한다.

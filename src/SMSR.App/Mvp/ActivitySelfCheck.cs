@@ -71,6 +71,7 @@ internal static class ActivitySelfCheck
             || store.ReadLatest("demo", "activity-wf", 10).Count != 4
             || store.ReadLatest("project-b", "workflow-b", 10).Count != 3)
             throw new InvalidOperationException("하위 에이전트 활동 매핑 정리가 실패했습니다.");
+        VerifyTokenUsage(dataPath, store);
         var isolated = await CodexHookRunner.ProcessAsync("""
             {"session_id":"isolated","cwd":"C:\\projects\\demo","hook_event_name":"UserPromptSubmit",
              "prompt":"PRIVATE-HOOK-INPUT"}
@@ -78,6 +79,40 @@ internal static class ActivitySelfCheck
         if (isolated is null || isolated.Contains("PRIVATE-HOOK-INPUT", StringComparison.Ordinal))
             throw new InvalidOperationException("활동 기록 실패 격리가 실패했습니다.");
         await ActivityStoreSelfCheck.RunAsync(dataPath);
+    }
+
+    private static void VerifyTokenUsage(string dataPath, ActivityJsonlStore store)
+    {
+        var sessionId = "token-session";
+        var sessionsRoot = Path.Combine(dataPath, "codex-sessions");
+        var sessionDirectory = Path.Combine(sessionsRoot, "2026", "09", "16");
+        Directory.CreateDirectory(sessionDirectory);
+        var rollout = Path.Combine(sessionDirectory, $"rollout-{sessionId}.jsonl");
+        File.WriteAllText(rollout, """
+            {"type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":1200,"output_tokens":300}}}}
+            """);
+        var read = CodexTokenUsageReader.Read(sessionId, sessionsRoot: sessionsRoot);
+        if (read?.Input != 1200 || read.Output != 300)
+            throw new InvalidOperationException("Codex 토큰 사용량 읽기 검증이 실패했습니다.");
+
+        var now = DateTimeOffset.UtcNow;
+        store.Append(new(now, "tokens", "graph-a", sessionId, "TURN_STOPPED", "LIFECYCLE",
+            ActivityId: "token-a-root", GoalId: "goal-1", SessionInputTokens: 1000,
+            SessionOutputTokens: 100, GraphInputTokens: 400, GraphOutputTokens: 40));
+        store.Append(new(now.AddSeconds(1), "tokens", "graph-a", "token-child", "TURN_STOPPED", "LIFECYCLE",
+            ActivityId: "token-a-child", GoalId: "goal-1", SessionInputTokens: 200,
+            SessionOutputTokens: 20, GraphInputTokens: 200, GraphOutputTokens: 20));
+        store.Append(new(now.AddSeconds(2), "tokens", "graph-b", sessionId, "TURN_STOPPED", "LIFECYCLE",
+            ActivityId: "token-b-root", GoalId: "goal-1", SessionInputTokens: 1500,
+            SessionOutputTokens: 150, GraphInputTokens: 100, GraphOutputTokens: 10));
+        var summary = store.ReadTokenUsage("tokens", "graph-a");
+        var page = DashboardPage.Render(new("tokens", "graph-a", []), new("tokens", "graph-a", []), [],
+            tokenUsage: summary);
+        if (!summary.HasGoalUsage || !summary.HasGraphUsage || summary.GoalInput != 1200
+            || summary.GoalOutput != 120 || summary.GraphInput != 600 || summary.GraphOutput != 60
+            || !page.Contains("목표 작업 토큰", StringComparison.Ordinal)
+            || !page.Contains("그래프 토큰", StringComparison.Ordinal))
+            throw new InvalidOperationException("목표·그래프 토큰 집계 표시 검증이 실패했습니다.");
     }
 
     private static class HookJsonDocument

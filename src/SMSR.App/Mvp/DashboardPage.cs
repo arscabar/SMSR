@@ -7,32 +7,29 @@ public static class DashboardPage
 
     public static string Render(WorkflowState state, WorkflowPlan plan, IReadOnlyList<RecentEvent> events,
         string? theme = null, string? parentNodeId = null, string? selectedNodeId = null,
-        IReadOnlyList<ActivityRecord>? activities = null)
+        IReadOnlyList<ActivityRecord>? activities = null, TokenUsageSummary? tokenUsage = null)
     {
-        var parentIds = plan.Nodes.Where(node => node.ParentNodeId is not null).Select(node => node.ParentNodeId).ToHashSet();
-        var progressNodes = plan.Nodes.Where(node => !parentIds.Contains(node.NodeId)).ToArray();
-        var totalWeight = progressNodes.Sum(node => node.Weight);
-        var states = state.Nodes.ToDictionary(node => node.NodeId);
-        var progress = totalWeight == 0 ? 0 : progressNodes.Sum(node =>
-        {
-            var stateNode = states.GetValueOrDefault(node.NodeId);
-            if (DashboardHierarchy.DisplayStatus(node, plan.Nodes) == "PENDING"
-                && (stateNode?.Status ?? node.Status) != "PENDING") return 0;
-            return node.Weight * WorkflowProgress.Value(stateNode?.Status ?? node.Status, stateNode?.ProgressPercentage);
-        }) / totalWeight;
+        var progress = WorkflowProgress.Overall(plan, state);
         var completed = plan.Nodes.Count(node => DashboardHierarchy.DisplayStatus(node, plan.Nodes) == "SUCCESS");
         var blocked = state.Nodes.Where(node => node.Status == "BLOCKED").ToArray();
+        var failed = state.Nodes.Count(node => node.Status == "FAILED");
+        var stalled = state.Nodes.Count(node => IsPossiblyStalled(node, state.Agents ?? []));
+        var displayStatuses = plan.Nodes.Select(node => DashboardHierarchy.DisplayStatus(node, plan.Nodes)).ToArray();
+        var live = LiveLabel(displayStatuses);
         var workflowTitle = plan.Nodes.FirstOrDefault(node => node.ParentNodeId is null)?.Title;
         var workflowLabel = string.IsNullOrWhiteSpace(workflowTitle)
             ? state.WorkflowId : $"{workflowTitle} · {state.WorkflowId}";
-        var alert = blocked.Length == 0 ? "" :
-            $"<div id=\"alert\">사용자 결정 필요: {DashboardPanels.Encode(string.Join(", ", blocked.Select(node => node.NodeId)))}</div>";
+        var alert = blocked.Length == 0 ? "" : $"<div id=\"alert\"><strong>확인 필요</strong> · {string.Join(" · ", blocked.Select(node =>
+        {
+            var title = plan.Nodes.FirstOrDefault(item => item.NodeId == node.NodeId)?.Title ?? node.NodeId;
+            return $"<a href=\"{DashboardNavigation.Encode(DashboardNavigation.Url(state.ProjectId, state.WorkflowId, selectedNodeId: node.NodeId))}\">{DashboardPanels.Encode(title)}</a>";
+        }))}</div>";
 
         return $$"""
             <!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
             <title>SMSR 작업 그래프</title><style>{{DashboardStyles.For(theme)}}</style></head><body>
             <header><div><h1>작업 그래프 대시보드</h1><span class="muted">{{DashboardPanels.Encode(state.ProjectId)}} / {{DashboardPanels.Encode(workflowLabel)}}</span></div>
-            <div class="summary"><span id="live-connection" class="chip">실시간 연결 중</span><span class="chip">완료 {{completed}} / {{plan.Nodes.Count}}</span><span class="chip">전체 진행률 {{progress}}%</span></div></header>
+            <div class="summary"><span id="live-connection" class="chip"{{(live.Static ? " data-static=\"true\"" : "")}}>{{live.Label}}</span>{{TokenChip("목표 작업", tokenUsage?.GoalInput ?? 0, tokenUsage?.GoalOutput ?? 0, tokenUsage?.HasGoalUsage == true)}}{{TokenChip("그래프", tokenUsage?.GraphInput ?? 0, tokenUsage?.GraphOutput ?? 0, tokenUsage?.HasGraphUsage == true)}}<span class="chip">완료 {{completed}} / {{plan.Nodes.Count}}</span><span class="chip">전체 진행률 {{progress}}%</span><span class="chip">정체 가능 {{stalled}}</span><span class="chip">확인 필요 {{blocked.Length}}</span><span class="chip">실패 {{failed}}</span></div></header>
             {{alert}}<main><aside id="agents"><h2>에이전트</h2>{{DashboardPanels.RenderAgents(state, plan)}}</aside>
             <section id="flow"><div class="flow-heading"><div><h2>계층형 작업 흐름</h2>{{DashboardNavigation.Breadcrumb(state.ProjectId, state.WorkflowId, plan, parentNodeId)}}</div></div><div id="graph">{{DashboardGraph.Render(plan, state, parentNodeId)}}</div></section>
             <aside id="details"><h2>작업 상세</h2>{{DashboardPanels.RenderDetails(state, plan, selectedNodeId, parentNodeId)}}<h2 class="history-title">{{(selectedNodeId is null ? "실시간 활동" : "선택 노드 활동")}}</h2>{{DashboardPanels.RenderActivities(activities ?? [], plan, selectedNodeId)}}<h2 class="history-title">{{(selectedNodeId is null ? "상태 기록" : "선택 노드 상태 기록")}}</h2>{{DashboardPanels.RenderHistory(events, plan, selectedNodeId)}}</aside></main>
@@ -40,4 +37,32 @@ public static class DashboardPage
             </body></html>
             """;
     }
+
+    private static bool IsPossiblyStalled(StateNode node, IReadOnlyList<AgentState> agents)
+        => node.Status is "IN_PROGRESS" or "VALIDATING" or "RETRYING"
+            && DateTimeOffset.UtcNow - node.UpdatedAt > TimeSpan.FromSeconds(90)
+            && !agents.Any(agent => agent.NodeId == node.NodeId && agent.Status == "ACTIVE" && !agent.IsStale);
+
+    private static (string Label, bool Static) LiveLabel(IReadOnlyList<string> statuses)
+    {
+        if (statuses.Count > 0 && statuses.All(status => status == "SUCCESS")) return ("그래프 완료", true);
+        if (statuses.Any(status => status is "IN_PROGRESS" or "VALIDATING" or "RETRYING"))
+            return ("자동 갱신 연결 중", false);
+        if (statuses.Any(status => status == "BLOCKED")) return ("사용자 확인 대기", true);
+        if (statuses.Any(status => status == "FAILED")) return ("오류로 종료", true);
+        if (statuses.Any(status => status == "CANCELLED")) return ("작업 중단", true);
+        return ("작업 대기", true);
+    }
+
+    private static string TokenChip(string label, long input, long output, bool available)
+        => available
+            ? $"<span class=\"chip token-chip\" title=\"IN {input:N0} · OUT {output:N0}\">{label} 토큰 · IN {Compact(input)} · OUT {Compact(output)}</span>"
+            : $"<span class=\"chip token-chip muted\">{label} 토큰 · 수집 대기</span>";
+
+    private static string Compact(long value) => value switch
+    {
+        >= 1_000_000 => $"{value / 1_000_000d:0.0}M",
+        >= 1_000 => $"{value / 1_000d:0.0}K",
+        _ => value.ToString()
+    };
 }

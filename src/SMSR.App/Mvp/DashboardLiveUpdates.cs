@@ -15,17 +15,17 @@ internal static class DashboardLiveUpdates
               let connected = false;
               let refreshing = false;
               let queued = false;
-              let liveStatus = '실시간 연결 중';
+              let liveStatus = '자동 갱신 연결 중';
               const scrollIds = ['flow', 'graph', 'details'];
               const cardStateKey = 'smsr-status-cards:{{project}}:{{workflow}}';
               const setLiveStatus = value => {
                 liveStatus = value;
                 const element = document.getElementById('live-connection');
-                if (element) element.textContent = value;
+                if (element && element.dataset.static !== 'true') element.textContent = value;
               };
               const updateRunningTimes = () => document.querySelectorAll('.running-time').forEach(element => {
                 const seconds = Math.max(0, Math.floor((Date.now() - Number(element.dataset.start)) / 1000));
-                element.textContent = `진행 중 · ${seconds}초`;
+                element.textContent = `실행 중 · ${seconds}초`;
               });
               const captureScroll = () => new Map(scrollIds.map(id => {
                 const element = document.getElementById(id);
@@ -89,8 +89,8 @@ internal static class DashboardLiveUpdates
                 if (!connected) { connected = true; return; }
                 void refresh();
               });
-              stream.addEventListener('open', () => setLiveStatus('실시간 연결됨'));
-              stream.addEventListener('error', () => setLiveStatus('실시간 재연결 중'));
+              stream.addEventListener('open', () => setLiveStatus('자동 갱신 연결됨'));
+              stream.addEventListener('error', () => setLiveStatus('자동 갱신 재연결 중'));
               document.addEventListener('click', event => {
                 const toggle = event.target.closest?.('#toggle-status-cards');
                 if (toggle) {

@@ -70,7 +70,7 @@ internal static class DashboardPanels
             var running = item.Event == "TOOL_STARTED" && item.ToolUseId is not null
                 && !completedTools.Contains(item.ToolUseId);
             var live = running
-                ? $" · <span class=\"running-time\" data-start=\"{item.TimestampUtc.ToUnixTimeMilliseconds()}\">진행 중</span>" : "";
+                ? $" · <span class=\"running-time\" data-start=\"{item.TimestampUtc.ToUnixTimeMilliseconds()}\">실행 중</span>" : "";
             html.Append($"<li{(running ? " class=\"running\"" : "")}><b>{Encode(subject)}</b> {Encode(ActivityEvent(item.Event))}<br>{Encode(detail)} · {item.TimestampUtc.ToLocalTime():HH:mm:ss}{live}</li>");
         }
         return html.Append("</ul>").ToString();
@@ -99,12 +99,12 @@ internal static class DashboardPanels
     private static string StatusLabel(string status) => status switch
     {
         "SUCCESS" => "완료", "FAILED" => "실패", "BLOCKED" => "확인 필요", "CANCELLED" => "중단",
-        "IN_PROGRESS" => "진행 중", "VALIDATING" => "검증 중", "RETRYING" => "재시도", _ => "대기"
+        "IN_PROGRESS" => "진행 상태", "VALIDATING" => "검증 상태", "RETRYING" => "재시도 상태", _ => "대기"
     };
 
     private static string AgentStatus(AgentState agent) => agent.IsStale ? "응답 지연" : agent.Status switch
     {
-        "ACTIVE" => "작업 중", "IDLE" => "대기", "STOPPED" => "종료", "FAILED" => "실패", _ => agent.Status
+        "ACTIVE" => "연결됨", "IDLE" => "대기", "STOPPED" => "종료", "FAILED" => "실패", _ => agent.Status
     };
 
     private static string ActivityEvent(string value) => value switch

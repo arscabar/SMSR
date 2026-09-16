@@ -60,7 +60,8 @@ internal static class LocalServerEndpoints
             var plan = await events.GetPlanAsync(projectId, workflowId, ct);
             var recent = await events.GetRecentEventsAsync(projectId, workflowId, selectedNodeId, ct);
             return Results.Content(DashboardPage.Render(state, plan, recent, dashboardTheme?.Invoke(), parentNodeId,
-                selectedNodeId, activity.ReadLatest(projectId, workflowId)), "text/html; charset=utf-8");
+                selectedNodeId, activity.ReadLatest(projectId, workflowId), activity.ReadTokenUsage(projectId, workflowId)),
+                "text/html; charset=utf-8");
         });
         app.MapMcp("/mcp");
     }

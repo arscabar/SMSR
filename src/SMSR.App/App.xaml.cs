@@ -12,6 +12,7 @@ public partial class App : WpfApplication
 {
     private LocalServerHost? _server;
     private TrayStatusIcon? _tray;
+    private PetController? _pet;
     private MainInstanceGuard? _mainInstance;
 
     protected override async void OnStartup(StartupEventArgs e)
@@ -142,6 +143,7 @@ public partial class App : WpfApplication
             await viewModel.LoadAsync();
             MainWindow = new MainWindow(viewModel, () => settings.Current.MinimizeToTray);
             var window = (MainWindow)MainWindow;
+            _pet = new PetController(settings, viewModel.Workspace);
             void Execute(System.Windows.Input.ICommand command)
             {
                 if (command.CanExecute(null)) command.Execute(null);
@@ -151,10 +153,12 @@ public partial class App : WpfApplication
                 () => Dispatcher.Invoke(() => Execute(viewModel.Workspace.OpenDashboardCommand)),
                 () => Dispatcher.Invoke(() => Execute(viewModel.Server.StartCommand)),
                 () => Dispatcher.Invoke(() => Execute(viewModel.Server.StopCommand)),
-                () => Dispatcher.Invoke(() => window.ShowFromTray(3)),
+                () => Dispatcher.Invoke(() => window.ShowFromTray(2)),
+                () => Dispatcher.Invoke(() => _pet.Toggle()),
                 ExitApplication,
                 () => new(_server.IsRunning, viewModel.Server.IsCodexConnected,
-                    viewModel.Workspace.OpenDashboardCommand.CanExecute(null)));
+                    viewModel.Workspace.OpenDashboardCommand.CanExecute(null)),
+                () => (_pet.CanShow, _pet.IsVisible));
             _server.StateChanged += OnServerStateChanged;
             _mainInstance.Listen(() => Dispatcher.BeginInvoke(() => window.ShowFromTray()));
             if (!startInBackground) MainWindow.Show();
@@ -171,6 +175,7 @@ public partial class App : WpfApplication
     {
         if (_server is not null) _server.StateChanged -= OnServerStateChanged;
         _tray?.Dispose();
+        _pet?.Dispose();
         _server?.DisposeAsync().AsTask().GetAwaiter().GetResult();
         _mainInstance?.Dispose();
         base.OnExit(e);

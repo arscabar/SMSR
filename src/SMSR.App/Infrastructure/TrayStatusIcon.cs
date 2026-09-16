@@ -12,11 +12,17 @@ internal sealed class TrayStatusIcon : IDisposable
     private readonly ToolStripMenuItem _dashboard;
     private readonly ToolStripMenuItem _startServer;
     private readonly ToolStripMenuItem _stopServer;
+    private readonly ToolStripMenuItem _pet;
+    private readonly Action _togglePet;
+    private readonly Func<(bool CanShow, bool IsVisible)> _petState;
 
     public TrayStatusIcon(Action showWindow, Action openDashboard, Action startServer,
-        Action stopServer, Action openSettings, Action exitApplication, Func<TrayMenuState> state)
+        Action stopServer, Action openSettings, Action togglePet, Action exitApplication,
+        Func<TrayMenuState> state, Func<(bool CanShow, bool IsVisible)> petState)
     {
         _state = state;
+        _togglePet = togglePet;
+        _petState = petState;
         var menu = new ContextMenuStrip();
         menu.Items.Add(_status);
         menu.Items.Add(new ToolStripSeparator());
@@ -31,6 +37,8 @@ internal sealed class TrayStatusIcon : IDisposable
         menu.Items.Add(_startServer);
         menu.Items.Add(_stopServer);
         menu.Items.Add("설정 열기", null, (_, _) => openSettings());
+        _pet = new("펫 표시", null, (_, _) => _togglePet());
+        menu.Items.Add(_pet);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("완전 종료", null, (_, _) => exitApplication());
         menu.Opening += (_, _) => RefreshStatus();
@@ -47,6 +55,9 @@ internal sealed class TrayStatusIcon : IDisposable
         _dashboard.Enabled = state.CanOpenDashboard;
         _startServer.Enabled = !state.IsServerRunning;
         _stopServer.Enabled = state.IsServerRunning;
+        var pet = _petState();
+        _pet.Enabled = pet.CanShow;
+        _pet.Text = pet.IsVisible ? "펫 숨기기" : "펫 표시";
         _icon.Text = state.ToolTip;
     }
 

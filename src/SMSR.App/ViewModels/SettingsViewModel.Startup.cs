@@ -44,5 +44,11 @@ public sealed partial class SettingsViewModel
         OnPropertyChanged(nameof(DashboardTheme));
         OnPropertyChanged(nameof(RequirePlanReview));
         OnPropertyChanged(nameof(PlanningPrompt));
+        OnPropertyChanged(nameof(PetEnabled));
+        OnPropertyChanged(nameof(PetName));
+        OnPropertyChanged(nameof(PetImagePath));
+        OnPropertyChanged(nameof(PetImageLabel));
+        OnPropertyChanged(nameof(HasPetImage));
+        _removePetCommand.NotifyCanExecuteChanged();
     }
 }

@@ -24,7 +24,7 @@ public sealed partial class WorkflowWorkspaceViewModel
 
     private async Task GenerateSummaryAsync(DateTime startDate, DateTime endDate)
     {
-        var label = DateRangeLabel(startDate, endDate);
+        var label = $"{SummaryProjectScope.Label} · {DateRangeLabel(startDate, endDate)}";
         IsSummarizing = true;
         DailySummaryMeta = $"{label} 자료를 모으는 중…";
         try
@@ -91,13 +91,12 @@ public sealed partial class WorkflowWorkspaceViewModel
     private async Task<(WorkflowCalendarEntry[] Workflows, DailyActivity[] Activities)> LoadSummaryDataAsync(
         DateTime startDate, DateTime endDate)
     {
-        var projectId = Selection.ProjectId;
         var (start, _) = LocalDayRange(startDate);
         var (_, end) = LocalDayRange(endDate);
         var activities = (await _host.GetDailyActivitiesAsync(start, end))
-            .Where(item => item.ProjectId == projectId).ToArray();
+            .Where(item => IncludesSummaryProject(item.ProjectId)).ToArray();
         var workflows = (await _host.GetWorkflowCalendarAsync())
-            .Where(item => item.ProjectId == projectId
+            .Where(item => IncludesSummaryProject(item.ProjectId)
                 && item.UpdatedAtUtc?.ToLocalTime().Date is { } date
                 && date >= startDate.Date && date <= endDate.Date).ToArray();
         return (workflows, activities);

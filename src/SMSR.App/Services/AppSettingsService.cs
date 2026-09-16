@@ -19,7 +19,10 @@ public sealed record AppSettings(
     bool AutoUpdateEnabled = false,
     bool RequirePlanReview = true,
     string PlanningPrompt = PlanningPromptSettings.Default,
-    string GeminiModel = GeminiSummaryClient.DefaultModel);
+    string GeminiModel = GeminiSummaryClient.DefaultModel,
+    bool PetEnabled = false,
+    string PetName = "",
+    string PetImagePath = "");
 
 public sealed class AppSettingsService
 {

@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using SMSR.App.Mvp;
+using SMSR.App.ViewModels;
 
 namespace SMSR.App.Services;
 
@@ -41,6 +42,10 @@ internal static class AiSummarySelfCheck
             || !questionPrompt.Contains("왜 필요한가요?", StringComparison.Ordinal)
             || !questionPrompt.Contains("이유나 필요성이 기록되지 않았다면", StringComparison.Ordinal))
             throw new InvalidOperationException("프로젝트 기간 질의 프롬프트 검증이 실패했습니다.");
+        var allProjectsPrompt = DailyWorkSummaryPrompt.BuildQuestion(new(2026, 9, 15), new(2026, 9, 15),
+            WorkflowWorkspaceViewModel.AllProjectsSummaryScope, [], [], "오늘 전체 작업은?");
+        if (!allProjectsPrompt.Contains("전체 프로젝트", StringComparison.Ordinal))
+            throw new InvalidOperationException("전체 프로젝트 질의 프롬프트 검증이 실패했습니다.");
         if (!GeminiSummaryClient.CanOfferFallback("Gemini 응답 오류(503)")
             || GeminiSummaryClient.CanOfferFallback("Gemini 응답 오류(403)")
             || GeminiSummaryClient.SelectFallbackModel("gemini-3.8-flash",

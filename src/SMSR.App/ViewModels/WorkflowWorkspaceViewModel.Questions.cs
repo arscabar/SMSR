@@ -20,7 +20,7 @@ public sealed partial class WorkflowWorkspaceViewModel
             return;
         }
 
-        var label = $"{Selection.ProjectId} · {DateRangeLabel(startDate, endDate)} · 질의";
+        var label = $"{SummaryProjectScope.Label} · {DateRangeLabel(startDate, endDate)} · 질의";
         IsSummarizing = true;
         DailySummaryMeta = $"{label} 자료를 모으는 중…";
         try
@@ -28,11 +28,11 @@ public sealed partial class WorkflowWorkspaceViewModel
             var (workflows, activities) = await LoadSummaryDataAsync(startDate, endDate);
             if (activities.Length == 0 && workflows.Length == 0)
             {
-                DailySummary = "선택한 프로젝트와 기간에 질문할 작업 기록이 없습니다.";
+                DailySummary = "선택한 범위와 기간에 질문할 작업 기록이 없습니다.";
                 DailySummaryMeta = $"{label} · 기록 없음";
                 return;
             }
-            var prompt = DailyWorkSummaryPrompt.BuildQuestion(startDate, endDate, Selection.ProjectId,
+            var prompt = DailyWorkSummaryPrompt.BuildQuestion(startDate, endDate, SummaryProjectScope.Label,
                 workflows, activities, question);
             string? geminiError = null;
             if (_geminiCredentials.Exists)

@@ -29,6 +29,8 @@ public sealed partial class SettingsViewModel : ViewModelBase
         OpenDataFolderCommand = new RelayCommand(() => Open(DataPath, "데이터"));
         OpenLogFolderCommand = new RelayCommand(() => Open(LogPath, "로그"));
         CheckForUpdatesCommand = new RelayCommand(() => _ = CheckForUpdatesAsync(false), () => !_isCheckingForUpdates);
+        _registerPetCommand = new RelayCommand(RegisterPet);
+        _removePetCommand = new RelayCommand(RemovePet, () => HasPetImage);
         _startWithWindows = ReadStartupState();
         _settings.Changed += OnSettingsChanged;
     }

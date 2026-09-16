@@ -5,6 +5,7 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel>
             <views:SettingsGeneralPanel />
+            <views:SettingsPetPanel />
             <views:SettingsPlanningPanel />
             <views:SettingsAiPanel />
             <Border Margin="0,14,0,0" Padding="18" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10">

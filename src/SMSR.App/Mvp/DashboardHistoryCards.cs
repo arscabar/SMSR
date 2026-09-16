@@ -19,7 +19,7 @@ internal static class DashboardHistoryCards
             var detail = item.Error ?? item.Summary ?? "기록된 설명이 없습니다.";
             var artifacts = item.Artifacts is { Count: > 0 }
                 ? $"<div class=\"status-artifacts\"><span>산출물</span>{DashboardPanels.Encode(string.Join(" · ", item.Artifacts))}</div>" : "";
-            html.Append($"<details class=\"status-card {StatusClass(item.Status)}\" data-record-id=\"{DashboardPanels.Encode(item.NodeId)}\" open><summary><span class=\"status-card-title\">{DashboardPanels.Encode(title)}</span><span class=\"status-badge\">{status}</span></summary><div class=\"status-card-body\"><time>{item.CreatedAt.ToLocalTime():yyyy-MM-dd HH:mm:ss} · {DashboardPanels.Encode(item.NodeId)}</time><p>{DashboardPanels.Encode(detail)}</p><div class=\"status-meta\">담당 {DashboardPanels.Encode(item.AgentId)} · 진행 {item.ProgressPercentage ?? (item.Status == "SUCCESS" ? 100 : 0)}% · 재시도 {item.RetryCount}회</div>{artifacts}</div></details>");
+            html.Append($"<details class=\"status-card {StatusClass(item.Status)}\" data-record-id=\"{DashboardPanels.Encode(item.NodeId)}\" open><summary><span class=\"status-card-title\">{DashboardPanels.Encode(title)}</span><span class=\"status-badge\">{status}</span></summary><div class=\"status-card-body\"><time>{item.CreatedAt.ToLocalTime():yyyy-MM-dd HH:mm:ss} · {DashboardPanels.Encode(item.NodeId)}</time><p>{DashboardPanels.Encode(detail)}</p><div class=\"status-meta\">담당 {DashboardPanels.Encode(item.AgentId)} · 진척도 {item.ProgressPercentage ?? (item.Status == "SUCCESS" ? 100 : 0)}% · 재시도 {item.RetryCount}회</div>{artifacts}</div></details>");
         }
         return html.Append("</div>").ToString();
     }
@@ -39,9 +39,9 @@ internal static class DashboardHistoryCards
         "FAILED" => "실패",
         "BLOCKED" => "차단",
         "CANCELLED" => "중단",
-        "IN_PROGRESS" => "진행 중",
-        "VALIDATING" => "검증 중",
-        "RETRYING" => "재시도",
+        "IN_PROGRESS" => "진행 상태",
+        "VALIDATING" => "검증 상태",
+        "RETRYING" => "재시도 상태",
         _ => "대기"
     };
 }

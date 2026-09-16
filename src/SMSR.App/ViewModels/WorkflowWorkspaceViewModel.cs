@@ -1,4 +1,5 @@
 using System.Windows.Input;
+using System.Collections.ObjectModel;
 using SMSR.App.Infrastructure;
 using SMSR.App.Services;
 
@@ -6,6 +7,7 @@ namespace SMSR.App.ViewModels;
 
 public sealed partial class WorkflowWorkspaceViewModel : ViewModelBase
 {
+    public const string AllProjectsSummaryScope = "전체 프로젝트";
     private readonly LocalServerHost _host;
     private readonly IPlatformActions _platform;
     private readonly RelayCommand _openDashboardCommand;
@@ -24,6 +26,8 @@ public sealed partial class WorkflowWorkspaceViewModel : ViewModelBase
     private string _dailySummary = "요약할 날짜를 선택하거나 금일 작업 요약을 실행하세요.";
     private string _dailySummaryMeta = "선택한 프로젝트의 그래프와 일일 작업 기록을 함께 사용합니다.";
     private string _summaryQuestion = "";
+    private SummaryProjectScopeOption _summaryProjectScope = new(AllProjectsSummaryScope, null);
+    private bool _summaryScopeInitialized;
     private string? _pendingSummaryRequestId;
     private string? _pendingSummaryLabel;
 
@@ -77,6 +81,18 @@ public sealed partial class WorkflowWorkspaceViewModel : ViewModelBase
     public ICommand DeleteWorkflowCommand { get; }
     public ICommand DeleteProjectCommand { get; }
     public ICommand DeleteAllCommand { get; }
+    public ObservableCollection<SummaryProjectScopeOption> SummaryProjectScopes { get; } =
+        new() { new(AllProjectsSummaryScope, null) };
+    public SummaryProjectScopeOption SummaryProjectScope
+    {
+        get => _summaryProjectScope;
+        set
+        {
+            if (value is null || !SetField(ref _summaryProjectScope, value)) return;
+            NotifyCommandStates();
+        }
+    }
+    public bool IsAllSummaryProjects => SummaryProjectScope.ProjectId is null;
     public string StatusMessage { get => _statusMessage; private set => SetField(ref _statusMessage, value); }
     public string DailySummary { get => _dailySummary; private set => SetField(ref _dailySummary, value); }
     public string DailySummaryMeta { get => _dailySummaryMeta; private set => SetField(ref _dailySummaryMeta, value); }
@@ -100,7 +116,8 @@ public sealed partial class WorkflowWorkspaceViewModel : ViewModelBase
     private bool HasWorkflowSelection() => !_isDeleting && HasProjectSelection() && !string.IsNullOrWhiteSpace(Selection.WorkflowId);
     private bool HasProjectSelection() => !_isDeleting && _host.IsRunning && !string.IsNullOrWhiteSpace(Selection.ProjectId);
     private bool CanDeleteAll() => !_isDeleting && _host.IsRunning && Selection.ProjectIds.Count > 0;
-    private bool CanSummarize() => !_isSummarizing && HasProjectSelection();
+    private bool CanSummarize() => !_isSummarizing && _host.IsRunning
+        && SummaryProjectScopes.Contains(SummaryProjectScope);
     private bool CanSummarizeSelectedDate() => CanSummarize() && Selection.SelectedDate is not null;
     private bool CanAskSummaryQuestion() => CanSummarizeSelectedDate();
 

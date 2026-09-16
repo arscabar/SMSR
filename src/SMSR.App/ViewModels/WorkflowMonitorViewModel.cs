@@ -21,6 +21,7 @@ public sealed class WorkflowMonitorViewModel : ViewModelBase
     }
 
     public ObservableCollection<StateNode> Nodes { get; } = [];
+    public ObservableCollection<PlanNodeState> PlanNodes { get; } = [];
     public ObservableCollection<WorkflowEventItem> RecentEvents { get; } = [];
     public string Summary { get => _summary; private set => SetField(ref _summary, value); }
     public string UpdateMode { get => _updateMode; private set => SetField(ref _updateMode, value); }
@@ -29,13 +30,21 @@ public sealed class WorkflowMonitorViewModel : ViewModelBase
     {
         _projectId = projectId;
         _workflowId = workflowId;
-        var state = await _host.GetStateAsync(projectId, workflowId);
-        var events = await _host.GetRecentEventsAsync(projectId, workflowId);
+        var stateTask = _host.GetStateAsync(projectId, workflowId);
+        var planTask = _host.GetPlanAsync(projectId, workflowId);
+        var eventsTask = _host.GetRecentEventsAsync(projectId, workflowId);
+        var summaryTask = _host.GetLatestSummaryAsync(projectId, workflowId);
+        await Task.WhenAll(stateTask, planTask, eventsTask, summaryTask);
+        var state = await stateTask;
+        var plan = await planTask;
+        var events = await eventsTask;
         Nodes.Clear();
+        PlanNodes.Clear();
         RecentEvents.Clear();
         foreach (var node in state.Nodes) Nodes.Add(node);
+        foreach (var node in plan.Nodes) PlanNodes.Add(node);
         foreach (var item in events) RecentEvents.Add(new(item));
-        Summary = (await _host.GetLatestSummaryAsync(projectId, workflowId))?.Content ?? "저장된 요약이 없습니다.";
+        Summary = (await summaryTask)?.Content ?? "저장된 요약이 없습니다.";
     }
 
     public async Task GenerateSummaryAsync(string projectId, string workflowId)
@@ -67,6 +76,7 @@ public sealed class WorkflowMonitorViewModel : ViewModelBase
     {
         StopLiveUpdates();
         Nodes.Clear();
+        PlanNodes.Clear();
         RecentEvents.Clear();
         Summary = "워크플로우를 선택하세요.";
     }

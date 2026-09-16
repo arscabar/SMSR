@@ -35,8 +35,11 @@ internal static class ActivityEndpoints
             || string.IsNullOrWhiteSpace(record.Category) || record.Category.Length > 64)
             return "활동 식별자가 올바르지 않습니다.";
         if (record.TurnId?.Length > 256 || record.AgentId?.Length > 256 || record.NodeId?.Length > 128
-            || record.ToolName?.Length > 256 || record.ToolUseId?.Length > 256)
+            || record.ToolName?.Length > 256 || record.ToolUseId?.Length > 256 || record.GoalId?.Length > 256)
             return "활동 필드 길이가 올바르지 않습니다.";
+        if (new long?[] { record.SessionInputTokens, record.SessionOutputTokens,
+                record.GraphInputTokens, record.GraphOutputTokens }.Any(value => value < 0))
+            return "토큰 사용량은 음수일 수 없습니다.";
         return null;
     }
 }

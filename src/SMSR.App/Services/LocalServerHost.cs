@@ -87,6 +87,7 @@ public sealed class LocalServerHost(string? dataPath = null, int port = LocalSer
     public PendingDailySummary CreateDailySummaryRequest(DateTime date, string prompt)
         => Server.CreateDailySummaryRequest(date, prompt);
     public Task<WorkflowState> GetStateAsync(string projectId, string workflowId) => Server.GetStateAsync(projectId, workflowId);
+    public Task<WorkflowPlan> GetPlanAsync(string projectId, string workflowId) => Server.GetPlanAsync(projectId, workflowId);
     public Task<IReadOnlyList<RecentEvent>> GetRecentEventsAsync(string projectId, string workflowId) => Server.GetRecentEventsAsync(projectId, workflowId);
     public Task<WorkflowSummary?> GetLatestSummaryAsync(string projectId, string workflowId) => Server.GetLatestSummaryAsync(projectId, workflowId);
     public Task<WorkflowSummary> GenerateSummaryAsync(string projectId, string workflowId) => Server.GenerateSummaryAsync(projectId, workflowId);

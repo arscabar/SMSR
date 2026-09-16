@@ -26,6 +26,29 @@ public static class MvpSelfCheck
                 || new TrayMenuState(true, false, false).StatusColor != System.Drawing.Color.DarkOrange
                 || new TrayMenuState(false, false, false).StatusColor != System.Drawing.Color.Firebrick)
                 throw new InvalidOperationException("트레이 상태 모델 검증이 실패했습니다.");
+            Directory.CreateDirectory(serverPath);
+            var petSource = Path.Combine(serverPath, "source.png");
+            await File.WriteAllBytesAsync(petSource, Convert.FromBase64String(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="));
+            var petPath = PetAssetStore.Register(petSource, serverPath);
+            var rejectedPet = Path.Combine(serverPath, "invalid.png");
+            await File.WriteAllTextAsync(rejectedPet, "MZ executable");
+            try
+            {
+                PetAssetStore.Register(rejectedPet, serverPath);
+                throw new InvalidOperationException("위장 펫 이미지가 허용되었습니다.");
+            }
+            catch (InvalidOperationException exception) when (exception.Message.Contains("파일 내용", StringComparison.Ordinal)) { }
+            var pet = PetPresentation.From([
+                new("work", "agent", "IN_PROGRESS", null, null, DateTimeOffset.UtcNow, ProgressPercentage: 40),
+                new("done", "agent", "SUCCESS", null, null, DateTimeOffset.UtcNow),
+                new("blocked", "agent", "BLOCKED", null, null, DateTimeOffset.UtcNow)], [
+                new("parent", "상위", 1, [], "PENDING", null, null, null),
+                new("work", "구현", 1, [], "IN_PROGRESS", null, null, null, "parent"),
+                new("done", "완료", 1, [], "SUCCESS", null, null, null, "parent")]);
+            if (!File.Exists(petPath) || !petPath.StartsWith(Path.Combine(serverPath, "Pet"), StringComparison.OrdinalIgnoreCase)
+                || pet.Status != "BLOCKED" || pet.Label != "확인이 필요해요" || pet.Progress != 70)
+                throw new InvalidOperationException("단일 펫 자산·상태 표시 검증이 실패했습니다.");
             CodexMcpConfigSelfCheck.Run();
             OAuthPersistenceSelfCheck.Run(serverPath);
             await ActivitySelfCheck.RunAsync(serverPath);
@@ -104,6 +127,12 @@ public static class MvpSelfCheck
                 || !cancelledPage.Contains("flow-node CANCELLED") || !cancelledPage.Contains("중단")
                 || !CodexActivityClassifier.IsTerminalEvent("smsr.record_event", cancelledArguments.RootElement))
                 throw new InvalidOperationException("중단 그래프 종결·표시 검증이 실패했습니다.");
+            var completedPage = DashboardPage.Render(
+                new("demo", "completed", [new("done", "agent", "SUCCESS", "완료", null, DateTimeOffset.UtcNow)]),
+                new("demo", "completed", [new("done", "완료 작업", 1, [], "SUCCESS", "완료", null, DateTimeOffset.UtcNow)]), []);
+            if (!completedPage.Contains("<span id=\"live-connection\" class=\"chip\" data-static=\"true\">그래프 완료</span>")
+                || !completedPage.Contains("element.dataset.static !== 'true'"))
+                throw new InvalidOperationException("완료 그래프 연결 상태 표시 검증이 실패했습니다.");
             if (EventValidation.Validate(first with { Commands = Enumerable.Repeat("command", 101).ToArray() }) is null || EventValidation.ValidateWorkflowIds("", "wf-1") is null)
                 throw new InvalidOperationException("입력 크기 검증이 실패했습니다.");
             if (PlanValidation.Validate("demo", "wf-1", [new("node-a", "A", 1, ["node-a"])]) is null)
@@ -132,7 +161,8 @@ public static class MvpSelfCheck
                 || !page.Contains("선택 노드 활동") || !page.Contains("SELECTED_NODE_ACTIVITY")
                 || !page.Contains("SELECTED_HISTORY_NEW") || !page.Contains("SELECTED_HISTORY_OLD")
                 || page.Contains("OTHER_NODE_ACTIVITY") || page.Contains("OTHER_NODE_STATUS")
-                || !page.Contains("주 에이전트") || !WebUtility.HtmlDecode(page).Contains("구현 · 검증") || !page.Contains("코드 변경") || !page.Contains("작업 중")
+                || !page.Contains("주 에이전트") || !WebUtility.HtmlDecode(page).Contains("구현 · 검증") || !page.Contains("코드 변경") || !page.Contains("연결됨")
+                || !page.Contains("진행 상태")
                 || !page.Contains("agent-focus") || !page.Contains("tech-details") || !page.Contains("detail-card")
                 || !page.Contains("detail-meta") || !page.Contains("결과") || !page.Contains("완료 기준") || !page.Contains("마지막 갱신")
                 || page.Contains(">다음 단계<")
@@ -167,6 +197,15 @@ public static class MvpSelfCheck
             if (heartbeatGraph.Split(" current\"", StringSplitOptions.None).Length != 2
                 || !heartbeatGraph.Contains("flow-node IN_PROGRESS current\"><title>이전 진행"))
                 throw new InvalidOperationException("최신 heartbeat 작업 하이라이트 검증이 실패했습니다.");
+            var stalledPage = DashboardPage.Render(highlightState with
+            {
+                Nodes = highlightState.Nodes.Select(node => node with { UpdatedAt = DateTimeOffset.UtcNow.AddMinutes(-2) }).ToArray(),
+                Agents = []
+            }, highlightPlan, []);
+            if (!stalledPage.Contains("정체 가능 2") || !stalledPage.Contains("확인 필요 0")
+                || !stalledPage.Contains(">자동 갱신 연결 중</span>")
+                || !stalledPage.Contains("실패 0"))
+                throw new InvalidOperationException("활성 그래프 상태 요약 검증이 실패했습니다.");
             var gatedPlan = new WorkflowPlan("demo", "gated", [
                 new("first", "선행", 1, [], "IN_PROGRESS", null, null, null),
                 new("second", "후행", 1, ["first"], "IN_PROGRESS", null, null, null)]);
@@ -318,6 +357,8 @@ public static class MvpSelfCheck
                 await legacyStore.InitializeAsync();
                 await legacyStore.SavePlanAsync("demo", opaqueWorkflow, [new("readable", "사람이 읽는 기존 작업")]);
                 await legacyStore.SavePlanAsync("project-b", "workflow-b", [new("b-node", "B 프로젝트 구현")]);
+                await legacyStore.SavePlanAsync(WorkflowWorkspaceViewModel.AllProjectsSummaryScope, "same-label",
+                    [new("same-label-node", "전체 프로젝트라는 이름의 실제 프로젝트")]);
                 await legacyStore.RecordAsync(new("event-b", "project-b", "workflow-b", "b-node", "agent-b",
                     "NODE_STATUS_CHANGED", "IN_PROGRESS", "B 프로젝트 작업 중", null, null, ["b-result.txt"],
                     "implementer", 40));
@@ -348,6 +389,19 @@ public static class MvpSelfCheck
                     throw new InvalidOperationException("사용자 설정 저장 검증이 실패했습니다.");
                 viewModel.Workspace.Selection.ProjectId = "demo";
                 await viewModel.Workspace.Selection.LoadAsync();
+                if (!viewModel.Workspace.SummaryProjectScopes.Any(item => item.ProjectId is null)
+                    || !viewModel.Workspace.SummaryProjectScopes.Any(item => item.ProjectId == "demo")
+                    || !viewModel.Workspace.SummaryProjectScopes.Any(item => item.ProjectId == "project-b")
+                    || viewModel.Workspace.SummaryProjectScopes.Count(item =>
+                        item.Label == WorkflowWorkspaceViewModel.AllProjectsSummaryScope) != 2)
+                    throw new InvalidOperationException("AI 요약 프로젝트 범위 목록 검증이 실패했습니다: "
+                        + string.Join(", ", viewModel.Workspace.SummaryProjectScopes.Select(item => $"{item.Label}/{item.ProjectId ?? "ALL"}")));
+                viewModel.Workspace.SummaryProjectScope = viewModel.Workspace.SummaryProjectScopes[0];
+                if (!viewModel.Workspace.IsAllSummaryProjects
+                    || !viewModel.Workspace.GenerateTodaySummaryCommand.CanExecute(null))
+                    throw new InvalidOperationException("AI 요약 전체 프로젝트 범위 검증이 실패했습니다.");
+                viewModel.Workspace.SummaryProjectScope = viewModel.Workspace.SummaryProjectScopes
+                    .Single(item => item.ProjectId == "demo");
                 if (!viewModel.Workspace.Selection.DailyActivities.Any(item => item.ActivityId == "daily-simple")
                     || !viewModel.Workspace.Selection.CalendarSummary.Contains("작업 기록", StringComparison.Ordinal)
                     || !viewModel.Workspace.Selection.DailyOverview.Contains("변경 파일", StringComparison.Ordinal)

@@ -9,6 +9,7 @@ public sealed partial class WorkflowWorkspaceViewModel
         try
         {
             await Selection.LoadAsync();
+            RefreshSummaryProjectScopes(await _host.GetProjectIdsAsync());
             StatusMessage = Selection.ProjectIds.Count == 0
                 ? "저장된 프로젝트가 없습니다. ID를 직접 입력하세요." : "저장 목록을 새로 고쳤습니다.";
         }

@@ -43,6 +43,19 @@ public sealed class ActivityJsonlStore(string dataPath)
         });
     }
 
+    public TokenUsageSummary ReadTokenUsage(string projectId, string workflowId)
+    {
+        var graph = ReadAll(PathFor(projectId, workflowId)).ToArray();
+        var goalId = graph.OrderByDescending(item => item.TimestampUtc)
+            .Select(item => item.GoalId).FirstOrDefault(item => !string.IsNullOrWhiteSpace(item));
+        IReadOnlyList<ActivityRecord> goal = string.IsNullOrWhiteSpace(goalId) ? []
+            : graph.Where(item => item.GoalId == goalId).ToArray();
+        var graphUsage = SumLatest(graph, item => item.GraphInputTokens, item => item.GraphOutputTokens);
+        var goalUsage = SumLatest(goal, item => item.SessionInputTokens, item => item.SessionOutputTokens);
+        return new(goalUsage.Input, goalUsage.Output, graphUsage.Input, graphUsage.Output,
+            goalUsage.HasValue, graphUsage.HasValue);
+    }
+
     public bool CopyTo(string projectId, string workflowId, string destination)
         => ActivityFileLock.Run(Key(projectId, workflowId), () =>
         {
@@ -79,6 +92,28 @@ public sealed class ActivityJsonlStore(string dataPath)
     {
         try { return JsonSerializer.Deserialize<ActivityRecord>(line, Json); }
         catch { return null; }
+    }
+
+    private static IEnumerable<ActivityRecord> ReadAll(string path)
+    {
+        foreach (var candidate in new[] { path + ".previous", path })
+        {
+            if (!File.Exists(candidate)) continue;
+            IEnumerable<string> lines;
+            try { lines = File.ReadLines(candidate).ToArray(); }
+            catch (IOException) { continue; }
+            foreach (var line in lines)
+                if (Parse(line) is { } record) yield return record;
+        }
+    }
+
+    private static (long Input, long Output, bool HasValue) SumLatest(IEnumerable<ActivityRecord> records,
+        Func<ActivityRecord, long?> input, Func<ActivityRecord, long?> output)
+    {
+        var latest = records.Where(item => input(item) is not null && output(item) is not null)
+            .GroupBy(item => item.SessionId, StringComparer.Ordinal)
+            .Select(group => group.OrderByDescending(item => item.TimestampUtc).First()).ToArray();
+        return (latest.Sum(item => input(item)!.Value), latest.Sum(item => output(item)!.Value), latest.Length > 0);
     }
 
     private static void TryRotate(string path)

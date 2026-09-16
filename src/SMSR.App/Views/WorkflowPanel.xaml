@@ -111,7 +111,9 @@
                         <Button HorizontalAlignment="Right" Style="{StaticResource IconButton}" Click="CloseSummaryPopup_Click"
                                 AutomationProperties.Name="AI 요약과 질의 팝업 닫기" Content="×" ToolTip="닫기" />
                     </Grid>
-                    <TextBlock Margin="0,14,0,0" FontWeight="SemiBold" Text="{Binding Selection.ProjectId, StringFormat=프로젝트 · {0}}" />
+                    <TextBlock Margin="0,14,0,6" FontWeight="SemiBold" Text="요약·질의 범위" />
+                    <ComboBox ItemsSource="{Binding SummaryProjectScopes}" SelectedItem="{Binding SummaryProjectScope}" DisplayMemberPath="Label"
+                              AutomationProperties.Name="요약과 질의 프로젝트 범위" />
                     <TextBlock Margin="0,4,0,0" Foreground="{DynamicResource MutedTextBrush}"
                                Text="{Binding Selection.SummaryRangeLabel}" />
                     <WrapPanel Margin="0,14,0,0">
@@ -126,11 +128,11 @@
                             <TextBlock Margin="0,10,0,0" Text="{Binding DailySummary}" TextWrapping="Wrap" LineHeight="23" />
                         </StackPanel>
                     </Border>
-                    <TextBlock Margin="0,18,0,6" FontWeight="SemiBold" Text="선택 프로젝트·기간에 질문" />
+                    <TextBlock Margin="0,18,0,6" FontWeight="SemiBold" Text="선택 범위·기간에 질문" />
                     <TextBox x:Name="SummaryQuestionTextBox" Height="Auto" MinHeight="78" MaxLength="1000"
                              AcceptsReturn="True" TextWrapping="Wrap"
                              VerticalScrollBarVisibility="Auto" Text="{Binding SummaryQuestion, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                             AutomationProperties.Name="선택 프로젝트와 기간에 대한 질문"
+                             AutomationProperties.Name="선택 범위와 기간에 대한 질문"
                              ToolTip="왜 이렇게 작업되었는지, 어떤 필요가 있었는지 질문하세요." />
                     <Button Margin="0,10,0,0" HorizontalAlignment="Left" Command="{Binding AskSummaryQuestionCommand}" Content="질문하기" />
                 </StackPanel>
