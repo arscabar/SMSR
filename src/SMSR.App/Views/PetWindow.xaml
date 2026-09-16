@@ -1,24 +1,28 @@
 <Window x:Class="SMSR.App.Views.PetWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Width="190" Height="230" WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        Width="340" Height="330" WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ShowInTaskbar="False" Topmost="True" ResizeMode="NoResize" WindowStartupLocation="Manual">
-    <Grid MouseLeftButtonDown="Window_MouseLeftButtonDown" Background="Transparent">
+    <Grid x:Name="PetRoot" Background="Transparent" ContextMenuService.IsEnabled="False">
+        <Grid.ContextMenu>
+            <ContextMenu><MenuItem Header="완료 확인" Click="CompleteMenuItem_Click" /></ContextMenu>
+        </Grid.ContextMenu>
         <StackPanel VerticalAlignment="Bottom">
-            <Grid x:Name="PetVisual" Height="160" Background="Transparent" RenderTransformOrigin="0.5,0.5">
-                <Grid.RenderTransform>
-                    <TransformGroup><ScaleTransform x:Name="PetScale" /><TranslateTransform x:Name="PetMove" /></TransformGroup>
-                </Grid.RenderTransform>
-                <Image x:Name="PetImage" Stretch="Uniform" />
-                <MediaElement x:Name="PetVideo" Visibility="Collapsed" Stretch="Uniform" IsMuted="True"
-                              LoadedBehavior="Manual" UnloadedBehavior="Manual" MediaEnded="PetVideo_MediaEnded" />
+            <Grid x:Name="PetVisual" Height="280" Background="Transparent" MouseLeftButtonDown="Window_MouseLeftButtonDown">
+                <Grid x:Name="PetMediaVisual" HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                      RenderTransformOrigin="0.5,0.5">
+                    <Grid.RenderTransform>
+                        <TransformGroup><ScaleTransform x:Name="PetScale" /><TranslateTransform x:Name="PetMove" /></TransformGroup>
+                    </Grid.RenderTransform>
+                    <Image x:Name="PetImage" Stretch="Uniform" />
+                    <MediaElement x:Name="PetVideo" Visibility="Collapsed" Stretch="Uniform" IsMuted="True"
+                                  LoadedBehavior="Manual" UnloadedBehavior="Manual" MediaEnded="PetVideo_MediaEnded" />
+                </Grid>
             </Grid>
-            <Border Padding="10,7" Background="#D9111823" BorderBrush="#5562ADFF" BorderThickness="1" CornerRadius="12">
-                <StackPanel>
-                <TextBlock x:Name="PetNameText" HorizontalAlignment="Center" Foreground="White" FontWeight="Bold" TextTrimming="CharacterEllipsis" />
-                <TextBlock x:Name="PetStatusText" Margin="0,3,0,0" HorizontalAlignment="Center" Foreground="#FF9FCBFF" FontSize="12" />
-                <ProgressBar x:Name="PetProgress" Height="5" Margin="5,8,5,0" Minimum="0" Maximum="100" />
-                </StackPanel>
+            <Border x:Name="PetProgressPanel" Width="82" Padding="10,7" HorizontalAlignment="Center" Background="#E6111823"
+                    BorderBrush="#5562ADFF" BorderThickness="1" CornerRadius="12">
+                <TextBlock x:Name="PetProgressText" HorizontalAlignment="Center" Foreground="#FF9FCBFF"
+                           FontWeight="SemiBold" />
             </Border>
         </StackPanel>
     </Grid>

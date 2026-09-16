@@ -53,11 +53,20 @@ public static class MvpSelfCheck
                 throw new InvalidOperationException("단일 펫 자산·상태 표시 검증이 실패했습니다.");
             var petRules = PetMediaSelector.Distribute([petPath, secondPetPath]);
             var threePetRules = PetMediaSelector.Distribute([petPath, secondPetPath, thirdPetPath]);
+            var movedPetRules = PetMediaSelector.MoveBoundary(threePetRules, 0, 20);
             var petSettings = new AppSettings(PetMediaRules: petRules);
+            var idlePet = new PetPresentation("SUCCESS", "작업 완료", 100).AsIdle();
+            var petSettingsPath = Path.Combine(serverPath, "pet-settings");
+            new AppSettingsService(petSettingsPath).Save(new(PetSizePercent: 999, PetIdleMediaPath: thirdPetPath));
+            var storedPetSettings = new AppSettingsService(petSettingsPath).Current;
             if (petRules.Count != 2 || petRules[0].StartProgress != 0 || petRules[0].EndProgress != 49
                 || petRules[1].StartProgress != 50 || petRules[1].EndProgress != 100
                 || threePetRules.Select(rule => (rule.StartProgress, rule.EndProgress))
                     .SequenceEqual([(0, 32), (33, 66), (67, 100)]) == false
+                || movedPetRules.Select(rule => (rule.StartProgress, rule.EndProgress))
+                    .SequenceEqual([(0, 19), (20, 66), (67, 100)]) == false
+                || idlePet.Status != "IDLE" || idlePet.Label != "대기 중"
+                || storedPetSettings.PetSizePercent != 180 || storedPetSettings.PetIdleMediaPath != thirdPetPath
                 || PetMediaSelector.Validate(petRules) is not null || PetMediaSelector.Select(petSettings, 50) != secondPetPath
                 || PetMediaSelector.Validate([new(0, 40, petPath), new(50, 100, petPath)]) is null)
                 throw new InvalidOperationException("펫 진행률 자동 구간 선택·검증이 실패했습니다.");

@@ -9,6 +9,8 @@ public partial class PetWindow : Window
 {
     private string _imagePath = "";
     private readonly PetImagePlayer _imagePlayer;
+    public event EventHandler? CompletionAcknowledged;
+    public event EventHandler? OpenRequested;
     public PetWindow()
     {
         InitializeComponent();
@@ -17,36 +19,19 @@ public partial class PetWindow : Window
         Closed += (_, _) => _imagePlayer.Dispose();
     }
 
-    internal void UpdatePet(string imagePath, string name, string graphTitle, PetPresentation presentation)
+    internal void UpdatePet(string imagePath, PetPresentation presentation, int sizePercent)
     {
         if (_imagePath != imagePath)
         {
             LoadMedia(imagePath);
             _imagePath = imagePath;
         }
-        PetNameText.Text = string.IsNullOrWhiteSpace(name) ? "SMSR 펫" : name;
-        PetStatusText.Text = $"{presentation.Label} · {presentation.Progress}%\n{graphTitle}";
-        PetProgress.Value = presentation.Progress;
+        PetProgressText.Text = $"{presentation.Progress}%";
+        PetProgressPanel.Visibility = presentation.Status == "IDLE" ? Visibility.Collapsed : Visibility.Visible;
+        System.Windows.Controls.ContextMenuService.SetIsEnabled(
+            PetRoot, presentation is { Status: "SUCCESS", Progress: 100 });
+        ApplySize(sizePercent);
         Animate(presentation.Status);
-    }
-
-    private void Animate(string status)
-    {
-        PetScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty, null);
-        PetScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty, null);
-        PetMove.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, null);
-        PetVisual.BeginAnimation(OpacityProperty, null);
-        var repeat = RepeatBehavior.Forever;
-        if (status is "IN_PROGRESS" or "VALIDATING" or "RETRYING")
-        {
-            var pulse = new DoubleAnimation(1, 1.06, TimeSpan.FromMilliseconds(700)) { AutoReverse = true, RepeatBehavior = repeat };
-            PetScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty, pulse);
-            PetScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty, pulse);
-        }
-        else if (status is "BLOCKED" or "FAILED")
-            PetVisual.BeginAnimation(OpacityProperty, new DoubleAnimation(1, .55, TimeSpan.FromMilliseconds(500)) { AutoReverse = true, RepeatBehavior = repeat });
-        else if (status == "SUCCESS")
-            PetMove.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, new DoubleAnimation(0, -8, TimeSpan.FromMilliseconds(450)) { AutoReverse = true, RepeatBehavior = new(3) });
     }
 
     private void LoadMedia(string path)
@@ -79,6 +64,15 @@ public partial class PetWindow : Window
 
     private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (e.ClickCount == 2)
+        {
+            OpenRequested?.Invoke(this, EventArgs.Empty);
+            e.Handled = true;
+            return;
+        }
         if (e.ButtonState == MouseButtonState.Pressed) DragMove();
     }
+
+    private void CompleteMenuItem_Click(object sender, RoutedEventArgs e)
+        => CompletionAcknowledged?.Invoke(this, EventArgs.Empty);
 }

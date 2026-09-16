@@ -24,6 +24,16 @@ internal static class PetMediaSelector
             path)).ToArray();
     }
 
+    public static IReadOnlyList<PetMediaRule> MoveBoundary(IReadOnlyList<PetMediaRule> rules, int index, int value)
+    {
+        if (index < 0 || index >= rules.Count - 1) return rules;
+        var starts = rules.Select(rule => rule.StartProgress).ToArray();
+        starts[index + 1] = Math.Clamp(value, starts[index] + 1,
+            index + 2 < starts.Length ? starts[index + 2] - 1 : 100);
+        return rules.Select((rule, itemIndex) => new PetMediaRule(starts[itemIndex],
+            itemIndex == rules.Count - 1 ? 100 : starts[itemIndex + 1] - 1, rule.MediaPath)).ToArray();
+    }
+
     public static string? Validate(IReadOnlyList<PetMediaRule> rules)
     {
         if (rules.Count == 0) return "미디어를 하나 이상 등록하세요.";

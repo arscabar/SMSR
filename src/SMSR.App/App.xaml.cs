@@ -143,7 +143,7 @@ public partial class App : WpfApplication
             await viewModel.LoadAsync();
             MainWindow = new MainWindow(viewModel, () => settings.Current.MinimizeToTray);
             var window = (MainWindow)MainWindow;
-            _pet = new PetController(settings, viewModel.Workspace);
+            _pet = new PetController(settings, viewModel.Workspace, () => window.ShowFromTray());
             void Execute(System.Windows.Input.ICommand command)
             {
                 if (command.CanExecute(null)) command.Execute(null);

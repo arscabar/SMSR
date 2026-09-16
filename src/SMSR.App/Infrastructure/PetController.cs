@@ -11,13 +11,15 @@ internal sealed class PetController : IDisposable
 {
     private readonly AppSettingsService _settings;
     private readonly WorkflowWorkspaceViewModel _workspace;
+    private readonly Action _showMainWindow;
     private PetWindow? _window;
     private bool _refreshQueued;
 
-    public PetController(AppSettingsService settings, WorkflowWorkspaceViewModel workspace)
+    public PetController(AppSettingsService settings, WorkflowWorkspaceViewModel workspace, Action showMainWindow)
     {
         _settings = settings;
         _workspace = workspace;
+        _showMainWindow = showMainWindow;
         _settings.Changed += OnChanged;
         _workspace.Selection.PropertyChanged += OnSelectionChanged;
         _workspace.Monitor.Nodes.CollectionChanged += OnNodesChanged;
@@ -43,7 +45,17 @@ internal sealed class PetController : IDisposable
         }
         var value = _settings.Current;
         var presentation = PetPresentation.From(_workspace.Monitor.Nodes, _workspace.Monitor.PlanNodes);
-        var mediaPath = PetMediaSelector.Select(value, presentation.Progress);
+        var workflowKey = CurrentWorkflowKey();
+        var acknowledged = value.PetAcknowledgedWorkflowKey == workflowKey && workflowKey.Length > 0;
+        if (acknowledged && presentation.Status is not ("SUCCESS" or "PENDING"))
+        {
+            _settings.Save(value with { PetAcknowledgedWorkflowKey = "" });
+            value = _settings.Current;
+            acknowledged = false;
+        }
+        if (acknowledged) presentation = presentation.AsIdle();
+        var mediaPath = presentation.Status == "IDLE" && File.Exists(value.PetIdleMediaPath)
+            ? value.PetIdleMediaPath : PetMediaSelector.Select(value, presentation.Progress);
         if (!value.PetEnabled || mediaPath is null)
         {
             _window?.Hide();
@@ -51,11 +63,8 @@ internal sealed class PetController : IDisposable
         }
         try
         {
-            _window ??= new PetWindow();
-            var graphTitle = _workspace.Selection.SelectedWorkflow?.Title
-                ?? _workspace.Selection.WorkflowId;
-            if (string.IsNullOrWhiteSpace(graphTitle)) graphTitle = "그래프를 선택하세요";
-            _window.UpdatePet(mediaPath, value.PetName, graphTitle, presentation);
+            _window ??= CreateWindow();
+            _window.UpdatePet(mediaPath, presentation, value.PetSizePercent);
             if (!_window.IsVisible) _window.Show();
         }
         catch { _window?.Hide(); }
@@ -71,6 +80,25 @@ internal sealed class PetController : IDisposable
     }
 
     private void OnChanged(object? sender, EventArgs e) => Refresh();
+    private PetWindow CreateWindow()
+    {
+        var window = new PetWindow();
+        window.CompletionAcknowledged += OnCompletionAcknowledged;
+        window.OpenRequested += (_, _) => _showMainWindow();
+        return window;
+    }
+
+    private void OnCompletionAcknowledged(object? sender, EventArgs e)
+    {
+        var key = CurrentWorkflowKey();
+        if (key.Length > 0)
+            _settings.Save(_settings.Current with { PetAcknowledgedWorkflowKey = key });
+    }
+
+    private string CurrentWorkflowKey()
+        => string.IsNullOrWhiteSpace(_workspace.Selection.ProjectId)
+            || string.IsNullOrWhiteSpace(_workspace.Selection.WorkflowId)
+            ? "" : $"{_workspace.Selection.ProjectId}\n{_workspace.Selection.WorkflowId}";
     private void OnNodesChanged(object? sender, NotifyCollectionChangedEventArgs e) => QueueRefresh();
     private void OnSelectionChanged(object? sender, PropertyChangedEventArgs e)
     {

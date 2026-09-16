@@ -22,4 +22,6 @@ internal sealed record PetPresentation(string Status, string Label, int Progress
         };
         return new(status, label, Math.Clamp(progress, 0, 100));
     }
+
+    public PetPresentation AsIdle() => new("IDLE", "대기 중", Progress);
 }

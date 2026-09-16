@@ -25,7 +25,10 @@ public sealed record AppSettings(
     bool PetEnabled = false,
     string PetName = "",
     string PetImagePath = "",
-    IReadOnlyList<PetMediaRule>? PetMediaRules = null);
+    IReadOnlyList<PetMediaRule>? PetMediaRules = null,
+    int PetSizePercent = 100,
+    string PetAcknowledgedWorkflowKey = "",
+    string PetIdleMediaPath = "");
 
 public sealed class AppSettingsService
 {
@@ -70,7 +73,8 @@ public sealed class AppSettingsService
             {
                 DashboardTheme = DashboardThemes.Normalize(loaded.DashboardTheme),
                 PlanningPrompt = PlanningPromptSettings.Normalize(loaded.PlanningPrompt),
-                GeminiModel = GeminiSummaryClient.NormalizeModel(loaded.GeminiModel)
+                GeminiModel = GeminiSummaryClient.NormalizeModel(loaded.GeminiModel),
+                PetSizePercent = Math.Clamp(loaded.PetSizePercent, 60, 180)
             };
         }
         catch { return new(); }
