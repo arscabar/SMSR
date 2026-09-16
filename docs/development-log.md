@@ -2027,3 +2027,12 @@
 - 검증 결과: 선택 없음은 기존 `IDLE` 상태와 대기 미디어를 사용해 진행률을 숨긴다. 펫 창은 `ShowInTaskbar=False`를 유지하면서 SMSR 메인 창을 `Owner`로 지정해 독립 전환 창에서 제외된다. 빌드 경고 0·오류 0, 설치본 자체검사 4종 종료 코드 0이다. 설치 파일은 63,463,906 bytes, SHA-256 `C96850FA2AF23315499D43A7022CDECB8B641C2E8BC06F0BDF2EF43CAB06A38A`이다. 설정·DB·Gemini 키 파일을 보존했고 설치 버전 1.6.4.0, `/api/health` `ready`, SMSR.App 1개를 확인했다.
 - 남은 위험: 현재 컴퓨터 제어 표면에서 네이티브 앱 목록을 제공하지 않아 실제 `Alt+Tab` 화면 캡처는 수행하지 못했으며 WPF 소유 창 동작으로 검증했다. 설치 파일은 코드 서명되지 않았다.
 - 다음 조치: 기능 커밋·태그를 원격에 푸시하고 v1.6.4 GitHub Release에 설치 파일·체크섬을 게시한다.
+
+## 2026-09-16 - v1.6.4 GitHub 게시
+
+- 변경 파일: `docs/development-log.md`
+- 변경 사유: 선택 없음 펫 IDLE 처리와 SMSR 종속 창 보정의 커밋·태그·정식 릴리스 결과를 기록한다.
+- 실행 명령: `git push origin main`, `git push origin v1.6.4`, `gh release create`, GitHub Release 자산·digest 조회
+- 검증 결과: 기능 커밋 `7403cbb30e1f99d9e895c14ef89c9927d6344b6d`과 `v1.6.4` 태그를 전송하고 정식 릴리스를 게시했다. 원격 설치 EXE는 63,463,906 bytes이며 digest `sha256:c96850fa2af23315499d43a7022cdecb8b641c2e8bc06f0bdf2ef43cab06a38a`로 로컬 SHA-256과 일치한다.
+- 남은 위험: 설치 파일은 코드 서명되지 않았다.
+- 다음 조치: 실제 `Alt+Tab` 전환 화면과 선택 없음 IDLE 표시를 사용자 화면에서 확인한다.
