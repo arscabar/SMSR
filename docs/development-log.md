@@ -2000,3 +2000,12 @@
 - 검증 결과: 빌드 경고 0·오류 0, publish·설치본 자체검사 4종 종료 코드 0, MCP protocol `2025-11-25`·도구 12개를 확인했다. 설치 파일은 63,464,687 bytes, SHA-256 `6B056F561D74AE5A58DB396042DDA853E7965E2AE5B5BEEF7B1BD34F05A1AA92`이다. 설정·DB·Gemini 키 파일을 보존했고, 설치 버전 1.6.3.0, `/api/health` `ready`, SMSR.App 1개를 확인했다.
 - 남은 위험: 설치 파일은 코드 서명되지 않았고 펫 더블클릭·경계선 드래그는 실제 화면 수동 확인이 남았다.
 - 다음 조치: 기능 커밋·태그를 원격에 푸시하고 v1.6.3 GitHub Release에 설치 파일·체크섬을 게시한다.
+
+## 2026-09-16 - v1.6.3 GitHub 게시
+
+- 변경 파일: `docs/development-log.md`
+- 변경 사유: 펫 구간·크기·IDLE·SMSR 창 복원 기능의 커밋·태그·정식 릴리스 게시 결과를 기록한다.
+- 실행 명령: `git push origin main`, `git push origin v1.6.3`, `gh release create`, GitHub Release 자산·digest 조회
+- 검증 결과: 기능 커밋 `011f926ae6cf7851de32371f20e934c308e602cd`과 `v1.6.3` 태그를 전송하고 정식 릴리스를 게시했다. 원격 설치 EXE는 63,464,687 bytes이며 digest `sha256:6b056f561d74ae5a58db396042dda853e7965E2AE5B5BEEF7B1BD34F05A1AA92`로 로컬 SHA-256과 일치한다.
+- 남은 위험: 설치 파일은 코드 서명되지 않았다.
+- 다음 조치: 실제 펫 미디어 조합에서 경계선 드래그, IDLE 전환, 더블클릭 창 복원을 수동 확인한다.
