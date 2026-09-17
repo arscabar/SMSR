@@ -15,14 +15,16 @@ internal static class DashboardLiveUpdates
               let connected = false;
               let refreshing = false;
               let queued = false;
+              let navigating = false;
+              let refreshController = null;
               let liveStatus = '자동 갱신 연결 중';
               const scrollIds = ['flow', 'graph', 'details'];
               const cardStateKey = 'smsr-status-cards:{{project}}:{{workflow}}';
-              const setLiveStatus = value => {
-                liveStatus = value;
+              const showLiveStatus = value => {
                 const element = document.getElementById('live-connection');
                 if (element && element.dataset.static !== 'true') element.textContent = value;
               };
+              const setLiveStatus = value => { liveStatus = value; showLiveStatus(value); };
               const updateRunningTimes = () => document.querySelectorAll('.running-time').forEach(element => {
                 const seconds = Math.max(0, Math.floor((Date.now() - Number(element.dataset.start)) / 1000));
                 element.textContent = `실행 중 · ${seconds}초`;
@@ -63,10 +65,15 @@ internal static class DashboardLiveUpdates
               const refresh = async () => {
                 if (refreshing) { queued = true; return; }
                 refreshing = true;
-                do {
-                  queued = false;
-                  try {
-                    const response = await fetch(location.href, { cache: 'no-store' });
+                showLiveStatus('새 정보 반영 중…');
+                try {
+                  do {
+                    queued = false;
+                    const controller = new AbortController();
+                    refreshController = controller;
+                    const timeout = setTimeout(() => controller.abort(), 8000);
+                    try {
+                    const response = await fetch(location.href, { cache: 'no-store', signal: controller.signal });
                     if (!response.ok) continue;
                     const next = new DOMParser().parseFromString(await response.text(), 'text/html');
                     const scroll = captureScroll();
@@ -81,11 +88,13 @@ internal static class DashboardLiveUpdates
                     if (currentAlert && nextAlert) currentAlert.replaceWith(nextAlert);
                     else if (currentAlert) currentAlert.remove();
                     else if (nextAlert) document.querySelector('main')?.before(nextAlert);
-                  } catch { }
-                } while (queued);
-                refreshing = false;
+                    } catch { }
+                    finally { clearTimeout(timeout); if (refreshController === controller) refreshController = null; }
+                  } while (queued);
+                } finally { refreshing = false; if (!navigating) showLiveStatus(liveStatus); }
               };
               stream.addEventListener('state', () => {
+                if (navigating) return;
                 if (!connected) { connected = true; return; }
                 void refresh();
               });
@@ -120,12 +129,14 @@ internal static class DashboardLiveUpdates
                 const link = event.target.closest?.('.flow-svg a');
                 if (!link) return;
                 event.preventDefault();
-                const now = Date.now();
-                const previous = Number(sessionStorage.getItem('smsr-graph-nav') || 0);
-                if (now - previous < 600) return;
+                if (navigating) return;
                 const target = link.getAttribute('href');
                 if (!target) return;
-                sessionStorage.setItem('smsr-graph-nav', String(now));
+                navigating = true;
+                queued = false;
+                refreshController?.abort();
+                stream.close();
+                showLiveStatus('선택 작업 여는 중…');
                 location.assign(target);
               });
               document.addEventListener('dblclick', event => {

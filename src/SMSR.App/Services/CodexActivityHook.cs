@@ -29,8 +29,10 @@ internal static class CodexActivityHook
         {
             GoalId = previous?.GoalId ?? sessionId,
             RolloutPath = usage?.RolloutPath ?? previous?.RolloutPath,
-            GraphInputBase = sameGraph ? previous!.GraphInputBase ?? usage?.Input : usage?.Input,
-            GraphOutputBase = sameGraph ? previous!.GraphOutputBase ?? usage?.Output : usage?.Output
+            GoalInputBase = previous?.GoalInputBase ?? usage?.Input,
+            GoalOutputBase = previous?.GoalOutputBase ?? usage?.Output,
+            GraphInputTotal = sameGraph ? previous!.GraphInputTotal : 0,
+            GraphOutputTotal = sameGraph ? previous!.GraphOutputTotal : 0
         };
 
         var nodeId = toolInput is { } arguments && HookJson.String(arguments, "nodeId") is { Length: > 0 } node
@@ -40,7 +42,7 @@ internal static class CodexActivityHook
         var agentId = HookJson.String(input, "agent_id");
         if (HookJson.String(input, "hook_event_name") == "SubagentStart" && agentId.Length > 0)
             sessions.Save(agentId, tracking with { GoalId = tracking.GoalId ?? sessionId, RolloutPath = null,
-                GraphInputBase = 0, GraphOutputBase = 0 });
+                GoalInputBase = 0, GoalOutputBase = 0, GraphInputTotal = 0, GraphOutputTotal = 0 });
 
         var turnId = HookJson.String(input, "turn_id");
         var toolUseId = HookJson.String(input, "tool_use_id");
@@ -48,8 +50,9 @@ internal static class CodexActivityHook
             sessionId, CodexActivityClassifier.Event(eventName), CodexActivityClassifier.Category(eventName, tool), turnId,
             agentId.Length == 0 ? sessionId : agentId, nodeId, tool.Length == 0 ? null : tool,
             NullIfEmpty(toolUseId), CodexActivityClassifier.Identity(eventName, sessionId, turnId, agentId, tool, toolUseId),
-            tracking.GoalId, usage?.Input, usage?.Output,
-            Delta(usage?.Input, tracking.GraphInputBase), Delta(usage?.Output, tracking.GraphOutputBase));
+            tracking.GoalId, Delta(usage?.Input, tracking.GoalInputBase),
+            Delta(usage?.Output, tracking.GoalOutputBase),
+            tracking.GraphInputTotal, tracking.GraphOutputTotal);
         await new ActivityHookClient(dataPath).RecordAsync(record);
 
         if (eventName == "SubagentStop" && agentId.Length > 0) sessions.Remove(agentId);

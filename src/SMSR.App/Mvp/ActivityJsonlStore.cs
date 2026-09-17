@@ -52,8 +52,13 @@ public sealed class ActivityJsonlStore(string dataPath)
             : graph.Where(item => item.GoalId == goalId).ToArray();
         var graphUsage = SumLatest(graph, item => item.GraphInputTokens, item => item.GraphOutputTokens);
         var goalUsage = SumLatest(goal, item => item.SessionInputTokens, item => item.SessionOutputTokens);
+        var goalLatest = Latest(goal, item => item.SessionInputTokens, item => item.SessionOutputTokens);
+        var hasBreakdown = goalLatest.Length > 0
+            && goalLatest.All(item => item.SessionCachedInputTokens is not null);
         return new(goalUsage.Input, goalUsage.Output, graphUsage.Input, graphUsage.Output,
-            goalUsage.HasValue, graphUsage.HasValue);
+            goalUsage.HasValue, graphUsage.HasValue,
+            hasBreakdown ? goalLatest.Sum(item => item.SessionCachedInputTokens!.Value) : 0,
+            hasBreakdown);
     }
 
     public bool CopyTo(string projectId, string workflowId, string destination)
@@ -110,11 +115,15 @@ public sealed class ActivityJsonlStore(string dataPath)
     private static (long Input, long Output, bool HasValue) SumLatest(IEnumerable<ActivityRecord> records,
         Func<ActivityRecord, long?> input, Func<ActivityRecord, long?> output)
     {
-        var latest = records.Where(item => input(item) is not null && output(item) is not null)
-            .GroupBy(item => item.SessionId, StringComparer.Ordinal)
-            .Select(group => group.OrderByDescending(item => item.TimestampUtc).First()).ToArray();
+        var latest = Latest(records, input, output);
         return (latest.Sum(item => input(item)!.Value), latest.Sum(item => output(item)!.Value), latest.Length > 0);
     }
+
+    private static ActivityRecord[] Latest(IEnumerable<ActivityRecord> records,
+        Func<ActivityRecord, long?> input, Func<ActivityRecord, long?> output)
+        => records.Where(item => input(item) is not null && output(item) is not null)
+            .GroupBy(item => item.SessionId, StringComparer.Ordinal)
+            .Select(group => group.OrderByDescending(item => item.TimestampUtc).First()).ToArray();
 
     private static void TryRotate(string path)
     {

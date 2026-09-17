@@ -1,11 +1,13 @@
 using System.ComponentModel;
 using System.Text.Json;
 using ModelContextProtocol.Server;
+using SMSR.App.Services;
 
 namespace SMSR.App.Mvp;
 
 [McpServerToolType]
-public sealed class AgentTools(EventStore events, WorkflowEventNotifier notifier, OperatorInstructionQueue? instructions = null)
+public sealed class AgentTools(EventStore events, WorkflowEventNotifier notifier,
+    OperatorInstructionQueue? instructions = null, TokenUsageRecorder? tokens = null)
 {
     [McpServerTool(Name = "record_heartbeat"), Description("호출한 에이전트 자신의 역할과 생존 상태를 SMSR로 전송합니다. 응답에 operatorInstruction이 있으면 사용자가 대시보드에서 선택한 지시이므로 즉시 반영합니다.")]
     public async Task<string> RecordHeartbeat(
@@ -23,7 +25,10 @@ public sealed class AgentTools(EventStore events, WorkflowEventNotifier notifier
         notifier.Publish(projectId, workflowId);
         var instruction = status == "ACTIVE" && nodeId is not null
             ? instructions?.Take(projectId, workflowId, nodeId) : null;
-        return instruction is null ? JsonSerializer.Serialize(state)
+        var response = instruction is null ? JsonSerializer.Serialize(state)
             : JsonSerializer.Serialize(new { state, operatorInstruction = instruction });
+        tokens?.Capture(projectId, workflowId, agentId, nodeId,
+            JsonSerializer.Serialize(new { tool = "record_heartbeat", request }), response);
+        return response;
     }
 }

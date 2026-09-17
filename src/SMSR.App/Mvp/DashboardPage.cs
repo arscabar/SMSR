@@ -10,10 +10,7 @@ public static class DashboardPage
         IReadOnlyList<ActivityRecord>? activities = null, TokenUsageSummary? tokenUsage = null)
     {
         var progress = WorkflowProgress.Overall(plan, state);
-        var completed = plan.Nodes.Count(node => DashboardHierarchy.DisplayStatus(node, plan.Nodes) == "SUCCESS");
         var blocked = state.Nodes.Where(node => node.Status == "BLOCKED").ToArray();
-        var failed = state.Nodes.Count(node => node.Status == "FAILED");
-        var stalled = state.Nodes.Count(node => IsPossiblyStalled(node, state.Agents ?? []));
         var displayStatuses = plan.Nodes.Select(node => DashboardHierarchy.DisplayStatus(node, plan.Nodes)).ToArray();
         var live = LiveLabel(displayStatuses);
         var workflowTitle = plan.Nodes.FirstOrDefault(node => node.ParentNodeId is null)?.Title;
@@ -29,7 +26,7 @@ public static class DashboardPage
             <!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
             <title>SMSR 작업 그래프</title><style>{{DashboardStyles.For(theme)}}</style></head><body>
             <header><div><h1>작업 그래프 대시보드</h1><span class="muted">{{DashboardPanels.Encode(state.ProjectId)}} / {{DashboardPanels.Encode(workflowLabel)}}</span></div>
-            <div class="summary"><span id="live-connection" class="chip"{{(live.Static ? " data-static=\"true\"" : "")}}>{{live.Label}}</span>{{TokenChip("목표 작업", tokenUsage?.GoalInput ?? 0, tokenUsage?.GoalOutput ?? 0, tokenUsage?.HasGoalUsage == true)}}{{TokenChip("그래프", tokenUsage?.GraphInput ?? 0, tokenUsage?.GraphOutput ?? 0, tokenUsage?.HasGraphUsage == true)}}<span class="chip">완료 {{completed}} / {{plan.Nodes.Count}}</span><span class="chip">전체 진행률 {{progress}}%</span><span class="chip">정체 가능 {{stalled}}</span><span class="chip">확인 필요 {{blocked.Length}}</span><span class="chip">실패 {{failed}}</span></div></header>
+            <div class="summary"><span id="live-connection" class="chip"{{(live.Static ? " data-static=\"true\"" : "")}}>{{live.Label}}</span>{{TokenChip("목표 작업", tokenUsage?.GoalInput ?? 0, tokenUsage?.GoalOutput ?? 0, tokenUsage?.HasGoalUsage == true, tokenUsage?.HasGoalBreakdown == true ? tokenUsage.GoalCachedInput : null)}}{{TokenChip("그래프(추정)", tokenUsage?.GraphInput ?? 0, tokenUsage?.GraphOutput ?? 0, tokenUsage?.HasGraphUsage == true)}}<span class="chip">전체 진행률 {{progress}}%</span></div></header>
             {{alert}}<main><aside id="agents"><h2>에이전트</h2>{{DashboardPanels.RenderAgents(state, plan)}}</aside>
             <section id="flow"><div class="flow-heading"><div><h2>계층형 작업 흐름</h2>{{DashboardNavigation.Breadcrumb(state.ProjectId, state.WorkflowId, plan, parentNodeId)}}</div></div><div id="graph">{{DashboardGraph.Render(plan, state, parentNodeId)}}</div></section>
             <aside id="details"><h2>작업 상세</h2>{{DashboardPanels.RenderDetails(state, plan, selectedNodeId, parentNodeId)}}<h2 class="history-title">{{(selectedNodeId is null ? "실시간 활동" : "선택 노드 활동")}}</h2>{{DashboardPanels.RenderActivities(activities ?? [], plan, selectedNodeId)}}<h2 class="history-title">{{(selectedNodeId is null ? "상태 기록" : "선택 노드 상태 기록")}}</h2>{{DashboardPanels.RenderHistory(events, plan, selectedNodeId)}}</aside></main>
@@ -37,11 +34,6 @@ public static class DashboardPage
             </body></html>
             """;
     }
-
-    private static bool IsPossiblyStalled(StateNode node, IReadOnlyList<AgentState> agents)
-        => node.Status is "IN_PROGRESS" or "VALIDATING" or "RETRYING"
-            && DateTimeOffset.UtcNow - node.UpdatedAt > TimeSpan.FromSeconds(90)
-            && !agents.Any(agent => agent.NodeId == node.NodeId && agent.Status == "ACTIVE" && !agent.IsStale);
 
     private static (string Label, bool Static) LiveLabel(IReadOnlyList<string> statuses)
     {
@@ -54,10 +46,20 @@ public static class DashboardPage
         return ("작업 대기", true);
     }
 
-    private static string TokenChip(string label, long input, long output, bool available)
+    private static string TokenChip(string label, long input, long output, bool available, long? cachedInput = null)
         => available
-            ? $"<span class=\"chip token-chip\" title=\"IN {input:N0} · OUT {output:N0}\">{label} 토큰 · IN {Compact(input)} · OUT {Compact(output)}</span>"
+            ? $"<span class=\"chip token-chip\" tabindex=\"0\" aria-label=\"{TokenLabel(input, output, cachedInput)}\">{label} 토큰 · IN {Compact(input)} · OUT {Compact(output)}<span class=\"token-tooltip\" role=\"tooltip\">{TokenTooltip(input, output, cachedInput)}</span></span>"
             : $"<span class=\"chip token-chip muted\">{label} 토큰 · 수집 대기</span>";
+
+    private static string TokenTooltip(long input, long output, long? cachedInput)
+        => cachedInput is { } cached
+            ? $"<span><b>신규 입력</b><strong>{input - cached:N0}</strong></span><span><b>캐시 입력</b><strong>{cached:N0}</strong></span><span><b>출력</b><strong>{output:N0}</strong></span>"
+            : $"<span><b>입력</b><strong>{input:N0}</strong></span><span><b>출력</b><strong>{output:N0}</strong></span>";
+
+    private static string TokenLabel(long input, long output, long? cachedInput)
+        => cachedInput is { } cached
+            ? $"신규 입력 {input - cached:N0}, 캐시 입력 {cached:N0}, 출력 {output:N0}"
+            : $"입력 {input:N0}, 출력 {output:N0}";
 
     private static string Compact(long value) => value switch
     {

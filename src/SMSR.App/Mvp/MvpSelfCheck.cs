@@ -55,7 +55,8 @@ public static class MvpSelfCheck
             var threePetRules = PetMediaSelector.Distribute([petPath, secondPetPath, thirdPetPath]);
             var movedPetRules = PetMediaSelector.MoveBoundary(threePetRules, 0, 20);
             var petSettings = new AppSettings(PetMediaRules: petRules);
-            var idlePet = new PetPresentation("SUCCESS", "작업 완료", 100).AsIdle();
+            var completedPet = new PetPresentation("SUCCESS", "작업 완료", 100);
+            var idlePet = completedPet.AsIdle();
             var unselectedPet = PetPresentation.From([
                 new("stale", "agent", "SUCCESS", null, null, DateTimeOffset.UtcNow)], [], false);
             var petSettingsPath = Path.Combine(serverPath, "pet-settings");
@@ -67,6 +68,7 @@ public static class MvpSelfCheck
                     .SequenceEqual([(0, 32), (33, 66), (67, 100)]) == false
                 || movedPetRules.Select(rule => (rule.StartProgress, rule.EndProgress))
                     .SequenceEqual([(0, 19), (20, 66), (67, 100)]) == false
+                || !completedPet.IsCompleted || idlePet.IsCompleted
                 || idlePet.Status != "IDLE" || idlePet.Label != "대기 중"
                 || unselectedPet.Status != "IDLE" || unselectedPet.Progress != 0
                 || storedPetSettings.PetSizePercent != 180 || storedPetSettings.PetIdleMediaPath != thirdPetPath
@@ -203,6 +205,10 @@ public static class MvpSelfCheck
             if (!projectedGraph.Contains("class=\"edge SUCCESS\"") || !childGraph.Contains("class=\"edge SUCCESS\"")
                 || !projectedGraph.Contains("01a05675…3a35") || !projectedGraph.Contains("…"))
                 throw new InvalidOperationException("계층 의존선 투영과 SVG 텍스트 축약 검증이 실패했습니다.");
+            var validationGraph = DashboardGraph.Render(new("demo", "validation", [
+                new("test", "통합 검증", 1, [], "SUCCESS", null, null, null, AgentRole: "validator")]), state);
+            if (!validationGraph.Contains("flow-node SUCCESS validation"))
+                throw new InvalidOperationException("검증 노드 색상 구분 검증이 실패했습니다.");
             var highlightPlan = new WorkflowPlan("demo", "highlight", [
                 new("older", "이전 진행", 1, [], "IN_PROGRESS", null, null, DateTimeOffset.UtcNow.AddMinutes(-2)),
                 new("current", "현재 진행", 1, [], "IN_PROGRESS", null, null, DateTimeOffset.UtcNow.AddMinutes(-1))]);
@@ -230,9 +236,10 @@ public static class MvpSelfCheck
             {
                 Agents = [new("agent", "worker", "ACTIVE", "older", null, 0, DateTimeOffset.UtcNow, false)]
             }, highlightPlan, [], null, null, "older");
-            if (!stalledPage.Contains("정체 가능 2") || !stalledPage.Contains("확인 필요 0")
+            if (stalledPage.Contains("정체 가능") || stalledPage.Contains("확인 필요 0")
                 || !stalledPage.Contains(">자동 갱신 연결 중</span>")
-                || !stalledPage.Contains("실패 0") || stalledPage.Contains("class=\"node-action\"")
+                || !stalledPage.Contains("전체 진행률") || stalledPage.Contains("실패 0")
+                || stalledPage.Contains("class=\"node-action\"")
                 || !activeActionPage.Contains("작업 중인 Codex에 요청")
                 || !activeActionPage.Contains("data-action=\"redesign\"")
                 || activeActionPage.Contains("codex://threads/new?prompt="))
@@ -392,7 +399,7 @@ public static class MvpSelfCheck
                     ("state", stateRecorded),
                     ("plan", planRecorded),
                     ("dashboard-content", decodedDashboard.Contains("계층형 작업 흐름") && recordedDashboard.Contains("id=\"agents\"") && decodedDashboard.Contains("선택 노드 활동") && recordedDashboard.Contains("flow-svg") && decodedDashboard.Contains("MCP 계획 노드") && recordedDashboard.Contains("class=\"node-action\"")),
-                    ("dashboard-live", !recordedDashboard.Contains("http-equiv=\"refresh\"") && recordedDashboard.Contains("new EventSource") && recordedDashboard.Contains("live-connection") && recordedDashboard.Contains("running-time") && recordedDashboard.Contains("smsr-graph-nav") && recordedDashboard.Contains("getAttribute('href')"))
+                    ("dashboard-live", !recordedDashboard.Contains("http-equiv=\"refresh\"") && recordedDashboard.Contains("new EventSource") && recordedDashboard.Contains("live-connection") && recordedDashboard.Contains("running-time") && recordedDashboard.Contains("AbortController") && recordedDashboard.Contains("finally { refreshing = false;") && recordedDashboard.Contains("refreshController?.abort()") && recordedDashboard.Contains("새 정보 반영 중") && recordedDashboard.Contains("선택 작업 여는 중") && recordedDashboard.Contains("if (navigating) return") && recordedDashboard.Contains("getAttribute('href')"))
                 };
                 var failedChecks = localChecks.Where(check => !check.Passed).Select(check => check.Name).ToArray();
                 if (failedChecks.Length > 0)

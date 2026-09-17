@@ -12,6 +12,7 @@ public partial class PetWindow : Window
     private const int ExtendedStyle = -20;
     private const long ToolWindowStyle = 0x80;
     private string _imagePath = "";
+    private bool _completionReady;
     private readonly PetImagePlayer _imagePlayer;
     public event EventHandler? CompletionAcknowledged;
     public event EventHandler? OpenRequested;
@@ -46,8 +47,9 @@ public partial class PetWindow : Window
         }
         PetProgressText.Text = $"{presentation.Progress}%";
         PetProgressPanel.Visibility = presentation.Status == "IDLE" ? Visibility.Collapsed : Visibility.Visible;
+        _completionReady = presentation.IsCompleted;
         System.Windows.Controls.ContextMenuService.SetIsEnabled(
-            PetRoot, presentation is { Status: "SUCCESS", Progress: 100 });
+            PetRoot, _completionReady);
         ApplySize(sizePercent);
         Animate(presentation.Status);
     }
@@ -84,6 +86,7 @@ public partial class PetWindow : Window
     {
         if (e.ClickCount == 2)
         {
+            if (_completionReady) CompletionAcknowledged?.Invoke(this, EventArgs.Empty);
             OpenRequested?.Invoke(this, EventArgs.Empty);
             e.Handled = true;
             return;

@@ -26,4 +26,5 @@ internal sealed record PetPresentation(string Status, string Label, int Progress
     }
 
     public PetPresentation AsIdle() => new("IDLE", "대기 중", Progress);
+    public bool IsCompleted => Status == "SUCCESS" && Progress == 100;
 }

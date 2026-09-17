@@ -89,29 +89,52 @@ internal static class ActivitySelfCheck
         Directory.CreateDirectory(sessionDirectory);
         var rollout = Path.Combine(sessionDirectory, $"rollout-{sessionId}.jsonl");
         File.WriteAllText(rollout, """
+            {"type":"token_usage_record","payload":{"thread_token_usage":{"input_tokens":1400,"cached_input_tokens":1200,"output_tokens":350}}}
             {"type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":1200,"output_tokens":300}}}}
             """);
         var read = CodexTokenUsageReader.Read(sessionId, sessionsRoot: sessionsRoot);
-        if (read?.Input != 1200 || read.Output != 300)
+        if (read?.Input != 1400 || read.CachedInput != 1200 || read.Output != 350)
             throw new InvalidOperationException("Codex 토큰 사용량 읽기 검증이 실패했습니다.");
+
+        var recorder = new TokenUsageRecorder(dataPath, store, sessionsRoot);
+        recorder.Capture("tokens", "graph-direct", sessionId, "node", "plan request", "plan response");
+        File.AppendAllText(rollout, Environment.NewLine + """
+            {"type":"token_usage_record","payload":{"thread_token_usage":{"input_tokens":1600,"cached_input_tokens":1350,"output_tokens":400}}}
+            """);
+        recorder.Capture("tokens", "graph-direct", sessionId, "node", "event request", "event response");
+        var direct = store.ReadTokenUsage("tokens", "graph-direct");
+        var expectedGraphInput = TokenUsageRecorder.Estimate("plan response") + TokenUsageRecorder.Estimate("event response");
+        var expectedGraphOutput = TokenUsageRecorder.Estimate("plan request") + TokenUsageRecorder.Estimate("event request");
+        if (!direct.HasGoalUsage || !direct.HasGraphUsage || direct.GoalInput != 200
+            || direct.GoalCachedInput != 150 || !direct.HasGoalBreakdown
+            || direct.GoalOutput != 50 || direct.GraphInput != expectedGraphInput
+            || direct.GraphOutput != expectedGraphOutput)
+            throw new InvalidOperationException("MCP 직접 토큰 스냅샷 검증이 실패했습니다.");
 
         var now = DateTimeOffset.UtcNow;
         store.Append(new(now, "tokens", "graph-a", sessionId, "TURN_STOPPED", "LIFECYCLE",
             ActivityId: "token-a-root", GoalId: "goal-1", SessionInputTokens: 1000,
-            SessionOutputTokens: 100, GraphInputTokens: 400, GraphOutputTokens: 40));
+            SessionOutputTokens: 100, GraphInputTokens: 400, GraphOutputTokens: 40,
+            SessionCachedInputTokens: 800));
         store.Append(new(now.AddSeconds(1), "tokens", "graph-a", "token-child", "TURN_STOPPED", "LIFECYCLE",
             ActivityId: "token-a-child", GoalId: "goal-1", SessionInputTokens: 200,
-            SessionOutputTokens: 20, GraphInputTokens: 200, GraphOutputTokens: 20));
+            SessionOutputTokens: 20, GraphInputTokens: 200, GraphOutputTokens: 20,
+            SessionCachedInputTokens: 100));
         store.Append(new(now.AddSeconds(2), "tokens", "graph-b", sessionId, "TURN_STOPPED", "LIFECYCLE",
             ActivityId: "token-b-root", GoalId: "goal-1", SessionInputTokens: 1500,
-            SessionOutputTokens: 150, GraphInputTokens: 100, GraphOutputTokens: 10));
+            SessionOutputTokens: 150, GraphInputTokens: 100, GraphOutputTokens: 10,
+            SessionCachedInputTokens: 1200));
         var summary = store.ReadTokenUsage("tokens", "graph-a");
         var page = DashboardPage.Render(new("tokens", "graph-a", []), new("tokens", "graph-a", []), [],
             tokenUsage: summary);
         if (!summary.HasGoalUsage || !summary.HasGraphUsage || summary.GoalInput != 1200
+            || summary.GoalCachedInput != 900 || !summary.HasGoalBreakdown
             || summary.GoalOutput != 120 || summary.GraphInput != 600 || summary.GraphOutput != 60
             || !page.Contains("목표 작업 토큰", StringComparison.Ordinal)
-            || !page.Contains("그래프 토큰", StringComparison.Ordinal))
+            || !page.Contains("<b>신규 입력</b><strong>300</strong>", StringComparison.Ordinal)
+            || !page.Contains("<b>캐시 입력</b><strong>900</strong>", StringComparison.Ordinal)
+            || page.Contains("title=\"신규 입력", StringComparison.Ordinal)
+            || !page.Contains("그래프(추정) 토큰", StringComparison.Ordinal))
             throw new InvalidOperationException("목표·그래프 토큰 집계 표시 검증이 실패했습니다.");
     }
 

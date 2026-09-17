@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.Server;
+using SMSR.App.Services;
 
 namespace SMSR.App.Mvp;
 
@@ -73,6 +74,7 @@ public sealed class LocalServer(WebApplication app, EventStore events, WorkflowS
         builder.Services.AddSingleton(dailyActivities);
         builder.Services.AddSingleton(dailySummaries);
         builder.Services.AddSingleton(operatorInstructions);
+        builder.Services.AddSingleton(new TokenUsageRecorder(dataPath, activity));
         builder.Services.AddMcpServer(options => options.ServerInstructions = SmsrMcpInstructions.Text)
             .WithHttpTransport(options => options.Stateless = true)
             .WithTools<WorkflowTools>()

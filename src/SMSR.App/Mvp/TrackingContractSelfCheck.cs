@@ -153,7 +153,7 @@ internal static class TrackingContractSelfCheck
                 await store.GetRecentEventsAsync("SMSR", "task-1"));
             if (followUpState.Nodes.Single(node => node.NodeId == "late").Status != "IN_PROGRESS"
                 || followUpPage.Contains("전체 진행률 100%", StringComparison.Ordinal)
-                || !followUpPage.Contains("완료 3 / 4", StringComparison.Ordinal))
+                || followUpPage.Contains("완료 3 / 4", StringComparison.Ordinal))
                 Fail("완료 그래프 후속 진행 표시");
 
             var root = DashboardPage.Render(state, plan, recent);

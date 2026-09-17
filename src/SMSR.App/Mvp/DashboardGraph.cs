@@ -51,13 +51,16 @@ internal static class DashboardGraph
                 ? 0 : WorkflowProgress.Value(stateNode?.Status ?? node.Status, stateNode?.ProgressPercentage);
             var drill = isContext ? "현재 상위 작업" : children > 0 ? $"↳ 하위 작업 {children}개" : $"진척 {effectiveProgress}%";
             var meta = $"{Trim(node.NodeId, 12)} · {ShortId(agent)} · {displayStatus}";
+            var validation = IsValidation(stateNode?.AgentRole ?? node.AgentRole) ? " validation" : string.Empty;
             var current = node.NodeId == currentNodeId ? " current" : string.Empty;
-            svg.Append($"<a href=\"{Encode(target)}\"><g class=\"flow-node {Status(displayStatus)}{current}\"><title>{Encode(node.Title)} · {Encode(node.NodeId)} · {Encode(agent)} · {Encode(displayStatus)}</title><rect x=\"{position.X}\" y=\"{position.Y}\" width=\"{DashboardGraphLayout.NodeWidth}\" height=\"{DashboardGraphLayout.NodeHeight}\" rx=\"12\"/><text x=\"{center}\" y=\"{position.Y + 23}\"><tspan class=\"node-title\">{Encode(Trim(node.Title, 15))}</tspan><tspan class=\"node-meta\" x=\"{center}\" dy=\"20\">{Encode(meta)}</tspan><tspan class=\"node-drill\" x=\"{center}\" dy=\"18\">{Encode(drill)}</tspan></text></g></a>");
+            svg.Append($"<a href=\"{Encode(target)}\"><g class=\"flow-node {Status(displayStatus)}{validation}{current}\"><title>{Encode(node.Title)} · {Encode(node.NodeId)} · {Encode(agent)} · {Encode(displayStatus)}</title><rect x=\"{position.X}\" y=\"{position.Y}\" width=\"{DashboardGraphLayout.NodeWidth}\" height=\"{DashboardGraphLayout.NodeHeight}\" rx=\"12\"/><text x=\"{center}\" y=\"{position.Y + 23}\"><tspan class=\"node-title\">{Encode(Trim(node.Title, 15))}</tspan><tspan class=\"node-meta\" x=\"{center}\" dy=\"20\">{Encode(meta)}</tspan><tspan class=\"node-drill\" x=\"{center}\" dy=\"18\">{Encode(drill)}</tspan></text></g></a>");
         }
         return svg.Append("</svg>").ToString();
     }
 
     private static string Status(string value) => value is "SUCCESS" or "IN_PROGRESS" or "VALIDATING" or "FAILED" or "RETRYING" or "BLOCKED" or "CANCELLED" ? value : "PENDING";
+    private static bool IsValidation(string? role) => role?.Contains("validat", StringComparison.OrdinalIgnoreCase) == true
+        || role?.Contains("test", StringComparison.OrdinalIgnoreCase) == true;
     private static IReadOnlyList<string> ProjectDependencies(PlanNodeState node, string? parentNodeId,
         IReadOnlyDictionary<string, PlanNodeState> map, IReadOnlySet<string> layerIds)
         => node.DependsOn.Select(id => Project(id, parentNodeId, map)).Where(id => id is not null && id != node.NodeId && layerIds.Contains(id)).Select(id => id!).Distinct().ToArray();
