@@ -2902,3 +2902,12 @@
 - 검증 결과: 솔루션 빌드 경고·오류 0개, `--graph-self-test`·`--graph-static-self-test`·`--tracking-self-test`·`--self-test` 통과. 실행 앱 `artifacts/live-web-ui-20260929-r19`에서 이미지 범위 요청 206·`image/png`과 문서 제목 제외 검색을 확인했다. `SMSR-Setup-1.7.0.0-win-x64.exe`와 SHA-256 파일을 생성했고 체크섬을 재검증했다. 설치 배포 폴더의 자체 포함 C# 분석기에서도 두 그래프 자체검사를 통과했다. 운영 DB 백업 `%LocalAppData%\SMSR\verification-backups\20260929-063426-199165\snapshot.db`는 복원 무결성을 통과했다.
 - 남은 위험: 기본 관계는 파일 단위이며 호출 횟수와 함수별 관계는 저장하지 않는다. 화면에는 방향별 최대 100개만 조회된다. 미디어는 코덱·크기 제한을 받으며 SVG는 미리보기를 차단한다.
 - 다음 조치: 관계 페이지 이동, 호출 위치·횟수 저장, 함수별·다언어 관계와 대형 프로젝트 분석을 구현한다.
+
+## 2026-09-29 - 중복 SMSR 훅 충돌 해소
+
+- 변경 파일: 사용자 Codex `config.toml`의 `smsr-codex@personal` 활성화 설정, `docs/development-log.md`.
+- 변경 사유: 구형 플러그인 훅이 제거된 `record_lifecycle` MCP 도구를 메시지·종료마다 호출해 오류를 반복했다. 현재 전역 명령형 훅은 별도로 등록되어 있다.
+- 실행 명령: 플러그인·전역 훅·현재 MCP 도구 목록 비교, 설정 백업, TOML/JSON 구문 검사, 현재 훅 실행, Codex 설정·추적 자체검사.
+- 검증 결과: 구형 플러그인만 비활성화했다. TOML/JSON 파싱, 전역 훅 8종 확인, 현재 `UserPromptSubmit` 훅 직접 실행(exit 0), 설치 앱의 설정·추적 자체검사(각 exit 0)를 통과했다. 전역 훅에는 `record_lifecycle` 호출이 없다. 사용자 설정 백업은 `config.toml.bak-smsr-hook-20260929_165653`이다.
+- 남은 위험: 이미 실행 중인 Codex 대화는 플러그인 훅을 메모리에 유지할 수 있어 완전 재시작 전에는 같은 경고가 한 번 더 나올 수 있다.
+- 다음 조치: Codex 완전 재시작 후 새 대화에서 훅 오류 재발 여부를 확인한다.
