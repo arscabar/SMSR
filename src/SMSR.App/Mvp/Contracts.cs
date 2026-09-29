@@ -90,4 +90,15 @@ public sealed record WorkflowSummary(
     string Content,
     DateTimeOffset CreatedAt);
 
+public sealed record WorkflowContext(
+    string ProjectId,
+    string WorkflowId,
+    string? Reason,
+    string? Approach,
+    string? Result,
+    DateTimeOffset UpdatedAt);
+
+public sealed record WorkflowContextEditRequest(
+    string ProjectId, string WorkflowId, string? Reason, string? Approach, string? Result);
+
 public sealed record ExportResult(string DirectoryPath, string ZipPath);

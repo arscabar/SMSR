@@ -36,6 +36,19 @@ public sealed class StdioWorkflowTools(McpHttpGateway gateway)
     public Task<string> GetState(string projectId, string workflowId)
         => gateway.CallAsync("get_state", new { projectId, workflowId });
 
+    [McpServerTool(Name = "get_workflow_context"), Description("그래프의 작업 배경·진행 방식·최종 결과를 조회합니다.")]
+    public Task<string> GetWorkflowContext(string projectId, string workflowId)
+        => gateway.CallAsync("get_workflow_context", new { projectId, workflowId });
+
+    [McpServerTool(Name = "get_workflow_timeline"), Description("계획 버전·실행 순서·산출물 근거·과거 상태 불일치를 조회합니다.")]
+    public Task<string> GetWorkflowTimeline(string projectId, string workflowId)
+        => gateway.CallAsync("get_workflow_timeline", new { projectId, workflowId });
+
+    [McpServerTool(Name = "save_workflow_context"), Description("그래프의 작업 배경·진행 방식·최종 결과를 저장합니다.")]
+    public Task<string> SaveWorkflowContext(string projectId, string workflowId, string? reason = null,
+        string? approach = null, string? result = null)
+        => gateway.CallAsync("save_workflow_context", new { projectId, workflowId, reason, approach, result });
+
     [McpServerTool(Name = "generate_summary"), Description("현재 상태와 이벤트 기반의 로컬 요약을 생성해 저장합니다.")]
     public Task<string> GenerateSummary(string projectId, string workflowId)
         => gateway.CallAsync("generate_summary", new { projectId, workflowId });

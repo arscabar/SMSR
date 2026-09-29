@@ -25,6 +25,12 @@ public partial class App : WpfApplication
             catch { Shutdown(-1); }
             return;
         }
+        if (e.Args.Contains("--smsr-git-post-commit"))
+        {
+            try { await GitAutoIndexRunner.RunAsync(); Shutdown(); }
+            catch { Shutdown(-1); }
+            return;
+        }
         if (e.Args.Contains("--mcp-stdio"))
         {
             try
@@ -91,6 +97,87 @@ public partial class App : WpfApplication
             {
                 var errorPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "smsr-tracking-self-test-error.txt");
                 System.IO.File.WriteAllText(errorPath, exception.ToString());
+                Shutdown(-1);
+            }
+            return;
+        }
+        if (e.Args.Contains("--graph-self-test"))
+        {
+            try { await GraphIndexSelfCheck.RunAsync(); Shutdown(); }
+            catch (Exception exception)
+            {
+                System.IO.File.WriteAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "smsr-graph-self-test-error.txt"), exception.ToString());
+                Shutdown(-1);
+            }
+            return;
+        }
+        if (e.Args.Contains("--graph-static-self-test"))
+        {
+            try { await GraphStaticSelfCheck.RunAsync(); Shutdown(); }
+            catch (Exception exception)
+            {
+                System.IO.File.WriteAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(),
+                    "smsr-graph-static-self-test-error.txt"), exception.ToString());
+                Shutdown(-1);
+            }
+            return;
+        }
+        if (e.Args.Contains("--graph-lsp-self-test"))
+        {
+            try { await GraphLspSelfCheck.RunAsync(); Shutdown(); }
+            catch (Exception exception)
+            {
+                System.IO.File.WriteAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "smsr-graph-lsp-self-test-error.txt"), exception.ToString());
+                Shutdown(-1);
+            }
+            return;
+        }
+        if (e.Args.Contains("--graph-jdt-product-self-test"))
+        {
+            try { await GraphJdtProductSelfCheck.RunAsync(); Shutdown(); }
+            catch(Exception exception)
+            {
+                System.IO.File.WriteAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(),"smsr-graph-jdt-product-self-test-error.txt"),exception.ToString());
+                Shutdown(-1);
+            }
+            return;
+        }
+        if (e.Args.Contains("--graph-jdt-self-test"))
+        {
+            try { await GraphJdtSelfCheck.RunAsync(e.Args[Array.IndexOf(e.Args,"--graph-jdt-self-test")+1]); Shutdown(); }
+            catch(Exception exception)
+            {
+                System.IO.File.WriteAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(),"smsr-graph-jdt-self-test-error.txt"),exception.ToString());
+                Shutdown(-1);
+            }
+            return;
+        }
+        if (e.Args.Contains("--graph-advanced-self-test"))
+        {
+            try { await GraphAdvancedSelfCheck.RunAsync(); Shutdown(); }
+            catch (Exception exception)
+            {
+                System.IO.File.WriteAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "smsr-graph-advanced-self-test-error.txt"), exception.ToString());
+                Shutdown(-1);
+            }
+            return;
+        }
+        if (e.Args.Contains("--graph-responsiveness-self-test"))
+        {
+            try { await GraphResponsivenessSelfCheck.RunAsync(); Shutdown(); }
+            catch (Exception exception)
+            {
+                System.IO.File.WriteAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "smsr-graph-responsiveness-error.txt"), exception.ToString());
+                Shutdown(-1);
+            }
+            return;
+        }
+        if (e.Args.Contains("--graph-benchmark"))
+        {
+            try { await GraphPerformanceSelfCheck.RunAsync(); Shutdown(); }
+            catch (Exception exception)
+            {
+                System.IO.File.WriteAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "smsr-graph-benchmark-error.txt"), exception.ToString());
                 Shutdown(-1);
             }
             return;

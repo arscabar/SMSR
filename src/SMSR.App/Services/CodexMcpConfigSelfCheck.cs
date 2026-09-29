@@ -46,6 +46,31 @@ internal static class CodexMcpConfigSelfCheck
                 throw new InvalidOperationException("Codex 작업 기록 훅 병합 검증이 실패했습니다.");
             if (CodexAutoTrackingHook.Register(path, fakeExecutable) is not null)
                 throw new InvalidOperationException("Codex 자동 추적 훅 중복 방지가 실패했습니다.");
+            var gitConfig = Path.Combine(directory, "gitconfig");
+            var gitHooks = Path.Combine(directory, "git-hooks");
+            File.WriteAllText(gitConfig, "[user]\n\tname = Test\n");
+            var gitBackup = GitAutoIndexHook.Register(fakeExecutable, gitConfig, gitHooks);
+            var gitHook = Path.Combine(gitHooks, "post-commit");
+            if (gitBackup is null || !File.Exists(gitBackup)
+                || !GitAutoIndexHook.IsRegistered(gitConfig, gitHooks)
+                || !File.ReadAllText(gitHook).Contains("--smsr-git-post-commit", StringComparison.Ordinal)
+                || GitAutoIndexHook.Register(fakeExecutable, gitConfig, gitHooks) is not null)
+                throw new InvalidOperationException("Git 전역 훅 격리 설치 검증이 실패했습니다.");
+            var updatedExecutable = Path.Combine(directory, "SMSR Updated.exe");
+            if (GitAutoIndexHook.Register(updatedExecutable, gitConfig, gitHooks) is null
+                || !File.ReadAllText(gitHook).Contains("SMSR Updated.exe", StringComparison.Ordinal))
+                throw new InvalidOperationException("Git 훅 실행 파일 경로 갱신 검증이 실패했습니다.");
+            GitAutoIndexHook.Unregister(gitConfig, gitHooks);
+            if (GitAutoIndexHook.IsRegistered(gitConfig, gitHooks)
+                || !File.ReadAllText(gitConfig).Contains("name = Test", StringComparison.Ordinal))
+                throw new InvalidOperationException("Git 전역 훅 격리 해제 검증이 실패했습니다.");
+            File.AppendAllText(gitConfig, "[core]\n\thooksPath = C:/other-hooks\n");
+            try
+            {
+                GitAutoIndexHook.Register(fakeExecutable, gitConfig, gitHooks);
+                throw new InvalidOperationException("기존 Git 전역 훅 보호 검증이 실패했습니다.");
+            }
+            catch (InvalidOperationException error) when (error.Message.Contains("기존 전역 core.hooksPath", StringComparison.Ordinal)) { }
             var planningSettings = new AppSettings(PlanningPrompt: "PLAN {projectId} {taskId}");
             var context = CodexAutoTrackingContext.CreateOutput("{\"session_id\":\"session-1\",\"cwd\":\"C:\\\\work\\\\SMSR\",\"prompt\":\"SECRET\"}", planningSettings);
             if (!context.Contains("session-1", StringComparison.Ordinal) || !context.Contains("SMSR", StringComparison.Ordinal)

@@ -9,7 +9,7 @@ namespace SMSR.App.Mvp;
 public sealed class McpHttpGateway
 {
     private const string ProtocolVersion = "2026-07-28";
-    private readonly HttpClient _client = new() { Timeout = TimeSpan.FromSeconds(10) };
+    private readonly HttpClient _client = new() { Timeout = TimeSpan.FromMinutes(3) };
     private readonly string _address;
     private readonly string _token;
     private int _requestId;
@@ -53,7 +53,15 @@ public sealed class McpHttpGateway
         request.Headers.Add("MCP-Protocol-Version", ProtocolVersion);
         request.Headers.Add("MCP-Method", "tools/call");
         request.Headers.Add("MCP-Name", name);
-        using var response = await _client.SendAsync(request, cancellationToken);
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        deadline.CancelAfter(name is "index_project_graph" or "check_graph_freshness" or "get_graph_cycles" or "get_graph_communities"
+            or "query_graph_cypher" or "search_graph_semantic" or "search_graph_body" or "analyze_graph_code"
+            or "analyze_graph_csharp_bundle" or "get_graph_csharp_bundle"
+            or "analyze_graph_java_bundle" or "get_graph_java_bundle"
+            or "query_graph_java_definition" or "get_graph_java_definition"
+            or "analyze_graph_typescript_bundle" or "get_graph_typescript_bundle"
+            ? TimeSpan.FromMinutes(3) : TimeSpan.FromSeconds(10));
+        using var response = await _client.SendAsync(request, deadline.Token);
         var payload = await response.Content.ReadAsStringAsync(cancellationToken);
         return response.IsSuccessStatusCode ? McpHttpResponse.Text(payload)
             : JsonSerializer.Serialize(new { error = $"SMSR 서버 호출 실패: {(int)response.StatusCode}" });

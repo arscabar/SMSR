@@ -10,6 +10,9 @@ public static class EventValidation
         if (ValidateIds(request.EventId, request.ProjectId, request.WorkflowId, request.NodeId, request.AgentId) is { } error) return error;
         if (request.EventType != "NODE_STATUS_CHANGED") return "eventType은 NODE_STATUS_CHANGED여야 합니다.";
         if (!Statuses.Contains(request.Status)) return "지원하지 않는 status입니다.";
+        if (request.Status is "SUCCESS" or "FAILED" or "BLOCKED" or "CANCELLED"
+            && string.IsNullOrWhiteSpace(request.Summary) && string.IsNullOrWhiteSpace(request.Error))
+            return "종료 상태에는 summary 또는 error가 필요합니다.";
         if (request.AgentRole?.Length > 128 || request.NextAction?.Length > 2000 || request.Summary?.Length > 2000 || request.Error?.Length > 2000)
             return "agentRole은 128자, summary·error·nextAction은 2,000자 이하여야 합니다.";
         if (request.ProgressPercentage is < 0 or > 100 || request.RetryCount is < 0 or > 1000)
@@ -25,6 +28,13 @@ public static class EventValidation
         if (request.NodeId is { Length: > 128 } || request.Summary?.Length > 2000) return "nodeId는 128자, summary는 2,000자 이하여야 합니다.";
         if (request.RetryCount is < 0 or > 1000) return "retryCount는 0~1,000이어야 합니다.";
         return request.Status is "ACTIVE" or "IDLE" or "STOPPED" or "FAILED" ? null : "heartbeat status가 올바르지 않습니다.";
+    }
+
+    public static string? Validate(WorkflowContext context)
+    {
+        if (ValidateWorkflowIds(context.ProjectId, context.WorkflowId) is { } error) return error;
+        return context.Reason?.Length > 2000 || context.Approach?.Length > 2000 || context.Result?.Length > 4000
+            ? "작업 배경·진행 방식은 2,000자, 최종 결과는 4,000자 이하여야 합니다." : null;
     }
 
     public static string? ValidateWorkflowIds(string projectId, string workflowId) => ValidateIds(projectId, workflowId);

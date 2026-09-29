@@ -29,6 +29,9 @@ public sealed partial class SettingsViewModel : ViewModelBase
         OpenDataFolderCommand = new RelayCommand(() => Open(DataPath, "데이터"));
         OpenLogFolderCommand = new RelayCommand(() => Open(LogPath, "로그"));
         CheckForUpdatesCommand = new RelayCommand(() => _ = CheckForUpdatesAsync(false), () => !_isCheckingForUpdates);
+        InstallGitHookCommand = new RelayCommand(InstallGitHook);
+        RemoveGitHookCommand = new RelayCommand(RemoveGitHook);
+        _gitHookInstalled = ReadGitHookState();
         _registerPetCommand = new RelayCommand(RegisterPet);
         _removePetCommand = new RelayCommand(RemovePet, () => HasPetImage);
         _removePetMediaRuleCommand = new RelayCommand(RemoveSelectedPetMediaRule, () => SelectedPetMediaRule is not null);
@@ -88,6 +91,8 @@ public sealed partial class SettingsViewModel : ViewModelBase
     public ICommand OpenDataFolderCommand { get; }
     public ICommand OpenLogFolderCommand { get; }
     public ICommand CheckForUpdatesCommand { get; }
+    public ICommand InstallGitHookCommand { get; }
+    public ICommand RemoveGitHookCommand { get; }
 
     private void Update(AppSettings value, string propertyName)
     {

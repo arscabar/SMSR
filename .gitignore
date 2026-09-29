@@ -17,6 +17,9 @@ TestResults/
 *.db-wal
 *.log
 *.zip
+**/__pycache__/
+*.pyc
+graphify-out/
 
 # OS metadata
 .DS_Store

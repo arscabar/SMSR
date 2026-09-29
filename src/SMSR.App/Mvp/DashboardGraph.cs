@@ -32,7 +32,7 @@ internal static class DashboardGraph
                 var x1 = from.X + DashboardGraphLayout.NodeWidth / 2; var y1 = from.Y + DashboardGraphLayout.NodeHeight;
                 var x2 = to.X + DashboardGraphLayout.NodeWidth / 2; var y2 = to.Y;
                 var middle = (y1 + y2) / 2;
-                svg.Append($"<path class=\"edge {Status(DashboardHierarchy.DisplayStatus(node, plan.Nodes))}\" d=\"M{x1},{y1} C{x1},{middle} {x2},{middle} {x2},{y2}\" marker-end=\"url(#arrow)\" />");
+                svg.Append($"<path class=\"edge {Status(DashboardHierarchy.DisplayStatus(map[node.NodeId], plan.Nodes))}\" d=\"M{x1},{y1} C{x1},{middle} {x2},{middle} {x2},{y2}\" marker-end=\"url(#arrow)\" />");
             }
         foreach (var node in projected)
         {
@@ -40,7 +40,7 @@ internal static class DashboardGraph
             var center = position.X + DashboardGraphLayout.NodeWidth / 2;
             var agent = agents.GetValueOrDefault(node.NodeId, node.AssignedAgentId ?? "-");
             var children = childCounts.GetValueOrDefault(node.NodeId);
-            var displayStatus = DashboardHierarchy.DisplayStatus(node, plan.Nodes);
+            var displayStatus = DashboardHierarchy.DisplayStatus(map[node.NodeId], plan.Nodes);
             var isContext = parentNodeId is not null && parentNodeId == node.NodeId;
             var originalParent = map[node.NodeId].ParentNodeId;
             var target = isContext

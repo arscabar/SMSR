@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/SMSR.App/SMSR.App.csproj" />
+    <Project Path="src/SMSR.CSharpAnalysis/SMSR.CSharpAnalysis.csproj" />
   </Folder>
 </Solution>

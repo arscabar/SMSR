@@ -5,6 +5,12 @@
         <StackPanel>
             <TextBlock FontSize="16" FontWeight="SemiBold" Text="일반" />
             <CheckBox Margin="0,16,0,0" IsChecked="{Binding AutomateCodexIntegration}" Content="앱 시작 시 Codex 연결·작업 기록 설정 자동 복구" />
+            <TextBlock Margin="0,12,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="{Binding GitHookStatus}" />
+            <StackPanel Margin="0,5,0,0" Orientation="Horizontal">
+                <Button Command="{Binding InstallGitHookCommand}" Content="전역 Git 훅 설치" />
+                <Button Margin="8,0,0,0" Style="{StaticResource QuietButton}" Command="{Binding RemoveGitHookCommand}" Content="SMSR 훅 해제" />
+            </StackPanel>
+            <TextBlock Margin="0,5,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="설치 전까지 Git 설정은 변경되지 않습니다. 설치하면 저장소별 기존 훅이 우회될 수 있습니다." TextWrapping="Wrap" />
             <CheckBox Margin="0,12,0,0" IsChecked="{Binding TrackComplexTasksAutomatically}" Content="복잡한 프로젝트 작업을 자동으로 그래프로 추적" />
             <TextBlock Margin="24,4,0,0" Foreground="{DynamicResource MutedTextBrush}" Text="계산·짧은 검색·질문·상태 확인·한 곳의 작은 수정은 제외합니다." TextWrapping="Wrap" />
             <CheckBox Margin="0,12,0,0" IsChecked="{Binding AutoUpdateEnabled}" Content="새 버전을 자동으로 다운로드하고 설치" />

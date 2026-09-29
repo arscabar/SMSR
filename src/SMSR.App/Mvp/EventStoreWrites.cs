@@ -22,7 +22,11 @@ public sealed partial class EventStore
             command.CommandText = "INSERT INTO current_state(project_id, workflow_id, node_id, agent_id, status, summary, error, updated_at_utc, metadata_json) VALUES ($projectId, $workflowId, $nodeId, $agentId, $status, $summary, $error, $createdAt, $metadata) ON CONFLICT(project_id, workflow_id, node_id) DO UPDATE SET agent_id = excluded.agent_id, status = excluded.status, summary = excluded.summary, error = excluded.error, updated_at_utc = excluded.updated_at_utc, metadata_json = excluded.metadata_json;";
             AddStateParameters(command, request, createdAt);
             await command.ExecuteNonQueryAsync(cancellationToken);
+            await SaveEvidenceAsync(connection, transaction, request, createdAt, cancellationToken);
             await UpsertHeartbeatAsync(connection, transaction, request, createdAt, cancellationToken);
+            if (request.Status is "SUCCESS" or "FAILED" or "BLOCKED" or "CANCELLED")
+                await EventStoreWorkflowResults.FillMissingAsync(connection, transaction,
+                    request.ProjectId, request.WorkflowId, cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             return true;
         }

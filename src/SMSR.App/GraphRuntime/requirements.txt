@@ -1,0 +1,4 @@
+kuzu==0.11.3
+fastembed==0.8.1
+tree-sitter-language-pack==0.13.0
+tree-sitter==0.26.0

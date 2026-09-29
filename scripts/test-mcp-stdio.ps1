@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory = $true)]
     [string]$ApplicationPath,
-    [int]$ExpectedToolCount = 12
+    [int]$ExpectedToolCount = 46
 )
 
 $ErrorActionPreference = "Stop"

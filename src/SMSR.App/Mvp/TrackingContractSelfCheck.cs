@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using Microsoft.Data.Sqlite;
 
 namespace SMSR.App.Mvp;
 
@@ -25,10 +26,34 @@ internal static class TrackingContractSelfCheck
             Fail("요청형 그래프 지침");
 
         var path = Path.Combine(Path.GetTempPath(), $"smsr-tracking-{Guid.NewGuid():N}.db");
+        var legacyPath = path + ".legacy";
         try
         {
             var store = new EventStore(path);
             await store.InitializeAsync();
+            await using (var legacy = new SqliteConnection($"Data Source={legacyPath};Pooling=False"))
+            {
+                await legacy.OpenAsync();
+                var command = legacy.CreateCommand();
+                command.CommandText = "CREATE TABLE events(event_id TEXT PRIMARY KEY, project_id TEXT NOT NULL, workflow_id TEXT NOT NULL, node_id TEXT NOT NULL, agent_id TEXT NOT NULL, event_type TEXT NOT NULL, status TEXT NOT NULL, summary TEXT, error TEXT, payload_json TEXT NOT NULL, created_at_utc TEXT NOT NULL);";
+                await command.ExecuteNonQueryAsync();
+                command.CommandText = "INSERT INTO events VALUES ('legacy-event','SMSR','legacy','node','agent','NODE_STATUS_CHANGED','SUCCESS','완료',NULL,$payload,$createdAt);";
+                command.Parameters.AddWithValue("$payload", JsonSerializer.Serialize(new RecordEventRequest(
+                    "legacy-event", "SMSR", "legacy", "node", "agent", "NODE_STATUS_CHANGED", "SUCCESS", "완료", null, null, ["legacy-proof.txt"])));
+                command.Parameters.AddWithValue("$createdAt", DateTimeOffset.UtcNow.ToString("O"));
+                await command.ExecuteNonQueryAsync();
+            }
+            var migrated = new EventStore(legacyPath);
+            await migrated.InitializeAsync();
+            await migrated.InitializeAsync();
+            if (Directory.GetFiles(Path.GetTempPath(), Path.GetFileName(legacyPath) + ".bak-p0-*").Length != 1
+                || Directory.GetFiles(Path.GetTempPath(), Path.GetFileName(legacyPath) + ".bak-p1-*").Length != 1
+                || (await migrated.GetEvidenceAsync("SMSR", "legacy")).Single().Reference != "legacy-proof.txt"
+                || (await migrated.GetPlanRevisionsAsync("SMSR", "legacy")).Count != 0
+                || !DashboardTimeline.Render([], await migrated.GetTimelineEventsAsync("SMSR", "legacy"),
+                    await migrated.GetEvidenceAsync("SMSR", "legacy"), 1,
+                    await migrated.GetPlanAsync("SMSR", "legacy")).Contains("버전 이력 없음"))
+                Fail("기존 DB 백업·증거 이관·계획 공백 보존");
             var dailyNotifier = new DailyActivityNotifier();
             var dailyChanges = 0;
             dailyNotifier.Changed += (_, _) => dailyChanges++;
@@ -71,9 +96,18 @@ internal static class TrackingContractSelfCheck
             var request = new RecordEventRequest(
                 "event-1", "SMSR", "task-1", "contract", "worker-1", "NODE_STATUS_CHANGED", "IN_PROGRESS",
                 "계약 구현", null, null, ["src/SMSR.App/Mvp/Contracts.cs"], "implementer", 60, 2, "테스트 실행");
+            if (EventValidation.Validate(request with { Status = "SUCCESS", Summary = null, Error = null }) is null)
+                Fail("종료 결과 근거 필수");
             if (!await store.RecordAsync(request)) Fail("이벤트 기록");
             if (!await store.RecordAsync(request with { EventId = "obsolete-event", NodeId = "obsolete" }))
                 Fail("제거 예정 노드 기록");
+            var evidence = await store.GetEvidenceAsync("SMSR", "task-1");
+            var timeline = await store.GetTimelineEventsAsync("SMSR", "task-1");
+            if (evidence.Count != 2 || evidence[0].EventId != "event-1"
+                || evidence[0].Reference != "src/SMSR.App/Mvp/Contracts.cs"
+                || !timeline.Select(item => item.EventId).SequenceEqual(["event-1", "obsolete-event"])
+                || await store.GetWorkflowEventCountAsync("SMSR", "task-1") != 2)
+                Fail("시간순 이벤트·산출물 증거 저장");
             await store.RecordHeartbeatAsync(new("SMSR", "task-1", "reviewer-1", "reviewer", "ACTIVE", "contract", "계약 검토", 0));
 
             var notifier = new WorkflowEventNotifier();
@@ -84,11 +118,15 @@ internal static class TrackingContractSelfCheck
                 new("implementation", "구현", 1, null, null, "lead", "coordinator", "모든 하위 작업 완료"),
                 new("review", "검토", 1, ["contract"], "implementation", "reviewer-1", "reviewer", "검토 통과"),
                 new("contract", "계약 확장", 2, null, "implementation", "worker-1", "implementer", "계약 검사 통과")
-            ], "task-1");
+            ], "task-1", changeReason: "검토 단계 추가");
             var updatedPlan = await store.GetPlanAsync("SMSR", "task-1");
+            var revisions = await store.GetPlanRevisionsAsync("SMSR", "task-1");
             var updatedState = await store.GetStateAsync("SMSR", "task-1");
             if (updatedResult.Contains("error", StringComparison.OrdinalIgnoreCase)
                 || notifier.Version("SMSR", "task-1") <= version
+                || revisions.Count != 2 || revisions[0].Nodes.Any(node => node.NodeId == "review")
+                || revisions[1].ChangeReason != "검토 단계 추가"
+                || !revisions[1].Nodes.Select(node => node.NodeId).SequenceEqual(["implementation", "review", "contract"])
                 || !updatedPlan.Nodes.Select(node => node.NodeId).SequenceEqual(["implementation", "review", "contract"])
                 || updatedState.Nodes.Single(node => node.NodeId == "contract").ProgressPercentage != 60
                 || updatedState.Nodes.Any(node => node.NodeId == "obsolete")
@@ -102,13 +140,23 @@ internal static class TrackingContractSelfCheck
                     new("broad-1", "환경 확인"),
                     new("broad-2", "구현", DependsOn: ["broad-1"])
                 ])
-            ], "nested-task");
+            ], "nested-task", reason: "추적 이유", approach: "계획과 이벤트로 진행");
             var nestedPlan = await store.GetPlanAsync("SMSR", "nested-task");
             if (nestedResult.Contains("error", StringComparison.OrdinalIgnoreCase)
                 || nestedPlan.Nodes.Count != 3
                 || nestedPlan.Nodes.Where(node => node.NodeId.StartsWith("broad-", StringComparison.Ordinal))
                     .Any(node => node.ParentNodeId != "broad"))
                 Fail("하위 계획 자동 전개");
+            if (!DashboardPage.Render(new("SMSR", "nested-task", []), nestedPlan, [])
+                .Contains("종료 후 결과가 기록됩니다", StringComparison.Ordinal))
+                Fail("진행 중 결과 안내");
+
+            await store.SaveWorkflowContextAsync(new("SMSR", "nested-task", null, null, "검증 완료", DateTimeOffset.UtcNow));
+            var context = await store.GetWorkflowContextAsync("SMSR", "nested-task");
+            var contextPage = DashboardPage.Render(new("SMSR", "nested-task", []), nestedPlan, [], context: context);
+            if (context?.Reason != "추적 이유" || context.Approach != "계획과 이벤트로 진행"
+                || context.Result != "검증 완료" || !contextPage.Contains("작업 배경") || !contextPage.Contains("최종 결과"))
+                Fail("워크플로우 설명 저장·표시");
 
             var plan = await store.GetPlanAsync("SMSR", "task-1");
             var state = await store.GetStateAsync("SMSR", "task-1");
@@ -125,6 +173,24 @@ internal static class TrackingContractSelfCheck
 
             foreach (var nodeId in new[] { "contract", "review", "implementation" })
                 await store.RecordAsync(request with { EventId = $"done-{nodeId}", NodeId = nodeId, Status = "SUCCESS", ProgressPercentage = 100 });
+            var automaticResult = await store.GetWorkflowContextAsync("SMSR", "task-1");
+            if (automaticResult?.Result?.StartsWith("자동 요약(완료 기록): 계약 구현", StringComparison.Ordinal) != true)
+                Fail("완료 그래프 결과 자동 기록");
+            await store.SaveWorkflowContextAsync(new("SMSR", "task-1", null, null, "사용자가 작성한 결과", DateTimeOffset.UtcNow));
+            await store.RecordAsync(request with { EventId = "after-manual-result", NodeId = "implementation",
+                Status = "SUCCESS", Summary = "자동 기록이 덮어쓰면 안 됨", ProgressPercentage = 100 });
+            if ((await store.GetWorkflowContextAsync("SMSR", "task-1"))?.Result != "사용자가 작성한 결과")
+                Fail("명시적 결과 보호");
+            await using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
+            {
+                await connection.OpenAsync();
+                var clear = connection.CreateCommand();
+                clear.CommandText = "UPDATE workflow_context SET result=NULL WHERE project_id='SMSR' AND workflow_id='task-1';";
+                await clear.ExecuteNonQueryAsync();
+                await EventStoreWorkflowResults.FillMissingAsync(connection, null, null, null, CancellationToken.None);
+            }
+            if ((await store.GetWorkflowContextAsync("SMSR", "task-1"))?.Result?.StartsWith("자동 요약(완료 기록):", StringComparison.Ordinal) != true)
+                Fail("기존 완료 그래프 결과 보완");
             var completedPlan = await store.GetPlanAsync("SMSR", "task-1");
             var completedDefinitions = completedPlan.Nodes.Select(node => new PlanNodeDefinition(node.NodeId,
                 node.Title, node.Weight, node.DependsOn, node.ParentNodeId, node.AssignedAgentId,
@@ -158,6 +224,8 @@ internal static class TrackingContractSelfCheck
 
             var root = DashboardPage.Render(state, plan, recent);
             var child = DashboardPage.Render(state, plan, recent, null, "implementation", "contract");
+            var timelinePage = DashboardPage.Render(state, plan, recent, revisions: revisions,
+                timelineEvents: timeline, evidence: evidence, timelineEventCount: 2);
             if (!root.Contains("하위 작업 2개") || !root.Contains("parentNodeId=implementation") || !root.Contains("implementation · lead · IN_PROGRESS")
                 || !root.Contains("toggle-status-cards") || !root.Contains("status-card")
                 || !root.Contains("smsr-status-cards")
@@ -165,10 +233,20 @@ internal static class TrackingContractSelfCheck
                 || !child.Contains("계약 검사 통과") || !child.Contains("src/SMSR.App/Mvp/Contracts.cs")
                 || !child.Contains("작업 중인 Codex에 요청") || child.Contains("codex://threads/new?prompt="))
                 Fail("계층 드릴다운 렌더링");
+            if (!timelinePage.Contains("계획·실행 순서") || !timelinePage.Contains("id=\"timeline-step\"")
+                || !timelinePage.Contains("기록 선택") || !timelinePage.Contains("<li hidden")
+                || !timelinePage.Contains("class=\"context-field\"")
+                || !timelinePage.Contains("계획 v2") || !timelinePage.Contains("#event-event-1")
+                || !timelinePage.Contains("검토 단계 추가"))
+                Fail("계획·실행 타임라인 화면");
         }
         finally
         {
             foreach (var file in new[] { path, $"{path}-shm", $"{path}-wal" })
+                if (File.Exists(file)) File.Delete(file);
+            foreach (var file in new[] { legacyPath, $"{legacyPath}-shm", $"{legacyPath}-wal" }
+                .Concat(Directory.GetFiles(Path.GetTempPath(), Path.GetFileName(legacyPath) + ".bak-p0-*"))
+                .Concat(Directory.GetFiles(Path.GetTempPath(), Path.GetFileName(legacyPath) + ".bak-p1-*")))
                 if (File.Exists(file)) File.Delete(file);
         }
     }

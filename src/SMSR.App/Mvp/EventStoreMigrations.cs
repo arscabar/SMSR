@@ -2,7 +2,7 @@ using Microsoft.Data.Sqlite;
 
 namespace SMSR.App.Mvp;
 
-internal static class EventStoreMigrations
+internal static partial class EventStoreMigrations
 {
     public static async Task EnsureMetadataColumnsAsync(SqliteConnection connection, CancellationToken cancellationToken)
     {

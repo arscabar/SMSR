@@ -7,7 +7,10 @@ public static class DashboardPage
 
     public static string Render(WorkflowState state, WorkflowPlan plan, IReadOnlyList<RecentEvent> events,
         string? theme = null, string? parentNodeId = null, string? selectedNodeId = null,
-        IReadOnlyList<ActivityRecord>? activities = null, TokenUsageSummary? tokenUsage = null)
+        IReadOnlyList<ActivityRecord>? activities = null, TokenUsageSummary? tokenUsage = null,
+        WorkflowContext? context = null, IReadOnlyList<PlanRevision>? revisions = null,
+        IReadOnlyList<WorkflowEvent>? timelineEvents = null, IReadOnlyList<WorkflowEvidenceLink>? evidence = null,
+        long timelineEventCount = 0)
     {
         var progress = WorkflowProgress.Overall(plan, state);
         var blocked = state.Nodes.Where(node => node.Status == "BLOCKED").ToArray();
@@ -21,16 +24,19 @@ public static class DashboardPage
             var title = plan.Nodes.FirstOrDefault(item => item.NodeId == node.NodeId)?.Title ?? node.NodeId;
             return $"<a href=\"{DashboardNavigation.Encode(DashboardNavigation.Url(state.ProjectId, state.WorkflowId, selectedNodeId: node.NodeId))}\">{DashboardPanels.Encode(title)}</a>";
         }))}</div>";
+        var issues = WorkflowIntegrity.Find(plan);
+        var integrityAlert = issues.Count == 0 ? "" : $"<div id=\"integrity-alert\" class=\"integrity-alert\"><strong>과거 상태 불일치 {issues.Count}건</strong><ul>{string.Join("", issues.Select(issue => $"<li>{DashboardPanels.Encode(issue)}</li>"))}</ul></div>";
 
         return $$"""
             <!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-            <title>SMSR 작업 그래프</title><style>{{DashboardStyles.For(theme)}}</style></head><body>
+            <title>SMSR 작업 그래프</title><style>{{DashboardStyles.For(theme)}}{{WebNavigation.Styles}}</style></head><body>{{WebNavigation.Render(state.ProjectId, state.WorkflowId, "dashboard")}}
             <header><div><h1>작업 그래프 대시보드</h1><span class="muted">{{DashboardPanels.Encode(state.ProjectId)}} / {{DashboardPanels.Encode(workflowLabel)}}</span></div>
             <div class="summary"><span id="live-connection" class="chip"{{(live.Static ? " data-static=\"true\"" : "")}}>{{live.Label}}</span>{{TokenChip("목표 작업", tokenUsage?.GoalInput ?? 0, tokenUsage?.GoalOutput ?? 0, tokenUsage?.HasGoalUsage == true, tokenUsage?.HasGoalBreakdown == true ? tokenUsage.GoalCachedInput : null)}}{{TokenChip("그래프(추정)", tokenUsage?.GraphInput ?? 0, tokenUsage?.GraphOutput ?? 0, tokenUsage?.HasGraphUsage == true)}}<span class="chip">전체 진행률 {{progress}}%</span></div></header>
-            {{alert}}<main><aside id="agents"><h2>에이전트</h2>{{DashboardPanels.RenderAgents(state, plan)}}</aside>
+            {{alert}}{{integrityAlert}}<main><aside id="agents"><h2>에이전트</h2>{{DashboardPanels.RenderAgents(state, plan)}}</aside>
             <section id="flow"><div class="flow-heading"><div><h2>계층형 작업 흐름</h2>{{DashboardNavigation.Breadcrumb(state.ProjectId, state.WorkflowId, plan, parentNodeId)}}</div></div><div id="graph">{{DashboardGraph.Render(plan, state, parentNodeId)}}</div></section>
-            <aside id="details"><h2>작업 상세</h2>{{DashboardPanels.RenderDetails(state, plan, selectedNodeId, parentNodeId)}}<h2 class="history-title">{{(selectedNodeId is null ? "실시간 활동" : "선택 노드 활동")}}</h2>{{DashboardPanels.RenderActivities(activities ?? [], plan, selectedNodeId)}}<h2 class="history-title">{{(selectedNodeId is null ? "상태 기록" : "선택 노드 상태 기록")}}</h2>{{DashboardPanels.RenderHistory(events, plan, selectedNodeId)}}</aside></main>
+            <aside id="details"><h2>작업 이력</h2>{{DashboardPanels.RenderWorkflowContext(context, state, plan)}}{{DashboardTimeline.Render(revisions ?? [], timelineEvents ?? [], evidence ?? [], timelineEventCount, plan)}}<h2 class="history-title">작업 상세</h2>{{DashboardPanels.RenderDetails(state, plan, selectedNodeId, parentNodeId)}}<h2 class="history-title">{{(selectedNodeId is null ? "상태 기록" : "선택 노드 상태 기록")}}</h2>{{DashboardPanels.RenderHistory(events, plan, selectedNodeId)}}<details class="activity-disclosure"><summary>{{(selectedNodeId is null ? "실시간 활동" : "선택 노드 활동")}}</summary>{{DashboardPanels.RenderActivities(activities ?? [], plan, selectedNodeId)}}</details></aside></main>
             {{DashboardLiveUpdates.Render(state.ProjectId, state.WorkflowId)}}
+            <script type="module" src="/assets/smsr-loading-orb.js"></script>
             </body></html>
             """;
     }

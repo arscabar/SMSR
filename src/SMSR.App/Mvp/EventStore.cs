@@ -1,3 +1,4 @@
+using System.IO;
 using Microsoft.Data.Sqlite;
 
 namespace SMSR.App.Mvp;
@@ -10,8 +11,11 @@ public sealed partial class EventStore(string databasePath)
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
+        var existingDatabase = File.Exists(databasePath);
         await using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync(cancellationToken);
+        if (existingDatabase)
+            await EventStoreMigrations.BackupBeforeP0Async(connection, databasePath, cancellationToken);
         var command = connection.CreateCommand();
         command.CommandText = """
             PRAGMA journal_mode=WAL;
@@ -25,6 +29,15 @@ public sealed partial class EventStore(string databasePath)
               project_id TEXT NOT NULL, workflow_id TEXT NOT NULL, node_id TEXT NOT NULL,
               title TEXT NOT NULL, weight INTEGER NOT NULL, depends_on_json TEXT NOT NULL, metadata_json TEXT NOT NULL DEFAULT '{}',
               PRIMARY KEY(project_id, workflow_id, node_id));
+            CREATE TABLE IF NOT EXISTS plan_revisions (
+              project_id TEXT NOT NULL, workflow_id TEXT NOT NULL, revision INTEGER NOT NULL,
+              change_reason TEXT, created_at_utc TEXT NOT NULL,
+              PRIMARY KEY(project_id, workflow_id, revision));
+            CREATE TABLE IF NOT EXISTS plan_revision_nodes (
+              project_id TEXT NOT NULL, workflow_id TEXT NOT NULL, revision INTEGER NOT NULL,
+              position INTEGER NOT NULL, node_id TEXT NOT NULL, title TEXT NOT NULL, weight INTEGER NOT NULL,
+              depends_on_json TEXT NOT NULL, metadata_json TEXT NOT NULL,
+              PRIMARY KEY(project_id, workflow_id, revision, node_id));
             CREATE TABLE IF NOT EXISTS current_state (
               project_id TEXT NOT NULL, workflow_id TEXT NOT NULL, node_id TEXT NOT NULL,
               agent_id TEXT NOT NULL, status TEXT NOT NULL, summary TEXT, error TEXT, updated_at_utc TEXT NOT NULL, metadata_json TEXT NOT NULL DEFAULT '{}',
@@ -37,6 +50,9 @@ public sealed partial class EventStore(string databasePath)
               id INTEGER PRIMARY KEY, project_id TEXT NOT NULL, workflow_id TEXT NOT NULL,
               source_last_event_id TEXT, content TEXT NOT NULL, created_at_utc TEXT NOT NULL);
             CREATE INDEX IF NOT EXISTS ix_summaries_workflow ON summaries(project_id, workflow_id, created_at_utc);
+            CREATE TABLE IF NOT EXISTS workflow_context (
+              project_id TEXT NOT NULL, workflow_id TEXT NOT NULL, reason TEXT, approach TEXT, result TEXT,
+              updated_at_utc TEXT NOT NULL, PRIMARY KEY(project_id, workflow_id));
             CREATE TABLE IF NOT EXISTS agent_heartbeats (
               project_id TEXT NOT NULL, workflow_id TEXT NOT NULL, agent_id TEXT NOT NULL,
               agent_role TEXT NOT NULL, status TEXT NOT NULL, node_id TEXT, summary TEXT,
@@ -49,8 +65,25 @@ public sealed partial class EventStore(string databasePath)
               workflow_id TEXT, agent_id TEXT, recorded_at_utc TEXT NOT NULL);
             CREATE INDEX IF NOT EXISTS ix_daily_activities_date
               ON daily_activities(project_id, recorded_at_utc DESC);
+            CREATE TABLE IF NOT EXISTS workflow_evidence_links (
+              project_id TEXT NOT NULL, workflow_id TEXT NOT NULL, node_id TEXT NOT NULL,
+              event_id TEXT NOT NULL, reference TEXT NOT NULL, created_at_utc TEXT NOT NULL,
+              PRIMARY KEY(project_id, workflow_id, event_id, reference));
+            CREATE INDEX IF NOT EXISTS ix_evidence_node ON workflow_evidence_links(project_id, workflow_id, node_id);
+            CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY);
             """;
         await command.ExecuteNonQueryAsync(cancellationToken);
         await EventStoreMigrations.EnsureMetadataColumnsAsync(connection, cancellationToken);
+        await EventStoreMigrations.BackfillEvidenceAsync(connection, cancellationToken);
+        if (existingDatabase)
+            await EventStoreGraphSchema.BackupBeforeP1Async(connection, databasePath, cancellationToken);
+        if (existingDatabase)
+            await EventStoreGraphSchema.BackupBeforeP2Async(connection, databasePath, cancellationToken);
+        if (existingDatabase)
+            await EventStoreGraphSchema.BackupBeforeCrossRepoAsync(connection, databasePath, cancellationToken);
+        if (existingDatabase) await GraphAdvancedMigration.BackupAsync(connection, databasePath, cancellationToken);
+        if (existingDatabase) await GraphFormatMigration.BackupAsync(connection, databasePath, cancellationToken);
+        await EventStoreGraphSchema.CreateAsync(connection, cancellationToken);
+        await EventStoreWorkflowResults.FillMissingAsync(connection, null, null, null, cancellationToken);
     }
 }

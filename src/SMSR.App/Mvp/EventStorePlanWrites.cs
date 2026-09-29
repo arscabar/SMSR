@@ -5,7 +5,8 @@ namespace SMSR.App.Mvp;
 
 public sealed partial class EventStore
 {
-    public async Task SavePlanAsync(string projectId, string workflowId, IReadOnlyList<PlanNodeDefinition> nodes, CancellationToken cancellationToken = default)
+    public async Task SavePlanAsync(string projectId, string workflowId, IReadOnlyList<PlanNodeDefinition> nodes,
+        CancellationToken cancellationToken = default, string? changeReason = null)
     {
         await _writeGate.WaitAsync(cancellationToken);
         try
@@ -32,6 +33,7 @@ public sealed partial class EventStore
                 command.Parameters.AddWithValue("$metadata", JsonSerializer.Serialize(PlanNodeMetadata.From(node)));
                 await command.ExecuteNonQueryAsync(cancellationToken);
             }
+            await SavePlanRevisionAsync(connection, transaction, projectId, workflowId, nodes, changeReason, cancellationToken);
             await CleanupRemovedPlanNodesAsync(connection, transaction, projectId, workflowId, cancellationToken);
             await transaction.CommitAsync(cancellationToken);
         }

@@ -67,6 +67,14 @@ public sealed class LocalServer(WebApplication app, EventStore events, WorkflowS
         var builder = WebApplication.CreateSlimBuilder();
         builder.WebHost.ConfigureKestrel(options => options.Listen(IPAddress.Loopback, port));
         builder.Services.AddSingleton(store);
+        builder.Services.AddSingleton<GraphIndexService>();
+        builder.Services.AddSingleton<GraphQueryService>();
+        builder.Services.AddSingleton<GraphEvidenceService>();
+        builder.Services.AddSingleton<GraphSourceService>();
+        builder.Services.AddSingleton<GraphFeedbackService>();
+        builder.Services.AddSingleton<GraphValidationService>();
+        builder.Services.AddSingleton<GraphWorker>();
+        builder.Services.AddSingleton<GraphAdvancedService>();
         builder.Services.AddSingleton(notifier);
         builder.Services.AddSingleton(summaries);
         builder.Services.AddSingleton(exports);
@@ -81,7 +89,9 @@ public sealed class LocalServer(WebApplication app, EventStore events, WorkflowS
             .WithTools<PlanTools>()
             .WithTools<AgentTools>()
             .WithTools<DailyActivityTools>()
-            .WithTools<DailySummaryTools>();
+            .WithTools<DailySummaryTools>()
+            .WithTools<GraphTools>()
+            .WithTools<GraphAdvancedTools>();
         var app = builder.Build();
         LocalServerEndpoints.Map(app, oauth, bridgeToken, flows, oauthAudit, connections, notifier, activity,
             activityToken, operatorInstructions, dashboardTheme);

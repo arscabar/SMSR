@@ -19,6 +19,9 @@ public sealed record PlanNodeState(
 
 public sealed record WorkflowPlan(string ProjectId, string WorkflowId, IReadOnlyList<PlanNodeState> Nodes);
 
+public sealed record PlanRevision(int Revision, DateTimeOffset CreatedAt, string? ChangeReason,
+    IReadOnlyList<PlanNodeDefinition> Nodes);
+
 public sealed record WorkflowCatalogEntry(
     string WorkflowId, string? Title, int NodeCount, string Status, DateTimeOffset? UpdatedAtUtc);
 

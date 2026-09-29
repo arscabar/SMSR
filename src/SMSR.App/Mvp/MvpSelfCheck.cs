@@ -205,6 +205,14 @@ public static class MvpSelfCheck
             if (!projectedGraph.Contains("class=\"edge SUCCESS\"") || !childGraph.Contains("class=\"edge SUCCESS\"")
                 || !projectedGraph.Contains("01a05675…3a35") || !projectedGraph.Contains("…"))
                 throw new InvalidOperationException("계층 의존선 투영과 SVG 텍스트 축약 검증이 실패했습니다.");
+            var completedChildPlan = new WorkflowPlan("demo", "child-status", [
+                new("group", "상위", 1, [], "PENDING", null, null, null),
+                new("child", "하위", 1, [], "SUCCESS", null, null, null, "group")]);
+            var completedChildState = new WorkflowState("demo", "child-status", [
+                new("child", "agent", "SUCCESS", null, null, DateTimeOffset.UtcNow)]);
+            var completedChildGraph = DashboardGraph.Render(completedChildPlan, completedChildState, "group");
+            if (!completedChildGraph.Contains("child · agent · SUCCESS") || !completedChildGraph.Contains("진척 100%"))
+                throw new InvalidOperationException("하위 그래프 상태·진척 투영 검증이 실패했습니다.");
             var validationGraph = DashboardGraph.Render(new("demo", "validation", [
                 new("test", "통합 검증", 1, [], "SUCCESS", null, null, null, AgentRole: "validator")]), state);
             if (!validationGraph.Contains("flow-node SUCCESS validation"))
@@ -264,7 +272,8 @@ public static class MvpSelfCheck
                 new("child", "하위", 1, [], "PENDING", null, null, null, "parent")]);
             var parentRequest = first with { WorkflowId = "parent-gated", NodeId = "parent", Status = "SUCCESS" };
             if (DashboardHierarchy.DisplayStatus(parentGate.Nodes[0], parentGate.Nodes) != "PENDING"
-                || WorkflowDependencyGate.Validate(parentRequest, parentGate) is null)
+                || WorkflowDependencyGate.Validate(parentRequest, parentGate) is null
+                || !WorkflowIntegrity.Find(parentGate).Any(issue => issue.Contains("하위 작업 미완료")))
                 throw new InvalidOperationException("하위 작업 미완료 상위 성공 차단 검증이 실패했습니다.");
             await using (var server = await LocalServer.StartAsync(serverPath, 0))
             using (var client = new HttpClient())
@@ -339,6 +348,8 @@ public static class MvpSelfCheck
                 var recordResponse = await client.SendAsync(recordEvent);
                 var recordJson = await recordResponse.Content.ReadAsStringAsync();
                 var operatorGateway = new McpHttpGateway(server.Address, serverPath);
+                var revisionTool = await operatorGateway.CallAsync("get_plan_revisions", new { projectId = "demo", workflowId = "wf-1" });
+                var timelineTool = await operatorGateway.CallAsync("get_workflow_timeline", new { projectId = "demo", workflowId = "wf-1" });
                 await operatorGateway.CallAsync("record_heartbeat", new
                 {
                     projectId = "demo", workflowId = "wf-1", agentId = "agent-1",
@@ -394,6 +405,9 @@ public static class MvpSelfCheck
                     ("activity", activityResponse.IsSuccessStatusCode && activityJson.Contains("TOOL_COMPLETED")),
                     ("mcp-http", recordResponse.IsSuccessStatusCode && planResponse.IsSuccessStatusCode && listResponse.IsSuccessStatusCode),
                     ("mcp-payload", recordJson.Contains("evt-mcp-1") && planJson.Contains("nodeCount") && listJson.Contains("wf-1") && listJson.Contains("ACTIVE")),
+                    ("mcp-history", JsonSerializer.Deserialize<PlanRevision[]>(revisionTool)?.SelectMany(item => item.Nodes)
+                        .Any(node => node.Title == "MCP 계획 노드") == true
+                        && timelineTool.Contains("evt-mcp-1") && timelineTool.Contains("build.log")),
                     ("operator-instruction", operatorResponse.StatusCode == HttpStatusCode.Accepted
                         && operatorDelivery.Contains("operatorInstruction") && operatorDelivery.Contains("redesign")),
                     ("state", stateRecorded),
@@ -544,17 +558,23 @@ public static class MvpSelfCheck
                 var export = await host.ExportAsync("demo", "wf-1");
                 using var dashboardClient = new HttpClient();
                 var themedDashboard = await dashboardClient.GetStringAsync($"{host.Address}/dashboard?projectId=demo&workflowId=wf-1");
+                var revisionsResponse = await dashboardClient.GetStringAsync($"{host.Address}/api/plan-revisions?projectId=demo&workflowId=wf-1");
+                var timelineResponse = await dashboardClient.GetStringAsync($"{host.Address}/api/timeline?projectId=demo&workflowId=wf-1");
                 var exportedDashboard = File.ReadAllText(Path.Combine(export.DirectoryPath, "dashboard.html"));
-                if (!platform.OpenedUrl.Contains("projectId=demo") || viewModel.Workspace.Monitor.Nodes.Count == 0 || summary.Content.Length == 0 || !File.Exists(export.ZipPath) || !File.ReadAllText(Path.Combine(export.DirectoryPath, "events.jsonl")).Contains("evt-mcp-1") || !File.ReadAllText(Path.Combine(export.DirectoryPath, "activity.jsonl")).Contains("TOOL_COMPLETED") || !themedDashboard.Contains("color-scheme:light") || !exportedDashboard.Contains("color-scheme:light") || !exportedDashboard.Contains("flow-svg"))
+                if (!platform.OpenedUrl.Contains("projectId=demo") || viewModel.Workspace.Monitor.Nodes.Count == 0 || summary.Content.Length == 0 || !File.Exists(export.ZipPath) || !File.ReadAllText(Path.Combine(export.DirectoryPath, "events.jsonl")).Contains("evt-mcp-1") || !File.ReadAllText(Path.Combine(export.DirectoryPath, "activity.jsonl")).Contains("TOOL_COMPLETED") || !themedDashboard.Contains("color-scheme:light") || !exportedDashboard.Contains("color-scheme:light") || !exportedDashboard.Contains("timeline-step") || !revisionsResponse.Contains("revision") || !timelineResponse.Contains("evt-mcp-1") || !timelineResponse.Contains("build.log") || !File.Exists(Path.Combine(export.DirectoryPath, "plan-revisions.json")) || !File.ReadAllText(Path.Combine(export.DirectoryPath, "evidence-links.json")).Contains("build.log"))
                     throw new InvalidOperationException("WPF 서버 제어·요약·내보내기 검증이 실패했습니다.");
                 var deleteActivity = new ActivityJsonlStore(serverPath);
                 deleteActivity.Append(new(DateTimeOffset.UtcNow, "delete-project", "delete-workflow", "delete-session",
                     "TOOL_COMPLETED", "TOOL", ActivityId: "delete-activity"));
                 await legacyStore.SavePlanAsync("delete-project", "delete-workflow", [new("delete-node", "삭제 검증")]);
+                await legacyStore.RecordAsync(new("delete-evidence", "delete-project", "delete-workflow", "delete-node", "agent",
+                    "NODE_STATUS_CHANGED", "IN_PROGRESS", "삭제 대상 근거", null, null, ["proof.txt"]));
                 new TrackingSessionStore(serverPath).Save("delete-session",
                     new("delete-project", "delete-workflow", null, DateTimeOffset.UtcNow));
                 if (await host.DeleteWorkflowAsync("delete-project", "delete-workflow") != 1
                     || (await host.GetWorkflowIdsAsync("delete-project")).Count != 0
+                    || (await legacyStore.GetPlanRevisionsAsync("delete-project", "delete-workflow")).Count != 0
+                    || (await legacyStore.GetEvidenceAsync("delete-project", "delete-workflow")).Count != 0
                     || File.Exists(deleteActivity.PathFor("delete-project", "delete-workflow"))
                     || new TrackingSessionStore(serverPath).Load("delete-session") is not null)
                     throw new InvalidOperationException("워크플로우 이력 삭제 검증이 실패했습니다.");

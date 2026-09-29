@@ -1,3 +1,4 @@
+using System.IO;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using ModelContextProtocol.Server;
@@ -28,6 +29,17 @@ internal static class LocalServerEndpoints
         });
         OAuthEndpoints.Map(app, oauth, flows, audit);
         ActivityEndpoints.Map(app, activity, activityToken, notifier);
+        GraphEndpoints.Map(app, dashboardTheme);
+        app.MapGet("/assets/thinking-orbs-engine.js", () => Results.File(
+            Path.Combine(AppContext.BaseDirectory, "WebAssets", "thinking-orbs-engine.js"), "text/javascript"));
+        app.MapGet("/assets/smsr-loading-orb.js", () => Results.File(
+            Path.Combine(AppContext.BaseDirectory, "WebAssets", "smsr-loading-orb.js"), "text/javascript"));
+        app.MapGet("/assets/graph-explorer.js", () => Results.File(
+            Path.Combine(AppContext.BaseDirectory, "WebAssets", "graph-explorer.js"), "text/javascript"));
+        app.MapGet("/assets/graph-explorer-labels.js", () => Results.File(
+            Path.Combine(AppContext.BaseDirectory, "WebAssets", "graph-explorer-labels.js"), "text/javascript"));
+        app.MapGet("/assets/graph-explorer-flow.js", () => Results.File(
+            Path.Combine(AppContext.BaseDirectory, "WebAssets", "graph-explorer-flow.js"), "text/javascript"));
         app.MapGet("/api/health", () => Results.Ok(new { service = "SMSR", status = "ready" }));
         app.MapPost("/api/mcp-bridge/connected", (HttpRequest request) =>
         {
@@ -38,6 +50,24 @@ internal static class LocalServerEndpoints
         });
         app.MapGet("/api/state", (string? projectId, string? workflowId, EventStore events, CancellationToken ct) => GetStateAsync(projectId, workflowId, events, ct));
         app.MapGet("/api/plan", (string? projectId, string? workflowId, EventStore events, CancellationToken ct) => GetPlanAsync(projectId, workflowId, events, ct));
+        app.MapGet("/api/plan-revisions", (string? projectId, string? workflowId, EventStore events, CancellationToken ct) => GetPlanRevisionsAsync(projectId, workflowId, events, ct));
+        app.MapGet("/api/timeline", (string? projectId, string? workflowId, EventStore events, CancellationToken ct) => GetTimelineAsync(projectId, workflowId, events, ct));
+        app.MapGet("/api/context", (string? projectId, string? workflowId, EventStore events, CancellationToken ct) => GetContextAsync(projectId, workflowId, events, ct));
+        app.MapPost("/api/context", async (WorkflowContextEditRequest request, HttpRequest http,
+            EventStore events, WorkflowEventNotifier updates, CancellationToken ct) =>
+        {
+            if (!SameOrigin(http)) return Results.Unauthorized();
+            var context = new WorkflowContext(request.ProjectId, request.WorkflowId,
+                request.Reason?.Trim(), request.Approach?.Trim(), request.Result?.Trim(), DateTimeOffset.UtcNow);
+            if (EventValidation.Validate(context) is { } error) return Results.BadRequest(new { error });
+            if (string.IsNullOrWhiteSpace(context.Reason) && string.IsNullOrWhiteSpace(context.Approach)
+                && string.IsNullOrWhiteSpace(context.Result)) return Results.BadRequest(new { error = "입력한 내용이 없습니다." });
+            if ((await events.GetPlanAsync(request.ProjectId, request.WorkflowId, ct)).Nodes.Count == 0)
+                return Results.NotFound(new { error = "작업 그래프가 없습니다." });
+            await events.SaveWorkflowContextAsync(context, ct);
+            updates.Publish(request.ProjectId, request.WorkflowId);
+            return Results.Ok(await events.GetWorkflowContextAsync(request.ProjectId, request.WorkflowId, ct));
+        });
         app.MapGet("/api/summary", (string? projectId, string? workflowId, EventStore events, CancellationToken ct) => GetSummaryAsync(projectId, workflowId, events, ct));
         app.MapPost("/api/operator-instruction", async (OperatorInstructionRequest request, HttpRequest http,
             EventStore events, CancellationToken ct) =>
@@ -77,15 +107,21 @@ internal static class LocalServerEndpoints
                 return Results.BadRequest(new { error = "projectId와 workflowId가 필요합니다." });
             var state = await events.GetStateAsync(projectId, workflowId, ct);
             var plan = await events.GetPlanAsync(projectId, workflowId, ct);
+            var context = await events.GetWorkflowContextAsync(projectId, workflowId, ct);
             var recent = await events.GetRecentEventsAsync(projectId, workflowId, selectedNodeId, ct);
+            var revisions = await events.GetPlanRevisionsAsync(projectId, workflowId, ct);
+            var timeline = await events.GetTimelineEventsAsync(projectId, workflowId, ct: ct);
+            var evidence = await events.GetEvidenceAsync(projectId, workflowId, ct);
+            var eventCount = await events.GetWorkflowEventCountAsync(projectId, workflowId, ct);
             return Results.Content(DashboardPage.Render(state, plan, recent, dashboardTheme?.Invoke(), parentNodeId,
-                selectedNodeId, activity.ReadLatest(projectId, workflowId), activity.ReadTokenUsage(projectId, workflowId)),
+                selectedNodeId, activity.ReadLatest(projectId, workflowId), activity.ReadTokenUsage(projectId, workflowId), context,
+                revisions, timeline, evidence, eventCount),
                 "text/html; charset=utf-8");
         });
         app.MapMcp("/mcp");
     }
 
-    private static bool SameOrigin(HttpRequest request)
+    internal static bool SameOrigin(HttpRequest request)
         => Uri.TryCreate(request.Headers.Origin.ToString(), UriKind.Absolute, out var origin)
             && origin.Host == "127.0.0.1" && origin.Port == request.Host.Port;
 
@@ -109,6 +145,33 @@ internal static class LocalServerEndpoints
         if (string.IsNullOrWhiteSpace(projectId) || string.IsNullOrWhiteSpace(workflowId))
             return Results.BadRequest(new { error = "projectId와 workflowId가 필요합니다." });
         return Results.Ok(await events.GetPlanAsync(projectId, workflowId, ct));
+    }
+
+    private static async Task<IResult> GetPlanRevisionsAsync(string? projectId, string? workflowId, EventStore events, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(projectId) || string.IsNullOrWhiteSpace(workflowId))
+            return Results.BadRequest(new { error = "projectId와 workflowId가 필요합니다." });
+        return Results.Ok(await events.GetPlanRevisionsAsync(projectId, workflowId, ct));
+    }
+
+    private static async Task<IResult> GetTimelineAsync(string? projectId, string? workflowId, EventStore events, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(projectId) || string.IsNullOrWhiteSpace(workflowId))
+            return Results.BadRequest(new { error = "projectId와 workflowId가 필요합니다." });
+        var plan = await events.GetPlanAsync(projectId, workflowId, ct);
+        var revisions = await events.GetPlanRevisionsAsync(projectId, workflowId, ct);
+        var entries = await events.GetTimelineEventsAsync(projectId, workflowId, 1000, ct);
+        var count = await events.GetWorkflowEventCountAsync(projectId, workflowId, ct);
+        var evidence = await events.GetEvidenceAsync(projectId, workflowId, ct);
+        return Results.Ok(new { revisions, events = entries, eventCount = count, truncated = count > entries.Count,
+            evidence, integrityIssues = WorkflowIntegrity.Find(plan) });
+    }
+
+    private static async Task<IResult> GetContextAsync(string? projectId, string? workflowId, EventStore events, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(projectId) || string.IsNullOrWhiteSpace(workflowId))
+            return Results.BadRequest(new { error = "projectId와 workflowId가 필요합니다." });
+        return Results.Ok(await events.GetWorkflowContextAsync(projectId, workflowId, ct));
     }
 
     private static async Task<IResult> GetSummaryAsync(string? projectId, string? workflowId, EventStore events, CancellationToken ct)

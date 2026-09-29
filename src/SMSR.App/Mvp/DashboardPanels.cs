@@ -28,6 +28,21 @@ internal static class DashboardPanels
         return html.ToString();
     }
 
+    public static string RenderWorkflowContext(WorkflowContext? context, WorkflowState state, WorkflowPlan plan)
+    {
+        var reason = context?.Reason ?? "작업 배경 미기록";
+        var approach = context?.Approach ?? "진행 방식 미기록";
+        var finished = plan.Nodes.Count > 0 && plan.Nodes.All(node => state.Nodes.Any(item =>
+            item.NodeId == node.NodeId && item.Status is "SUCCESS" or "FAILED" or "BLOCKED" or "CANCELLED"));
+        var result = context?.Result ?? (finished ? "최종 결과 미기록" : "진행 중 · 종료 후 결과가 기록됩니다");
+        string Field(string key, string title, string value, bool empty) =>
+            $"<section class=\"context-field\" data-field=\"{key}\" data-empty=\"{empty.ToString().ToLowerInvariant()}\" tabindex=\"0\" role=\"button\" aria-label=\"{title} 수정, 두 번 클릭\" title=\"두 번 클릭해 수정\"><h3>{title} <span aria-hidden=\"true\">✎</span></h3><p>{Encode(value)}</p><span class=\"context-feedback\" role=\"status\" aria-live=\"polite\"></span></section>";
+        return $"<article class=\"workflow-context\" data-project=\"{Encode(state.ProjectId)}\" data-workflow=\"{Encode(state.WorkflowId)}\">"
+            + Field("reason", "작업 배경", reason, string.IsNullOrWhiteSpace(context?.Reason))
+            + Field("approach", "진행 방식", approach, string.IsNullOrWhiteSpace(context?.Approach))
+            + Field("result", "최종 결과", result, string.IsNullOrWhiteSpace(context?.Result)) + "</article>";
+    }
+
     public static string RenderDetails(WorkflowState state, WorkflowPlan plan, string? selectedNodeId = null, string? parentNodeId = null)
     {
         var stateNode = selectedNodeId is null ? state.Nodes.Where(item => plan.Nodes.Any(planNode => planNode.NodeId == item.NodeId && planNode.ParentNodeId == parentNodeId)).OrderBy(item => Active.Contains(item.Status) ? 0 : 1).ThenByDescending(item => item.UpdatedAt).FirstOrDefault() : state.Nodes.FirstOrDefault(item => item.NodeId == selectedNodeId);
@@ -93,7 +108,7 @@ internal static class DashboardPanels
             && agent.Status == "ACTIVE" && !agent.IsStale);
         if (!selected || !Active.Contains(status) || !activeAgent) return "";
         var data = $"data-project=\"{Encode(state.ProjectId)}\" data-workflow=\"{Encode(state.WorkflowId)}\" data-node=\"{Encode(nodeId)}\"";
-        return $"<section class=\"node-actions\"><h4>작업 중인 Codex에 요청</h4><div><button class=\"node-action\" data-action=\"resume\" {data}>이어 진행</button><button class=\"node-action\" data-action=\"accelerate\" {data}>더 빠르게</button><button class=\"node-action\" data-action=\"redesign\" {data}>재설계</button></div><p class=\"node-action-status\">다음 상태 기록 또는 heartbeat 응답으로 전달됩니다.</p></section>";
+        return $"<section class=\"node-actions\"><h4>작업 중인 Codex에 요청</h4><div><button class=\"node-action\" data-action=\"resume\" {data}>이어 진행</button><button class=\"node-action\" data-action=\"accelerate\" {data}>더 빠르게</button><button class=\"node-action\" data-action=\"redesign\" {data}>재설계</button></div><p class=\"node-action-status\" role=\"status\" aria-live=\"polite\">다음 상태 기록 또는 heartbeat 응답으로 전달됩니다.</p></section>";
     }
 
     private static string AgentName(string value)
@@ -120,7 +135,7 @@ internal static class DashboardPanels
     {
         "TOOL_STARTED" => "작업 시작", "TOOL_COMPLETED" => "작업 완료",
         "AGENT_STARTED" => "에이전트 시작", "AGENT_STOPPED" => "에이전트 종료",
-        "TURN_STARTED" => "요청 시작", "TURN_STOPPED" => "요청 종료", _ => value
+        "TURN_STARTED" => "요청 시작", "TURN_STOPPED" => "요청 종료", "TOKEN_SNAPSHOT" => "사용량 기록", _ => value
     };
 
     private static string ActivityCategory(string value) => value switch

@@ -27,10 +27,10 @@ public sealed partial class EventStore
                 ? " WHERE project_id=$projectId" : " WHERE project_id=$projectId AND workflow_id=$workflowId";
             var count = connection.CreateCommand();
             count.Transaction = transaction;
-            count.CommandText = $"SELECT COUNT(*) FROM (SELECT workflow_id FROM events{where} UNION SELECT workflow_id FROM plan_nodes{where} UNION SELECT workflow_id FROM agent_heartbeats{where});";
+            count.CommandText = $"SELECT COUNT(*) FROM (SELECT workflow_id FROM events{where} UNION SELECT workflow_id FROM plan_nodes{where} UNION SELECT workflow_id FROM plan_revisions{where} UNION SELECT workflow_id FROM workflow_evidence_links{where} UNION SELECT workflow_id FROM workflow_context{where} UNION SELECT workflow_id FROM agent_heartbeats{where});";
             AddScopeParameters(count, projectId, workflowId);
             var deletedWorkflows = Convert.ToInt32(await count.ExecuteScalarAsync(cancellationToken));
-            foreach (var table in new[] { "events", "current_state", "plan_nodes", "summaries", "agent_heartbeats", "daily_activities" })
+            foreach (var table in new[] { "workflow_evidence_links", "plan_revision_nodes", "plan_revisions", "events", "current_state", "plan_nodes", "summaries", "workflow_context", "agent_heartbeats", "daily_activities" })
             {
                 var command = connection.CreateCommand();
                 command.Transaction = transaction;
@@ -39,6 +39,24 @@ public sealed partial class EventStore
                 command.CommandText = $"DELETE FROM {table}{tableWhere};";
                 AddScopeParameters(command, projectId, workflowId);
                 await command.ExecuteNonQueryAsync(cancellationToken);
+            }
+            if (workflowId is null)
+            {
+                var cross = connection.CreateCommand();
+                cross.Transaction = transaction;
+                cross.CommandText = projectId is null ? "DELETE FROM graph_cross_repo_edges;"
+                    : "DELETE FROM graph_cross_repo_edges WHERE source_project_id=$projectId OR target_project_id=$projectId;";
+                AddScopeParameters(cross, projectId, null);
+                await cross.ExecuteNonQueryAsync(cancellationToken);
+                foreach (var table in new[] { "graph_index_formats", "graph_derived", "graph_feedback", "graph_revision_edges", "graph_revision_nodes",
+                    "graph_issues", "graph_edges", "graph_nodes", "graph_files", "graph_projects" })
+                {
+                    var command = connection.CreateCommand();
+                    command.Transaction = transaction;
+                    command.CommandText = $"DELETE FROM {table}{where};";
+                    AddScopeParameters(command, projectId, null);
+                    await command.ExecuteNonQueryAsync(cancellationToken);
+                }
             }
             await transaction.CommitAsync(cancellationToken);
             return deletedWorkflows;

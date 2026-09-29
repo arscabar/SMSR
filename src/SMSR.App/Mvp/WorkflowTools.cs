@@ -39,6 +39,39 @@ public sealed class WorkflowTools(EventStore events, WorkflowEventNotifier notif
     public async Task<string> GetState(string projectId, string workflowId)
         => JsonSerializer.Serialize(await events.GetStateAsync(projectId, workflowId));
 
+    [McpServerTool(Name = "get_workflow_context"), Description("그래프의 작업 배경·진행 방식·최종 결과를 조회합니다.")]
+    public async Task<string> GetWorkflowContext(string projectId, string workflowId)
+        => JsonSerializer.Serialize(await events.GetWorkflowContextAsync(projectId, workflowId));
+
+    [McpServerTool(Name = "get_workflow_timeline"), Description("계획 버전, 시간순 실행 이벤트, 산출물 근거와 과거 상태 불일치를 조회합니다. 이벤트는 최근 1,000개까지 반환합니다.")]
+    public async Task<string> GetWorkflowTimeline(string projectId, string workflowId)
+    {
+        if (EventValidation.ValidateWorkflowIds(projectId, workflowId) is { } error)
+            return JsonSerializer.Serialize(new { error });
+        var plan = await events.GetPlanAsync(projectId, workflowId);
+        var revisions = await events.GetPlanRevisionsAsync(projectId, workflowId);
+        var timeline = await events.GetTimelineEventsAsync(projectId, workflowId, 1000);
+        var count = await events.GetWorkflowEventCountAsync(projectId, workflowId);
+        return JsonSerializer.Serialize(new { revisions, events = timeline, eventCount = count,
+            truncated = count > timeline.Count, evidence = await events.GetEvidenceAsync(projectId, workflowId),
+            integrityIssues = WorkflowIntegrity.Find(plan) });
+    }
+
+    [McpServerTool(Name = "save_workflow_context"), Description("그래프의 작업 배경·진행 방식·최종 결과를 저장합니다. 지정하지 않은 항목은 기존 기록을 유지합니다.")]
+    public async Task<string> SaveWorkflowContext(string projectId, string workflowId, string? reason = null,
+        string? approach = null, string? result = null)
+    {
+        var context = new WorkflowContext(projectId, workflowId, reason, approach, result, DateTimeOffset.UtcNow);
+        if (string.IsNullOrWhiteSpace(reason) && string.IsNullOrWhiteSpace(approach) && string.IsNullOrWhiteSpace(result))
+            return JsonSerializer.Serialize(new { error = "reason, approach, result 중 하나가 필요합니다." });
+        if (EventValidation.Validate(context) is { } error) return JsonSerializer.Serialize(new { error });
+        if ((await events.GetPlanAsync(projectId, workflowId)).Nodes.Count == 0)
+            return JsonSerializer.Serialize(new { error = "계획이 없습니다. save_plan으로 그래프를 먼저 만드세요." });
+        await events.SaveWorkflowContextAsync(context);
+        notifier.Publish(projectId, workflowId);
+        return JsonSerializer.Serialize(await events.GetWorkflowContextAsync(projectId, workflowId));
+    }
+
     [McpServerTool(Name = "generate_summary"), Description("현재 상태와 이벤트 기반의 로컬 요약을 생성해 저장합니다.")]
     public async Task<string> GenerateSummary(string projectId, string workflowId)
         => JsonSerializer.Serialize(await summaries.GenerateAsync(projectId, workflowId));
