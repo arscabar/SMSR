@@ -2,3 +2,10 @@ kuzu==0.11.3
 fastembed==0.8.1
 tree-sitter-language-pack==0.13.0
 tree-sitter==0.26.0
+networkx==3.6.1
+rapidfuzz==3.14.5
+tree-sitter-groovy==0.1.2
+tree-sitter-zig==1.1.2
+tree-sitter-vb-dotnet==0.3.0
+robotframework==7.3.2
+pypdf==6.16.1

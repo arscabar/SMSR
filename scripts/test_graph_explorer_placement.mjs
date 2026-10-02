@@ -1,0 +1,38 @@
+import assert from 'node:assert/strict';
+import {Element} from './graph-explorer-drag-fixture.mjs';
+import {drawRelations,clearRelationGraph} from '../src/SMSR.App/WebAssets/graph-explorer-render.js';
+
+const root={dataset:{project:'one'}},reset=new Element('button'),tools=new Element('div');
+globalThis.document={createElementNS:(ns,tag)=>new Element(tag),createElement:tag=>new Element(tag),
+  querySelector:key=>({'#explorer':root,'#relation-reset':reset,'#graph-tools':tools})[key]};
+globalThis.location={search:'?view=find'};
+const graph=new Element('div');graph.clientWidth=480;graph.clientHeight=430;
+const node=nodeId=>({nodeId,label:nodeId,kind:'symbol'});
+const data={node:node('root'),revision:7,items:[],nodes:[node('root'),node('next')],edges:[{sourceId:'root',targetId:'next',relation:'CALLS',ownerPath:'a.cs',sourceLine:1,confidence:'EXTRACTED'}]};
+const options={graph,details:new Element('div'),sourceLink:()=>null,select:()=>{},detail:()=>{}};
+const center=()=>graph.children[0].children.find(n=>n.getAttribute('data-node-id')==='root');
+const rect=()=>center().children.find(n=>n.tag==='rect');
+drawRelations(data,options);assert.equal(reset.disabled,true);
+assert.equal(graph.children[0].getAttribute('viewBox'),'0 0 880 570');
+assert.equal(graph.children[0].style.minWidth,'0');assert.equal(graph.children[0].style.height,'100%');
+assert.equal(graph.children[0].getAttribute('preserveAspectRatio'),'xMidYMid meet');
+assert.equal(graph.scrollLeft,0);assert.equal(graph.scrollTop,0);
+const originalY=rect().getAttribute('y'),old=center();
+old.event('keydown',{key:'ArrowDown'});assert.equal(reset.disabled,false);assert.equal(old.getAttribute('transform'),'translate(0 10)');
+drawRelations(data,options);assert.equal(Number(rect().getAttribute('y')),Number(originalY)+10);
+reset.event('click');assert.equal(reset.disabled,true);assert.equal(rect().getAttribute('y'),originalY);
+const moved=()=>{center().event('keydown',{key:'ArrowDown'});assert.equal(reset.disabled,false)};
+moved();drawRelations({...data,revision:8},options);assert.equal(rect().getAttribute('y'),originalY);assert.equal(reset.disabled,true);
+moved();root.dataset.project='two';drawRelations({...data,revision:8},options);assert.equal(reset.disabled,true);
+moved();globalThis.location.search='?view=relations';drawRelations({...data,revision:8},options);assert.equal(reset.disabled,true);
+moved();drawRelations({...data,revision:8,direction:'incoming'},options);assert.equal(reset.disabled,true);
+moved();drawRelations({...data,node:node('next'),revision:8,direction:'incoming'},options);assert.equal(reset.disabled,true);
+const svg=graph.children[0],next=svg.children.find(n=>n.getAttribute('data-node-id')==='next');
+const line=svg.children.find(n=>n.tag==='line'),hit=svg.children.filter(n=>n.tag==='line')[1];
+const beforeY=line.getAttribute('y2');next.event('keydown',{key:'ArrowDown'});
+assert.equal(Number(line.getAttribute('y2')),Number(beforeY)+10);assert.equal(line.getAttribute('y2'),hit.getAttribute('y2'));
+const beforeX=Number(line.getAttribute('x2'));next.event('keydown',{key:'ArrowRight',shiftKey:true});
+assert.equal(Number(line.getAttribute('x2')),beforeX+30,'Rightmost node lacked useful drag room');
+next.event('pointerdown',{clientX:10,clientY:10});next.event('pointermove',{clientX:50,clientY:50});
+clearRelationGraph(graph);assert.equal(next.captured,null);assert.equal(next.listeners.get('pointermove').length,0);assert.equal(reset.onclick,null);
+console.log('Placement/reset/edge hit-area/project/revision/view/filter/root/active cleanup OK');

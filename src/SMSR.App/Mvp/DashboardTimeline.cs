@@ -19,20 +19,6 @@ internal static partial class DashboardTimeline
         for (var index = 0; index < ordered.Length; index++)
             html.Append(index == ordered.Length - 1 ? ordered[index].Html : ordered[index].Html.Insert(3, " hidden"));
         html.Append("</ul>");
-        if (evidence.Count > 0)
-        {
-            var visible = events.Select(item => item.EventId).ToHashSet(StringComparer.Ordinal);
-            html.Append("<h3>산출물·검증 근거</h3><ul class=\"evidence-links\">");
-            if (evidence.Count > 100) html.Append($"<li>최근 100/{evidence.Count}건 표시 · 전체는 내보내기에서 확인</li>");
-            foreach (var item in evidence.TakeLast(100))
-            {
-                var label = DashboardPanels.Encode(item.Reference);
-                var node = DashboardPanels.Encode(plan.Nodes.FirstOrDefault(value => value.NodeId == item.NodeId)?.Title ?? item.NodeId);
-                var href = $"#event-{Uri.EscapeDataString(item.EventId)}";
-                html.Append($"<li>{node} · {(visible.Contains(item.EventId) ? $"<a href=\"{DashboardPanels.Encode(href)}\">{label}</a>" : label)}</li>");
-            }
-            html.Append("</ul>");
-        }
         return html.Append("</section>").ToString();
     }
 

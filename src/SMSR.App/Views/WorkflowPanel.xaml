@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Grid x:Name="WorkflowRoot" PreviewKeyDown="WorkflowRoot_PreviewKeyDown">
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                  PanningMode="VerticalOnly" PreviewMouseWheel="ScrollViewer_PreviewMouseWheel">
+                  PanningMode="VerticalOnly">
         <StackPanel Margin="0,0,8,0">
             <Border Padding="18" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10">
                 <StackPanel>

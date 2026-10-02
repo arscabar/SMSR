@@ -12,9 +12,9 @@ public sealed partial class EventStore
             await using var connection = new SqliteConnection(_connectionString);
             await connection.OpenAsync(ct);
             using var edge = GraphSql.Create(connection, null, """
-                SELECT f.content_hash FROM graph_edges e JOIN graph_files f
+                SELECT f.content_hash FROM graph_effective_edges e JOIN graph_files f
                   ON f.project_id=e.project_id AND f.path=e.owner_path
-                WHERE e.project_id=$p0 AND e.source_id=$p1 AND e.target_id=$p2
+                WHERE e.project_id=$p0 AND e.revision=(SELECT revision FROM graph_projects WHERE project_id=$p0) AND e.source_id=$p1 AND e.target_id=$p2
                   AND e.relation=$p3 AND e.owner_path=$p4 AND e.source_line=$p5;
                 """, request.ProjectId, request.SourceId, request.TargetId,
                 request.Relation, request.OwnerPath, request.SourceLine);
@@ -44,7 +44,8 @@ public sealed partial class EventStore
                    b.verdict,b.created_at_utc,
                    f.content_hash IS NULL OR f.content_hash<>b.source_hash OR e.source_id IS NULL
             FROM graph_feedback b LEFT JOIN graph_files f ON f.project_id=b.project_id AND f.path=b.owner_path
-            LEFT JOIN graph_edges e ON e.project_id=b.project_id AND e.source_id=b.source_id
+            LEFT JOIN graph_effective_edges e ON e.project_id=b.project_id AND e.source_id=b.source_id
+              AND e.revision=(SELECT revision FROM graph_projects WHERE project_id=b.project_id)
               AND e.target_id=b.target_id AND e.relation=b.relation AND e.owner_path=b.owner_path AND e.source_line=b.source_line
             WHERE b.project_id=$p0 AND b.source_id=$p1 ORDER BY b.created_at_utc DESC LIMIT 100;
             """, projectId, sourceId);

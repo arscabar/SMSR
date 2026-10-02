@@ -9,10 +9,11 @@ namespace SMSR.App.Mvp;
 internal sealed partial class GraphLspJob : IDisposable
 {
     private readonly SafeFileHandle _handle = CreateJobObjectW(IntPtr.Zero, null);
-    internal GraphLspJob()
+    internal GraphLspJob(ulong memoryLimit = 0)
     {
         if (_handle.IsInvalid) throw new Win32Exception();
-        var limits = new ExtendedLimits { Basic = new BasicLimits { Flags = 0x2000 } }; // KILL_ON_JOB_CLOSE
+        var limits = new ExtendedLimits { Basic = new BasicLimits { Flags = 0x2000 | (memoryLimit > 0 ? 0x100u : 0) },
+            ProcessMemory = new UIntPtr(memoryLimit) }; // KILL_ON_JOB_CLOSE; optional per-process memory cap
         if (SetInformationJobObject(_handle, 9, ref limits, (uint)Marshal.SizeOf<ExtendedLimits>())) return;
         var error = new Win32Exception();
         _handle.Dispose();

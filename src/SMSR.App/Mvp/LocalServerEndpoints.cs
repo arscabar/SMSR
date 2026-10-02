@@ -25,19 +25,42 @@ internal static class LocalServerEndpoints
                 return;
             }
             if (context.Request.Path.StartsWithSegments("/mcp")) connections.MarkActivity();
+            if (context.Request.Path.StartsWithSegments("/assets")) context.Response.Headers.CacheControl = "no-store";
             await next();
         });
         OAuthEndpoints.Map(app, oauth, flows, audit);
         ActivityEndpoints.Map(app, activity, activityToken, notifier);
         GraphEndpoints.Map(app, dashboardTheme);
+        GraphQuestionEndpoints.Map(app);
+        app.MapGet("/assets/vis-network-9.1.6.min.js",()=>Results.File(Path.Combine(AppContext.BaseDirectory,"WebAssets","vis-network-9.1.6.min.js"),"text/javascript"));
+        app.MapGet("/assets/graph-explorer-knowledge.js",()=>Results.File(Path.Combine(AppContext.BaseDirectory,"WebAssets","graph-explorer-knowledge.js"),"text/javascript"));
+        app.MapGet("/assets/graph-explorer-media.js",()=>Results.File(Path.Combine(AppContext.BaseDirectory,"WebAssets","graph-explorer-media.js"),"text/javascript"));
+        app.MapGet("/assets/graph-explorer-export.js",()=>Results.File(Path.Combine(AppContext.BaseDirectory,"WebAssets","graph-explorer-export.js"),"text/javascript"));
+        foreach (var module in new[] { "role-batch", "batch-preview", "sync-http", "vault", "role", "role-job", "role-coverage", "symbols", "related", "network", "svg", "render", "expand", "drag", "edges", "edge-layout", "edge-style", "viewport", "deep", "overview", "overview-svg", "overview-members", "semantic", "structure", "structure-list", "visual-network", "visual-data", "visual-regions", "visual-controls", "visual-info", "visual-analysis", "visual-expand" })
+            app.MapGet("/assets/graph-explorer-" + module + ".js", () => Results.File(
+                Path.Combine(AppContext.BaseDirectory, "WebAssets", "graph-explorer-" + module + ".js"), "text/javascript"));
         app.MapGet("/assets/thinking-orbs-engine.js", () => Results.File(
             Path.Combine(AppContext.BaseDirectory, "WebAssets", "thinking-orbs-engine.js"), "text/javascript"));
         app.MapGet("/assets/smsr-loading-orb.js", () => Results.File(
             Path.Combine(AppContext.BaseDirectory, "WebAssets", "smsr-loading-orb.js"), "text/javascript"));
+        app.MapGet("/assets/smsr-dashboard-disclosures.js", () => Results.File(
+            Path.Combine(AppContext.BaseDirectory, "WebAssets", "smsr-dashboard-disclosures.js"), "text/javascript"));
         app.MapGet("/assets/graph-explorer.js", () => Results.File(
             Path.Combine(AppContext.BaseDirectory, "WebAssets", "graph-explorer.js"), "text/javascript"));
         app.MapGet("/assets/graph-explorer-labels.js", () => Results.File(
             Path.Combine(AppContext.BaseDirectory, "WebAssets", "graph-explorer-labels.js"), "text/javascript"));
+        app.MapGet("/assets/graph-explorer-evidence.js", () => Results.File(
+            Path.Combine(AppContext.BaseDirectory, "WebAssets", "graph-explorer-evidence.js"), "text/javascript"));
+        app.MapGet("/assets/graph-explorer-relations.js", () => Results.File(
+            Path.Combine(AppContext.BaseDirectory, "WebAssets", "graph-explorer-relations.js"), "text/javascript"));
+        app.MapGet("/assets/graph-explorer-trace.js", () => Results.File(
+            Path.Combine(AppContext.BaseDirectory, "WebAssets", "graph-explorer-trace.js"), "text/javascript"));
+        app.MapGet("/assets/graph-explorer-trace-result.js", () => Results.File(
+            Path.Combine(AppContext.BaseDirectory, "WebAssets", "graph-explorer-trace-result.js"), "text/javascript"));
+        app.MapGet("/assets/graph-explorer-impact.js", () => Results.File(
+            Path.Combine(AppContext.BaseDirectory, "WebAssets", "graph-explorer-impact.js"), "text/javascript"));
+        app.MapGet("/assets/graph-explorer-diagnostics.js", () => Results.File(
+            Path.Combine(AppContext.BaseDirectory, "WebAssets", "graph-explorer-diagnostics.js"), "text/javascript"));
         app.MapGet("/assets/graph-explorer-flow.js", () => Results.File(
             Path.Combine(AppContext.BaseDirectory, "WebAssets", "graph-explorer-flow.js"), "text/javascript"));
         app.MapGet("/api/health", () => Results.Ok(new { service = "SMSR", status = "ready" }));

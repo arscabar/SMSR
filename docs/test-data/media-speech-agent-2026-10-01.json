@@ -1,0 +1,16 @@
+{
+  "source": "artifacts/media-acceptance/english.wav",
+  "model": "codex-host-extraction",
+  "modelIdentity": "unknown; method label only",
+  "policy": "Actual local transcript interpreted by the Graphify extraction agent. Adapter retains concepts/requirements, not invented rationale. Speech order is not program execution order.",
+  "nodes": [
+    ["graph", "concept", "Graph", "time:0.000:2.000", "The Graph stores evidence."],
+    ["evidence", "concept", "Evidence", "time:0.000:2.000", "The Graph stores evidence."],
+    ["instruction", "requirement", "입력 처리 지시", "time:2.000:7.000", "Validate the input, save the result, and create a report."],
+    ["validate", "concept", "입력 검증", "time:2.000:7.000", "Validate the input, save the result, and create a report."],
+    ["save", "concept", "결과 저장", "time:2.000:7.000", "Validate the input, save the result, and create a report."],
+    ["report", "concept", "보고서 생성", "time:2.000:7.000", "Validate the input, save the result, and create a report."]
+  ],
+  "edges": [["graph", "evidence", "DESCRIBES", 0], ["instruction", "validate", "REQUIRES", 2], ["instruction", "save", "REQUIRES", 2], ["instruction", "report", "REQUIRES", 2]],
+  "limits": ["Whisper tiny transcript is machine evidence, not guaranteed accuracy", "No exact model/effort/token values supplied by host", "No hidden reasoning or raw user prompt recorded"]
+}

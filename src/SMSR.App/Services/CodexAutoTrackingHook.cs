@@ -51,7 +51,7 @@ internal static partial class CodexAutoTrackingHook
     }
 
     private static string HooksPath(string configPath) => Path.Combine(Path.GetDirectoryName(configPath)!, "hooks.json");
-    private static string BuildCommand(string executable) => $"\"{Path.GetFullPath(executable)}\" --smsr-auto-track-hook";
+    private static string BuildCommand(string executable) => $"& \"{Path.GetFullPath(executable)}\" --smsr-auto-track-hook";
     private static string CurrentExecutable() => CodexBridgeExecutable.Ensure(Environment.ProcessPath
         ?? throw new InvalidOperationException("SMSR 실행 파일 경로를 확인할 수 없습니다."));
 }

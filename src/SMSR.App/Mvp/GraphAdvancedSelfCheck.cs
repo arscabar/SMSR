@@ -9,6 +9,7 @@ internal static class GraphAdvancedSelfCheck
 {
     public static async Task RunAsync()
     {
+        await GraphDeepStorageSelfCheck.RunAsync();
         var root = Path.Combine(Path.GetTempPath(), "smsr-advanced-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
         try

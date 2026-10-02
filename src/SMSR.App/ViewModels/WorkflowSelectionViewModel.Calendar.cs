@@ -6,7 +6,7 @@ public sealed partial class WorkflowSelectionViewModel
 {
     private readonly List<WorkflowChoice> _calendarSource = [];
     private readonly List<DailyActivityItem> _dailyCalendarSource = [];
-    private DateTime? _selectedDate;
+    private DateTime? _selectedDate = DateTime.Today;
     private DateTime? _summaryStartDate;
     private bool _awaitingSummaryRangeEnd;
     private DateTime _displayMonth = new(DateTime.Today.Year, DateTime.Today.Month, 1);

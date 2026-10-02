@@ -78,6 +78,7 @@ public static class MvpSelfCheck
             CodexMcpConfigSelfCheck.Run();
             OAuthPersistenceSelfCheck.Run(serverPath);
             await ActivitySelfCheck.RunAsync(serverPath);
+            await AgentActivitySelfCheck.RunAsync(serverPath);
             await AppUpdateSelfCheck.RunAsync(serverPath);
             await AiSummarySelfCheck.RunAsync(serverPath);
             var connectionTracker = new McpConnectionTracker();
@@ -153,6 +154,26 @@ public static class MvpSelfCheck
                 || !cancelledPage.Contains("flow-node CANCELLED") || !cancelledPage.Contains("중단")
                 || !CodexActivityClassifier.IsTerminalEvent("smsr.record_event", cancelledArguments.RootElement))
                 throw new InvalidOperationException("중단 그래프 종결·표시 검증이 실패했습니다.");
+            await store.SavePlanAsync("demo", "blocked", [new("blocked-node", "확인 대기")]);
+            var blockedEvent = first with { EventId = "evt-blocked", WorkflowId = "blocked", NodeId = "blocked-node",
+                Status = "BLOCKED", Summary = "확인이 필요합니다", NextAction = "<설정 확인>", ProgressPercentage = 90 };
+            if (!await store.RecordAsync(blockedEvent)) throw new InvalidOperationException("확인 필요 상태 기록이 실패했습니다.");
+            var blockedState = await store.GetStateAsync("demo", "blocked");
+            var blockedPlan = await store.GetPlanAsync("demo", "blocked");
+            var blockedPage = DashboardPage.Render(blockedState, blockedPlan, [],
+                context: await store.GetWorkflowContextAsync("demo", "blocked"), selectedNodeId: "blocked-node");
+            var legacyResult = DashboardPanels.RenderWorkflowContext(
+                new("demo", "blocked", null, null, "자동 요약(완료 기록): 확인 필요", DateTimeOffset.UtcNow),
+                blockedState, blockedPlan);
+            if ((await store.GetWorkflowCatalogAsync("demo")).Single(item => item.WorkflowId == "blocked").Status != "BLOCKED"
+                || !(await store.GetWorkflowCalendarAsync()).Any(item => item.WorkflowId == "blocked" && item.Status == "BLOCKED")
+                || new WorkflowChoice("demo", "blocked", "확인 대기", "BLOCKED", 1, null).DisplayName != "확인 대기 · 확인 필요"
+                || !blockedPage.Contains("&lt;설정 확인&gt;") || blockedPage.Contains("<설정 확인>")
+                || !blockedPage.Contains("다음 조치를 마친 후 최종 결과를 기록하세요")
+                || !legacyResult.Contains("다음 조치를 마친 후 최종 결과를 기록하세요")
+                || legacyResult.Contains("자동 요약(완료 기록): 확인 필요")
+                || (await store.GetWorkflowContextAsync("demo", "blocked"))?.Result is not null)
+                throw new InvalidOperationException("확인 필요 그래프 분류·다음 조치·결과 검증이 실패했습니다.");
             var completedPage = DashboardPage.Render(
                 new("demo", "completed", [new("done", "agent", "SUCCESS", "완료", null, DateTimeOffset.UtcNow)]),
                 new("demo", "completed", [new("done", "완료 작업", 1, [], "SUCCESS", "완료", null, DateTimeOffset.UtcNow)]), []);
@@ -495,6 +516,7 @@ public static class MvpSelfCheck
                     || viewModel.Workspace.Selection.CalendarDays.Count(item => item.IsInMonth) > 31)
                     throw new InvalidOperationException("일일 작업 캘린더 표시 검증이 실패했습니다.");
                 var calendarDate = viewModel.Workspace.Selection.SelectedDate!.Value;
+                await WorkflowSelectionSelfCheck.RunAsync(viewModel.Workspace.Selection, legacyStore);
                 var rangeDates = viewModel.Workspace.Selection.CalendarDays
                     .Where(item => item.Date is not null).Take(3).Select(item => item.Date!.Value).ToArray();
                 viewModel.Workspace.Selection.SelectSummaryDate(rangeDates[0]);

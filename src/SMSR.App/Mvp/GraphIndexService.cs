@@ -4,7 +4,7 @@ using System.Text;
 
 namespace SMSR.App.Mvp;
 
-public sealed class GraphIndexService(EventStore store)
+public sealed class GraphIndexService(EventStore store, GraphRoleJobs? roleJobs = null)
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
 
@@ -40,7 +40,7 @@ public sealed class GraphIndexService(EventStore store)
         => await IndexAsync(projectId, rootPath, null, allowLargeReduction, ct);
 
     public async Task<GraphIndexResult> IndexAsync(string projectId, string rootPath,
-        IReadOnlyList<string>? folders, bool allowLargeReduction = false, CancellationToken ct = default)
+        IReadOnlyList<string>? folders, bool allowLargeReduction = false, CancellationToken ct = default,bool preserveCurrentScope=false)
     {
         if (EventValidation.ValidateWorkflowIds(projectId, "graph-index") is { } error)
             throw new ArgumentException(error, nameof(projectId));
@@ -55,7 +55,7 @@ public sealed class GraphIndexService(EventStore store)
             var formatCurrent = await store.IsGraphFormatCurrentAsync(projectId, ct);
             if (previous is not null && !string.Equals(previous.RootPath, root, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException("이 projectId는 다른 저장소에 연결돼 있습니다.");
-            folders ??= [];
+            folders=preserveCurrentScope?await store.GetGraphScopeAsync(projectId,ct):folders??[];
             var sources = await GraphFileScanner.ScanAsync(root, ct, folders);
             if (sources.Count == 0) throw new InvalidOperationException("색인 가능한 파일이 없습니다. 기존 색인은 유지됩니다.");
             var files = sources.Select(item => item.File).ToArray();
@@ -68,18 +68,24 @@ public sealed class GraphIndexService(EventStore store)
             var membershipChanged = removed.Length > 0 || files.Any(item => !old.ContainsKey(item.Path));
             var reparsed = sources.Where(item => item.Markdown is not null && (membershipChanged || changed.Contains(item.File.Path)))
                 .Select(item => item.File.Path).ToArray();
-            var codeChanged = !formatCurrent || removed.Any(IsCSharpSource) || sources.Any(item => changed.Contains(item.File.Path)
-                && (IsCSharpSource(item.File.Path) || item.File.Path.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase)));
-            var reparsedCode = codeChanged ? sources.Where(item => item.File.Path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
-                .Select(item => item.File.Path).ToArray() : [];
+            var codeChanged = !formatCurrent || removed.Any(GraphCodeIndexInput.AffectsCode)
+                || sources.Any(item => changed.Contains(item.File.Path) && GraphCodeIndexInput.AffectsCode(item.File.Path));
+            var settingsChanged = removed.Any(GraphCodeIndexInput.IsConfiguration)
+                || sources.Any(item => changed.Contains(item.File.Path) && GraphCodeIndexInput.IsConfiguration(item.File.Path));
+            var code = codeChanged ? await GraphCodeIndex.ExtractAsync(root, sources, ct, old,
+                !formatCurrent ? "색인 형식·분석 버전 변경" : settingsChanged ? "분석 설정·별칭·프로젝트 입력 변경" : null) : null;
+            var reparsedCode = code?.ReparsedPaths ?? [];
             var reparsedProjects = sources.Where(item => item.File.Path.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase)
                 || item.File.Path.EndsWith(".slnx", StringComparison.OrdinalIgnoreCase))
-                .Where(item => membershipChanged || changed.Contains(item.File.Path)).Select(item => item.File.Path).ToArray();
+                .Where(item => settingsChanged || changed.Contains(item.File.Path)
+                    || reparsedCode.Contains(item.File.Path,StringComparer.OrdinalIgnoreCase)).Select(item => item.File.Path).ToArray();
+            var reprocessed = reparsed.Concat(reparsedCode).Concat(reparsedProjects).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
             var nodes = files.Where(item => changed.Contains(item.Path))
                 .Select(item => new GraphNode("file:" + item.Path, item.Path, item.Kind,
                     Path.GetFileName(item.Path), item.Path, 1, item.Hash)).ToList();
             var edges = new List<GraphEdge>();
-            foreach (var source in sources.Where(item => changed.Contains(item.File.Path)))
+            foreach (var source in sources.Where(item => changed.Contains(item.File.Path)
+                || reprocessed.Contains(item.File.Path, StringComparer.OrdinalIgnoreCase)))
             {
                 var occurrences = new Dictionary<string, int>(StringComparer.Ordinal);
                 foreach (var route in source.Routes)
@@ -103,7 +109,12 @@ public sealed class GraphIndexService(EventStore store)
                 edges.AddRange(extracted.Edges);
                 issues.AddRange(extracted.Issues);
             }
-            if (codeChanged) edges.AddRange(await GraphCSharpFileRelations.ExtractAsync(root, sources, ct));
+            if (code is not null)
+            {
+                nodes.AddRange(code.Nodes);
+                edges.AddRange(code.Edges);
+                issues.AddRange(code.Issues);
+            }
             foreach (var source in sources.Where(item => reparsedProjects.Contains(item.File.Path, StringComparer.OrdinalIgnoreCase)))
                 foreach (var reference in source.References)
                 {
@@ -113,18 +124,25 @@ public sealed class GraphIndexService(EventStore store)
                         edges.Add(new("file:" + source.File.Path, "file:" + target, "PROJECT_REFERENCE",
                             source.File.Path, reference.Line, "RESOLVED", "EXTRACTED"));
                 }
-            var reprocessed = reparsed.Concat(reparsedCode).Concat(reparsedProjects).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
             var scan = new GraphScan(root, files, nodes, edges, issues, changed.ToArray(), reprocessed, removed,
-                previous?.Revision ?? 0, folders);
+                previous?.Revision ?? 0, folders, code?.Hyperedges);
+            scan = scan with { Edges = GraphStructuralEvidence.Attach(edges, files) };
             var result = await store.ApplyGraphScanAsync(projectId, scan, allowLargeReduction, ct);
+            result = result with { CodeAnalysis = code?.Analysis ?? new("UNCHANGED", 0,
+                sources.Count(item => GraphCodeIndexInput.Supported(item.File.Path)), null, false) };
+            var deepRevision = await store.RefreshGraphDeepAsync(projectId, result.Revision, ct);
+            if (await store.GetGraphInfoAsync(projectId, ct) is { } refreshed)
+                result = result with { Revision = deepRevision, NodeCount = refreshed.NodeCount,
+                    EdgeCount = refreshed.EdgeCount, Unchanged = result.Unchanged && deepRevision == result.Revision };
             // Retry cross-repository refresh even when the local scan is unchanged after a prior failure.
             try { await new GraphCrossRepoService(store).RefreshAsync(ct); }
             catch (Exception cause) when (cause is not OperationCanceledException)
             { throw new InvalidOperationException("프로젝트 색인은 저장됐지만 저장소 간 연결 갱신에 실패했습니다: " + cause.Message, cause); }
+            if (roleJobs is not null) await roleJobs.RefreshAsync(projectId, ct);
+            await new GraphVaultService(store, new GraphRoleService(store)).DirtyAsync(projectId, ct);
             return result;
         }
         finally { _gate.Release(); }
     }
 
-    private static bool IsCSharpSource(string path) => path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase);
 }

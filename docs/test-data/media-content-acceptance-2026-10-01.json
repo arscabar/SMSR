@@ -1,0 +1,128 @@
+[
+  {
+    "language": "english",
+    "status": "TEXT_AVAILABLE",
+    "engine": "faster-whisper:local",
+    "duration": 7.05356,
+    "segments": [
+      {
+        "location": "time:0.000:2.000",
+        "text": "The Graph stores evidence.",
+        "line": 2
+      },
+      {
+        "location": "time:2.000:7.000",
+        "text": "Validate the input, save the result, and create a report.",
+        "line": 3
+      }
+    ]
+  },
+  {
+    "language": "korean",
+    "status": "TEXT_AVAILABLE",
+    "engine": "faster-whisper:local",
+    "duration": 8.318005,
+    "segments": [
+      {
+        "location": "time:0.000:1.760",
+        "text": "안녕하세요.",
+        "line": 2
+      },
+      {
+        "location": "time:1.760:4.880",
+        "text": "이것은 음성 인식 테스트입니다.",
+        "line": 3
+      },
+      {
+        "location": "time:4.880:8.318",
+        "text": "입력을 검증하고 결과를 저장합니다.",
+        "line": 4
+      }
+    ]
+  },
+  {
+    "kind": "image",
+    "status": "TEXT_AVAILABLE",
+    "engine": "Tesseract:eng+kor",
+    "blocks": [
+      {
+        "location": "image:0,0,900,260",
+        "text": "Image 900 × 260 pixels",
+        "line": 1
+      },
+      {
+        "location": "image:86,121,112,24",
+        "text": "Validate",
+        "line": 2
+      },
+      {
+        "location": "image:387,122,71,23",
+        "text": "Store",
+        "line": 3
+      },
+      {
+        "location": "image:688,122,92,30",
+        "text": "Report",
+        "line": 4
+      }
+    ]
+  },
+  {
+    "kind": "scanned-pdf",
+    "status": "TEXT_AVAILABLE",
+    "blocks": [
+      {
+        "location": "page:1:image:0,0,900,260",
+        "text": "Image 900 × 260 pixels",
+        "line": 1
+      },
+      {
+        "location": "page:1:image:86,121,112,24",
+        "text": "Validate",
+        "line": 2
+      },
+      {
+        "location": "page:1:image:387,122,71,23",
+        "text": "Store",
+        "line": 3
+      },
+      {
+        "location": "page:1:image:688,122,92,30",
+        "text": "Report",
+        "line": 4
+      }
+    ],
+    "rasterSize": [
+      900,
+      260
+    ]
+  },
+  {
+    "kind": "video",
+    "status": "TEXT_AND_FRAMES",
+    "engine": "FFmpeg+faster-whisper:local",
+    "frames": 1,
+    "blocks": [
+      {
+        "location": "time:0.000:0.000",
+        "text": "Video frame at 0.000 seconds",
+        "line": 1
+      },
+      {
+        "location": "time:0:7.053",
+        "text": "Audio duration 7.053 seconds",
+        "line": 2
+      },
+      {
+        "location": "time:0.000:2.000",
+        "text": "The Graph stores evidence.",
+        "line": 3
+      },
+      {
+        "location": "time:2.000:7.000",
+        "text": "Validate the input, save the result, and create a report.",
+        "line": 4
+      }
+    ]
+  }
+]

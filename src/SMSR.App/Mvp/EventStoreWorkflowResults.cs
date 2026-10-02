@@ -19,7 +19,7 @@ internal static class EventStoreWorkflowResults
               WHERE ($projectId IS NULL OR p.project_id=$projectId)
                 AND ($workflowId IS NULL OR p.workflow_id=$workflowId)
               GROUP BY p.project_id, p.workflow_id
-              HAVING COUNT(*)=SUM(CASE WHEN s.status IN ('SUCCESS','FAILED','BLOCKED','CANCELLED') THEN 1 ELSE 0 END)
+              HAVING COUNT(*)=SUM(CASE WHEN s.status IN ('SUCCESS','FAILED','CANCELLED') THEN 1 ELSE 0 END)
             ), endings AS (
               SELECT f.project_id, f.workflow_id,
                 (SELECT COALESCE(NULLIF(trim(e.summary),''), NULLIF(trim(e.error),''))

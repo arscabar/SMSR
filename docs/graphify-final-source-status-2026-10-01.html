@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SMSR · F4~F8 소스 구현 결과</title>
+<style>body{max-width:1100px;margin:32px auto;padding:0 20px;font:16px/1.7 "Segoe UI","Malgun Gothic",sans-serif;color:#23334a}h2{border-left:5px solid #2866b8;padding-left:12px}a{color:#245db4}table{width:100%;border-collapse:collapse;margin:16px 0}td,th{border:1px solid #dbe3ef;padding:10px;text-align:left;vertical-align:top}th{background:#edf3fc}.note{padding:16px;background:#fff5db;border-left:5px solid #c98c18}code{overflow-wrap:anywhere;background:#f0f3f7}details{border:1px solid #dbe3ef;padding:12px;margin:16px 0}summary{cursor:pointer;font-weight:600}img{max-width:100%}.scroll{overflow:auto}@media(max-width:700px){table{min-width:620px}}</style></head><body>
+<h1>F4·F5-5·F6-3·4·6·F7·F8 소스 구현 결과</h1>
+<p class="note"><strong>최신 인수 · 2026-10-02:</strong> 관계선 마우스 선택·C# 선언 정보·소유·반복 호출·구조 관계 근거를 보강하고 현재 앱에 적용했습니다. SMSR rev61·AO3 rev11 재색인 결과는 아래11절을 확인하세요. 미해소 호출은 남으며 새 세션 자동 인식과 독립 HTML 직접 열기는 사용자 지정 제외 사항입니다. 이전10절 수치는 당시 이력입니다.</p>
+<p>2026-10-01 · <a href="graphify-capability-roadmap-2026-10-01.html">전체 계획</a> · <a href="graphify-next-status-2026-10-01.html">이전 F2/F3/F5/F6 기록</a> · <a href="development-log/2026-10-01.md">날짜별 개발 이력</a></p>
+<p class="note"><strong>소스 구현·격리 시험 및 승인된 운영 실행본 배포 결과입니다.</strong> 2026-10-01 17:50 KST에 F2~F8 Release 실행본을 동일 경로에 적용·재시작했습니다. 기존 지식 색인은 그대로 유지했으며 새 분석 결과로 자동 재색인하지 않았습니다. Codex 전역 스킬/훅·앱 설정·Git 게시는 변경하지 않았습니다. 로컬 도구·모델과 누락된 확장 문법은 설치·검증했습니다. 최종 소스 시험은 <code>src/SMSR.App/bin/GraphifyRemaining22</code>, 배포 후보는 <code>artifacts/graphify-deploy-candidate-20261001-1740</code>입니다. 새 Codex 세션 스킬 실사용, 독립 HTML 직접 열기, 기존 프로젝트 재색인은 별도 인수입니다.</p>
+<h2>1. 이번 구현</h2><div class="scroll"><table><tr><th>구간</th><th>동작과 검증</th><th>경계</th></tr>
+<tr><td>F4 이미지·스캔 PDF</td><td>로컬 Tesseract OCR 텍스트·픽셀 영역과 PDF 페이지/영역을 반환합니다. 해시를 확인한 PDF 래스터 근거 화면에서 선택 영역을 강조합니다. 자체 Validate→Store→Report 이미지와 스캔 PDF의 글자·영역을 실제 추출·브라우저 대조했습니다.</td><td>OCR은 기계 인식이며 정확도 보장이 아닙니다. 그림의 의미 해석은 호스트가 제출한 후보입니다. 이미지 크기 메타데이터를 설계 이유로 확정하지 않습니다.</td></tr>
+<tr><td>F4 음원·영상</td><td>설치된 로컬 Whisper Tiny/CPU 전사, 시간 구간·원문 재생 링크, FFmpeg 표본 프레임과 영상 음원 전사를 연결했습니다. 실제 로컬 합성 한글/영문 음원, 무음·누락 모델·손상 입력·영상 자료 검사와 음원 2초 근거 이동을 확인했습니다.</td><td>전 영상 장면/동작 이해가 아니라 제한된 프레임·전사입니다. 모델 품질에 따라 오인식할 수 있습니다. runtime은 모델을 자동 다운로드하거나 파일을 provider에 전송하지 않습니다.</td></tr>
+<tr><td>F4 의미 저장·최신성</td><td>기존 문서 의미 제출을 재사용해 이미지/음원 개념·관계를 위치·인용·원문 해시·리비전과 함께 원자 저장합니다. 실제 호스트 합성 자료 추출을 제출·조회했습니다. 실패 결과는 자동 성공/재시작으로 바꾸지 않고 명시 재시도를 받습니다. 모델·도구 메타데이터 지문과 현재 인용 일치를 재검사하며 불일치는 stale입니다.</td><td>일반 색인이 모든 문서/미디어에 의미 모델을 무인 실행하지 않습니다. 의미 추출은 호스트가 명시 제출합니다. host 추출 방법 라벨과 실제 모델 ID/추론 강도는 다르며 미제공 모델·토큰은 unknown입니다. 런타임 지문은 크기·mtime 변경 감지로, 매번 전체 모델의 SHA를 검증하는 무결성 기능은 아닙니다.</td></tr>
+<tr><td>F5-5 보고서</td><td>같은 저장 리비전의 그룹·핵심 구성요소·그룹 사이 연결·설계 이유·coverage/제한을 생성합니다. HTTP/MCP와 찾기의 접힌 보고서 화면을 검증했습니다.</td><td>중요도·그룹은 정적 구조 통계입니다. 실제 역할·실행 순서나 없는 설계 이유를 창작하지 않습니다. 현재 파일은 근거를 열어 재확인합니다.</td></tr>
+<tr><td>F6 스킬</td><td>기존 smsr-query에 smsr-explain·smsr-impact·smsr-maintain·smsr-report를 추가했습니다. 다섯 스킬 validator, 실제 MCP 설명/영향/진단/보고서, 없는/오래된 근거·피드백 교훈·질문 원문 미저장 검사를 통과했습니다.</td><td>질문만으로 색인·수정·provider·감시·훅 설치를 승인하지 않습니다. 현재 세션 목록에 다섯 스킬이 노출되지만 새 세션에서 실제 사용한 인수와는 구분합니다.</td></tr>
+<tr><td>F7 감시·배포 기능</td><td>기본 꺼짐인 색인 프로젝트 감시, 3초 debounce, 생성/변경/rename/삭제·overflow, 기존 색인 gate/범위 재사용, 종료·설정 복구를 구현했습니다. 스킬 Preview/Install/Replace/백업/Rollback을 격리 임시 경로에서 검사했습니다.</td><td>전역 훅/스킬 미적용. 감시는 사용자가 켠 색인 범위를 갱신하며 문서 의미 모델을 자동 실행하지 않습니다. 오류 시 기존 색인을 보존하고 상태를 표시합니다. 무제한 감시가 아닙니다.</td></tr>
+<tr><td>F8 화면·산출물</td><td>질문·보고서·감시·내용 근거·선택 범위 내보내기를 기존 찾기에 접힌 카드로 통합했습니다. 전체/선택 JSON·독립 HTML·SVG·GraphML·Wiki/Obsidian ZIP을 생성합니다. 노드 상세 선택 시 작업 맵 스크롤을 보존하고 이력 접힘 상태를 유지합니다.</td><td>독립 HTML 파일 직접 열기는 브라우저 file:// 보안 정책으로 차단되어 우회하지 않았습니다. 다운로드 및 독립 탐색 코드의 그룹/검색/페이지/키보드/상세 검사는 통과했으며 사용자 직접 열기는 남았습니다.</td></tr></table></div>
+<h2>2. 사용 순서</h2><ol>
+<li>새 소스 앱의 찾기에서 프로젝트 전체/선택 폴더를 색인합니다. 정적 코드·명시 문서 관계는 같이 분석됩니다.</li>
+<li>이미지·음원·영상을 선택하고 <strong>내용 분석 · 영역과 시간 근거</strong>를 펼쳐 <strong>로컬 분석 확인</strong>을 누릅니다. ANALYSIS_PENDING이면 안내 후 다시 확인합니다. 실패는 도구/모델/입력 제한을 확인하고 명시 재시도합니다.</li>
+<li>OCR 영역·시간 링크로 현재 원문 위치를 확인합니다. PDF는 페이지를 안전한 래스터로 보여주며 PDF 스크립트를 실행하지 않습니다.</li>
+<li>의미 관계는 <code>read_graph_media</code> 또는 <code>read_graph_document</code> → 호스트 추출 → <code>submit_graph_document_semantics</code> → <code>get_graph_document_semantics</code>로 검증·저장합니다. 원문/지문/인용이 달라지면 재분석합니다.</li>
+<li><strong>변경 감시 · 보고서 · 내보내기</strong>에서 감시 상태 확인 후 사용자가 켜거나 끕니다. 보고서는 저장 결과를 조회합니다. 전체 내보내기와 선택 항목 주변 내보내기는 범위가 다릅니다.</li>
+<li>다운로드한 HTML은 독립 탐색용, GraphML은 교환용, SVG는 정적 시각 자료입니다. Wiki/Obsidian은 새 ZIP이므로 기존 사용자 노트를 직접 덮어쓰지 않습니다. 공유 전 경로·라벨·짧은 근거 인용의 공개 범위를 확인하세요.</li></ol>
+<h2>3. 로컬 도구·모델</h2><p>FFmpeg/FFprobe는 기존 설치를 사용했습니다. 사용자 승인 후 Tesseract 5.4.0.20240606, faster-whisper 1.2.1, CTranslate2 4.8.2, PyAV 16.1.0, PDFium 4.30.0, Pillow 12.3.0, pypdf 6.16.1 및 로컬 모델을 설치했습니다. 새 다운로드는 모델과 패키지의 수신이며 사용자 프로젝트 파일을 외부에 업로드하지 않았습니다. 호스트 의미 검증 자료는 자체 생성 이미지/합성 음원입니다. Codex 호스트 자체가 완전 오프라인 모델이라는 뜻은 아닙니다.</p>
+<ul><li>Whisper: <code>Systran/faster-whisper-tiny</code> 고정 리비전 <code>d90ca5fe260221311c53c58e660288d3deb8d356</code>.</li><li>Tesseract eng/kor: <code>tesseract-ocr/tessdata_fast</code> 고정 리비전 <code>87416418657359cb625c412a48b6e1d6d41c29bd</code>.</li><li>모델 파일 SHA-256과 리비전은 각 모델 폴더의 <code>smsr-model-manifest.json</code>에 보존합니다. 설치 스크립트: <code>scripts/install-graph-media.ps1 -InstallOcr -DownloadModels</code>. 실행 분석 중 자동 다운로드는 없습니다.</li><li>기술 출처: <a href="https://github.com/SYSTRAN/faster-whisper">faster-whisper</a>, <a href="https://tesseract-ocr.github.io/tessdoc/Installation.html">Tesseract 설치 문서</a>, <a href="https://github.com/tesseract-ocr/tessdata_fast">OCR 모델</a>. Graphify 0.9.73 고정 원본 58모듈·Apache-2.0/MIT/NOTICE 보존과 thinking-orbs 재사용 고지는 기존 README를 유지합니다. 모델·도구의 개별 라이선스도 설치/재배포 시 확인해야 합니다.</li></ul>
+<h2>4. 상한·안전성</h2><ul>
+<li>이미지 20 MB·16 MP, 음원/영상 100 MB·20분, 영상 표본 최대12프레임. 출력2,000구간·500,000자, 인용512자. 미디어 작업기8분·2 GiB·출력16 MiB, 동시 대기4개. 상한을 정확도/실측 메모리로 오인하지 않습니다.</li>
+<li>PDF 파일20 MB, OCR/미리보기50페이지·16 MP, PDF 작업기4분·1 GiB. 기존 암호화/압축/Office 매크로/외부 링크/DTD/경로·지문 보호를 유지합니다. 빈 스캔은 메타데이터만 존재해도 TEXT_AVAILABLE로 바꾸지 않습니다.</li>
+<li>미디어 FFmpeg 입력은 임시 파일·제한된 프로토콜/형식만 허용합니다. 네트워크 재생목록·concat 입력은 허용하지 않습니다. 연결 경로·비밀 파일·잘못된 좌표·오래된 해시는 거부합니다.</li>
+<li>감시8개프로젝트·대기변경10,000상한. 출력/캐시/.git/민감 파일은 제외하고 수동·훅·감시 색인은 기존 gate로 직렬 처리합니다.</li>
+<li>전체 지식 내보내기50,000노드·200,000관계·64 MiB. SVG 시각 자료는500노드·2,000관계로 제한하며 초과하면 선택 범위가 필요합니다. HTML은50개/페이지·이웃12개·상세관계100개 표시하며 전체 데이터는 보존합니다. 외부 요청은 CSP로 차단합니다.</li>
+<li>원문 질문 로그와 전용 그래프 DB 교체, 무인 의미 provider, 전 언어 컴파일러 판정·정밀 taint/PDG, Git 게시를 추가하지 않았습니다.</li></ul>
+<h2>5. 실제 저장 그래프 사본 측정</h2><p>운영 DB의 읽기 전용 사본에서 최종 기능을 검사했습니다. 재색인·원문 수정 없이 <strong>기존 저장 리비전</strong>만 조회했습니다. 이전 F2 새 추출 결과(31,399노드 등)와 다른 데이터이며 호출 완전성 비교가 아닙니다.</p>
+<div class="scroll"><table><tr><th>항목</th><th>SMSR</th><th>AO3.5_Main</th></tr><tr><td>저장 리비전 / 노드 / 관계</td><td>59 / 5,124 / 15,063</td><td>9 / 20,406 / 48,711</td></tr><tr><td>전체 JSON / 소요</td><td>6,803,733 bytes / 375.15ms</td><td>24,650,719 bytes / 976.30ms</td></tr><tr><td>선택 범위20회 p95</td><td>160.31ms</td><td>476.14ms</td></tr><tr><td>보고서 / 그룹</td><td>3,103.23ms / 252</td><td>7,524.07ms / 1,021</td></tr><tr><td>호스트 peak</td><td>167,694,336 bytes</td><td>418,316,288 bytes</td></tr></table></div>
+<p>단일 로컬 측정이며 부하/환경에 따라 바뀝니다. 호스트 peak는 Python 자식을 제외합니다. <a href="test-data/graph-knowledge-project-2026-10-01.json">측정 JSON</a> · <a href="test-data/media-content-acceptance-2026-10-01.json">실제 로컬 미디어 검사</a>.</p>
+<h2>6. R01~R14 인수 상태</h2><div class="scroll"><table><tr><th>요구</th><th>근거와 상태</th></tr>
+<tr><td>R01 스킬</td><td>다섯 스킬 계약·실제 MCP 검사 통과. 현재 세션 목록 노출 확인, 새 세션 실사용은 사용자 환경 인수 대기.</td></tr>
+<tr><td>R02 문서 의미 / R03 문서 입력</td><td>원문/좌표·제출·저장·캐시·변경/삭제 인수, Office/PDF 안전성 검사 통과. 의미 모델 자동 실행은 아님.</td></tr>
+<tr><td>R04 미디어</td><td>이미지·PDF OCR, 한글/영문 전사·영상 표본/음원, 실제 합성 자료 의미 제출·조회와 근거 화면 통과. 전면 장면 이해·오인식 없는 인식은 보장하지 않음.</td></tr>
+<tr><td>R05 질문 / R06 설명</td><td>어휘·동명/없음·근거 묶음·설명/영향/MCP 검사 통과. 알 수 없는 역할·이유는 미확인.</td></tr>
+<tr><td>R07 발견 / R08 그룹</td><td>이전 대형 실제 작업기·그룹 탐색 + 이번 같은 리비전 보고서/범위 검사 통과. 중요도는 실행 빈도 아님.</td></tr>
+<tr><td>R09 정보 / R10 hyperedge</td><td>세부 종류·출처·참여 역할 원자 저장·기존 지식 회귀·내보내기 검사 통과.</td></tr>
+<tr><td>R11 지원 범위</td><td>고정 Graphify 표본 대조 결과를 유지. 운영 Python의 누락4엔진 설치·추출기101/103가용·추가26형식 원본 대조·pip check 통과. 기존 그래프는 다음 색인 때 새 버전으로 재구축하며 모든 형식 정확도를 뜻하지 않음.</td></tr>
+<tr><td>R12 피드백 / R13 감시</td><td>교훈/stale/원문 질문 미저장, 실제 파일 변경·복구·명시 설정과 격리 설치/롤백 통과. 전역 스킬/훅 미적용.</td></tr>
+<tr><td>R14 공유</td><td>전체/선택 JSON·HTML·SVG·GraphML·Wiki/Obsidian 생성 및 오프라인 탐색 코드 통과. file:// 직접 열기는 사용자 확인 대기.</td></tr></table></div>
+<h2>7. 검증과 실패 수정</h2><p>최종 Remaining22 빌드 경고·오류0. 문서/미디어·보고서·감시·실제 SQLite 쓰기 잠금/복구·HTTP/MCP 인수 종료0. 동일 기능 Remaining21의 기존 그래프/지식/추적 회귀 종료0. Python 입력 보호/실제 미디어, Node11개와 다섯 스킬 validator·격리 설치/복구 검사 통과. 실행 출력별 결과는 개발 이력에 구분합니다.</p>
+<p>Tesseract의 TSV 설정 파일 누락은 출력 플래그로 해결했고 어두운 합성 그림 글자는 제한된 두 번째 OCR로 보완했습니다. PyAV19의 전사 API 불일치는16.1.0으로 고정했습니다. PDFium4.30 컨텍스트와 과소 메모리 제한, 음원/영상 저장 종류 검증 누락, 빈 PDF의 메타데이터 오판, 미디어/내보내기 JS 자산 경로 누락을 수정하고 다시 검사했습니다. 원문 지문/보호를 완화하지 않았고 실패를 성공으로 집계하지 않았습니다.</p>
+<details><summary>스캔 PDF의 실제 OCR 영역 강조 — 자체 자료</summary><img src="images/graph-pdf-region-2026-10-01.jpg" alt="PDF에서 Store 영역을 선택한 실제 근거 화면"></details>
+<details><summary>음원 근거 시간·선택 구간 — 자체 합성 음원</summary><img src="images/graph-audio-evidence-2026-10-01.jpg" alt="음원 2초 구간과 전사 근거 강조"></details>
+<details><summary>대시보드 선택 후 스크롤 보존 — 22노드 시험</summary><img src="images/dashboard-selection-scroll-2026-10-01.jpg" alt="아래 노드를 선택해도 작업 맵 위치가 보존되는 화면"></details>
+<h2>8. 운영 배포 검증 · 2026-10-01 17:50 KST</h2>
+<ul><li>Release 후보 빌드 경고·오류0, 동일 후보의 문서/미디어/보고서/감시·지식·추적 자체 검사 모두 종료0. C# 분석기 두 복사본·브리지·웹·상류 메타데이터 해시를 확인했습니다.</li><li>정상 GUI 종료 도구는 초기화 오류로 사용할 수 없었습니다. SQLite 온라인 backup/복원·모든 테이블 건수 일치·무결성 검증을 먼저 마친 뒤 정확한 SMSR PID36440만 종료했습니다. 정지 DB459,010,048바이트 복사·해시·무결성/외래키 검사도 통과했습니다.</li><li>기존8개 stdio 브리지를 끊지 않고 구 실행 폴더를 형제 경로에 보존한 뒤 후보를 동일 경로에 복사했습니다. 새 PID9436의 127.0.0.1:49783 ready와 새로운 stdio <code>get_graph_watch</code>/<code>get_graph_report</code>를 확인했습니다.</li><li>SMSR rev59 5,124노드/15,063관계, AO3 rev9 20,406노드/48,711관계가 전체 JSON과 일치하며 고아 관계0입니다. AO3 보고서 READY와 실제 코드 필터/심벌 관계/원문 버튼, 이력 접기·선택 후 맵 스크롤108→108px·접힘 상태 유지·브라우저 오류0을 확인했습니다.</li><li>Codex config·hooks·앱 settings 해시가 배포 전과 동일합니다. 이번 시작만 <code>--background --ensure-server --skip-codex-integration --skip-update-check</code>로 자동 설정/업데이트 호출을 건너뛰었습니다. 사용자 자동 업데이트 설정 자체는 그대로이므로 이후 일반 시작에는 적용됩니다.</li></ul>
+<details><summary>백업·실행 경로와 복구 주의사항</summary><ul><li>현재 실행본: <code>D:/Gitsource/개인/SMSR/src/SMSR.App/bin/Release/net8.0-windows/SMSR.App.exe</code>.</li><li>실행 파일 전체/정지 DB: <code>D:/Gitsource/개인/SMSR/artifacts/app-deploy-backup-graphify-20261001-1740/application</code>·<code>database/smsr.db</code>.</li><li>구 실행 폴더: <code>src/SMSR.App/bin/Release/net8.0-windows.predeploy-graphify-20261001-1740</code>. 브리지 프로세스가 사용 중이므로 삭제하지 않습니다.</li><li>온라인 일관 스냅샷/복원 사본: <code>C:/Users/surromind/AppData/Local/SMSR/verification-backups/20261001-084353-020868/snapshot.db</code>·<code>restored.db</code>. 폴더 시각은 UTC입니다.</li><li>문제 시 현재 DB를 다시 백업하고 정확한 앱 프로세스만 종료한 뒤 백업 실행본으로 복구합니다. 배포 후 새 기록을 잃지 않도록 과거 DB를 무조건 덮어쓰지 않습니다.</li></ul></details>
+<details><summary>실제 운영 찾기 화면</summary><img src="images/graphify-live-deploy-2026-10-01.jpg" alt="배포된 AO3 찾기와 보고서·내보내기 메뉴"></details>
+<details><summary>실제 운영 대시보드 · 접힌 이력과 선택 상세</summary><img src="images/graphify-deploy-dashboard-2026-10-01.jpg" alt="동일 형태의 접힘 카드와 선택 노드 상세"></details>
+<h2>9. 남은 사용자 환경 인수</h2><ol><li><strong>기존 프로젝트 재색인:</strong> 배포는 기존 그래프를 변경하지 않았습니다. 다음 사용자 색인에서 새 버전으로 정적 분석이 재구축됩니다. 과거 미해소 관계가 배포만으로 해결되었다고 표시하지 않습니다.</li><li><strong>새 Codex 세션:</strong> 다섯 프로젝트 스킬은 현재 목록에 노출되지만 새 세션 실제 설명/영향/보고서 작업까지 완료한 것은 아닙니다. 전역 설치는 Preview가 기본이며 명시 Install만 변경합니다.</li><li><strong>독립 HTML:</strong> 다운로드한 파일을 직접 열어 그룹·검색·노드 상세 이동을 확인합니다. 브라우저의 file:// 차단을 우회하지 않습니다.</li></ol>
+<h2>10. 승인된 재색인·스킬 실사용 인수 · 2026-10-01</h2>
+<p class="note">위 8·9절은 배포 당시 기록입니다. 이후 DB 백업·복원 검사를 먼저 마치고 기존 전체 프로젝트 범위를 Graphify 0.9.73으로 재색인했습니다. 일반 색인에 정적 관계 분석이 포함됩니다. 재색인 성공은 모든 심벌·호출의 해소를 뜻하지 않습니다.</p>
+<div class="scroll"><table><tr><th>프로젝트·리비전</th><th>파일</th><th>노드</th><th>관계</th><th>미해소 관계</th><th>상세/미분류 심벌</th><th>근거 없는 관계</th></tr>
+<tr><td>SMSR · 60</td><td>1,221</td><td>6,904</td><td>20,363</td><td>32,826</td><td>4,234 / 491</td><td>1,084</td></tr>
+<tr><td>AO3.5_Main · 10</td><td>2,603</td><td>31,399</td><td>66,341</td><td>63,960</td><td>15,472 / 13,299</td><td>44</td></tr></table></div>
+<p>미해소 수는 진단 대상이며 저장 관계 수의 부분집합으로 계산하지 않습니다. 두 프로젝트 고아 관계0·메타데이터 승격 불필요·검사 시 추가/변경/삭제0을 확인했습니다. 이후 이 결과 문서를 변경했으므로 SMSR의 다음 최신성 검사에는 문서 변경이 잡힐 수 있습니다. AO3 구문·외부 라이브러리·이벤트·동명/오버로드 제한은 남습니다.</p>
+<ul><li><strong>실제 관계:</strong> SMSR <code>GraphIndexService.IndexAsync → GraphMarkdown.Extract</code> 원문106행, AO3 <code>Net5/gridone.Commons/HotKeyManager.cs</code>의 <code>AddHotKey → RegisterHotKey</code> 원문61행이 EXTRACTED/RESOLVED·Graphify0.9.73·현재 해시와 일치합니다. AO3 ProcessMessage의 외부 API와 이벤트 호출은 미해소 진단을 유지합니다.</li>
+<li><strong>다섯 스킬:</strong> maintain 재색인/최신성, query 실제 어휘 검색·근거 예산, explain 원문 기반 색인 서비스 역할, impact 추론 제외 2단계 영향 후보·실제 self-check 경로, report 리비전 고정 보고서와 실제 그룹 구성원 조회를 사용했습니다. 새 세션 자동 인식 검증과 현재 세션 실사용은 구분합니다.</li>
+<li><strong>질문 근거:</strong> 어휘 후보 검색과 4,000 UTF-8바이트 근거 묶음이 절단됨을 확인했습니다. 제한된 묶음에서 관계0건은 전체 그래프에 관계가 없다는 뜻이 아닙니다. 정밀 호출은 별도 관계 페이지에서 확인했습니다. 유효 피드백0건이며 원문 질문은 저장하지 않았습니다.</li>
+<li><strong>보고서:</strong> SMSR rev60 READY, 총356그룹 중100·그룹간 연결1,000·핵심10개 반환. AO3 rev10 READY·총2,106그룹입니다. 그룹명·중요도·추론 연결을 역할이나 실행 순서로 확정하지 않습니다. 의미 결과 미제출과 설계 이유 미확인은 미확인으로 유지합니다.</li>
+<li><strong>백업:</strong> <code>C:/Users/surromind/AppData/Local/SMSR/verification-backups/20261001-134940-972076</code>의 snapshot.db/restored.db. 일관 스냅샷·복원 모든 테이블 건수 일치·무결성·외래키 검사 통과. 기존 기록을 덮어쓰거나 삭제하지 않았습니다.</li>
+<li><strong>내보내기:</strong> <code>artifacts/graphify-acceptance-20261001-2310</code>에 두 프로젝트 JSON·독립 HTML 4개를 저장했습니다. JSON 노드/관계가 위 수치와 일치·절단false. 전체 데이터 포함 여부와 보고서 표본 절단은 별개입니다. HTML의 페이지·그룹·검색·키보드·상세·CSP/외부 스크립트 없음 검사는 두 파일 모두 통과했습니다.</li>
+<li><strong>남은 실제 인수:</strong> 브라우저가 file:// 접근을 차단해 직접 HTML 열기는 BLOCKED입니다. 사용자 브라우저로 해당 HTML을 직접 열어 확인해야 합니다. 밀집 SVG 연결선의 마우스 선택에서 인접 선이 선택되는 사례를 확인했습니다. Enter 선택은 올바른 106행 근거를 표시했으나 마우스 선택 문제를 해결했다고 보고하지 않습니다. 전역 설정·훅·감시 활성화·외부 provider·Git 게시를 변경하지 않았습니다.</li></ul>
+<details><summary>실제 갱신 그래프 · 호출 근거106행</summary><img src="images/graphify-reindex-2026-10-01.jpg" alt="SMSR 색인 서비스의 갱신된 호출 관계와 원문106행 근거"></details>
+<h2>11. 관계 선택·분석 품질 보강 · 2026-10-02</h2>
+<p>Graphify0.9.73의 기존 추출 사실과 유일한 AST 이름/행을 대조하며 새 심벌이나 외부 호출 대상을 추측해서 만들지 않습니다. C# 속성·인터페이스·구조체·열거형 항목·종료행을 보존하고 METHOD 관계에서 실제 클래스 소유를 연결합니다. 캐시 재사용에도 동일 정보가 적용됩니다. 형식v14로 두 프로젝트 전체를 재구축했습니다.</p>
+<div class="scroll"><table><tr><th>프로젝트 · 최신 리비전</th><th>파일 / 노드 / 관계</th><th>미분류 심벌 전→후</th><th>근거 없는 관계 전→후</th><th>미해소 진단 전→후</th></tr>
+<tr><td>SMSR · 61</td><td>1,228 / 6,930 / 20,434</td><td>491 → 244</td><td>1,084 → 0</td><td>32,826 → 32,889</td></tr>
+<tr><td>AO3.5_Main · 11</td><td>2,603 / 31,399 / 66,343</td><td>13,299 → 5,848</td><td>44 → 0</td><td>63,960 → 63,958</td></tr></table></div>
+<ul><li><strong>해석:</strong> SMSR은 이번 소스·검사·문서 추가를 포함하므로 동일 소스의 호출 해소율 비교가 아닙니다. AO3 소스는 변경하지 않았고 확정 호출2개를 추가했습니다. 두 프로젝트 고아0·승격 불필요·색인 직후 최신성 정상입니다. 결과 문서 변경은 다음 SMSR 최신성 검사에 반영됩니다.</li>
+<li><strong>실제 AO3 정보:</strong> Window는 property·L22·22~25행·HotKeyManager 소유입니다. IconChar의 항목은 enum_member로 보존됩니다. AO3에 property4,731·enum_member2,720·interface35·struct52·enum200개가 저장됐습니다. 확정 관계 AddHotKey→RegisterHotKey는 원문61행·현재 SHA와 일치합니다.</li>
+<li><strong>추가 호출:</strong> ChatManualViewModel.MessageParser→UpdateChat269행, EditedJToken.CreateNewToken→ParseToValue170행이 EXTRACTED입니다. 기존 유일한 바인딩과 같은 타입에 한정한 this 호출 보강이며 외부 receiver·오버로드·동명 대상을 임의 연결하지 않습니다. None receiver 접두어도 제거했습니다.</li>
+<li><strong>근거:</strong> 기존 Graphify 분석기/버전/해시를 유지합니다. 문서·파일·프로젝트·경로 구조 관계에는 소유 파일의 실제 SHA와 SMSR 분석기·v14 버전을 기록합니다. 근거가 있다는 것은 관계의 의미나 실행 순서가 완벽하다는 뜻이 아닙니다.</li>
+<li><strong>화면:</strong> 16px hit 영역 겹침은 실제 선과 클릭점의 최단 거리로 해결했습니다. SVG 좌표 변환·키보드·이동 후 선택 검사를 통과했습니다. 실제 밀집 Extract선 마우스/Enter 모두106행, 드래그 후 translate(-12,-41)와 같은 근거, 초기화 복귀·브라우저 오류0을 확인했습니다.</li>
+<li><strong>검사:</strong> 후보 빌드 경고·오류0, 동일 실행본의 지식·문서·그래프·추적·정적 자체 검사 종료0. 16개 기본 문법·추가26형식 고정 원본 대조, 캐시·증분·변경/삭제·프로토콜 보호 회귀 통과. 개별 자료 통과를 전체 언어/프레임워크 정확도로 확대하지 않습니다.</li>
+<li><strong>운영:</strong> 온라인 DB 스냅샷/복원 테이블 건수·무결성/외래키 검사와 정지 DB 무결성 통과 후 정확한 이전 PID9436만 종료하고 새 PID34032를 실행했습니다. 기존 브리지는 종료하지 않았습니다. 후보 DLL/실행본 일치·HTTP ready·신규 브리지 MCP 응답·Codex config/hooks·앱 설정 지문 불변입니다.</li>
+<li><strong>백업:</strong> artifacts/app-deploy-backup-graphify-quality-20261002-0018의 application/database, Release의 net8.0-windows.predeploy-graphify-quality-20261002-0018, LocalAppData/SMSR/verification-backups/20261001-151733-339593의 snapshot.db/restored.db에 보존했습니다. 삭제·기록 덮어쓰기 없이 복구 가능하게 유지했습니다.</li>
+<li><strong>보고서/산출물:</strong> rev61/rev11 보고서 READY, 총359/2,106그룹입니다. AO3 첫 보고서 분석은 FAILED1회였고 명시 재조회 뒤 READY·동일 리비전을 확인했습니다. 원인은 확정하지 않았습니다. artifacts/graphify-quality-acceptance-20261002-0027의 JSON/HTML4개는 전체 노드/관계와 일치·절단false·모든 관계 근거 검사를 통과했습니다. JSON15,134,657/58,236,587바이트·HTML15,138,981/58,240,917바이트입니다. 보고서100그룹 표본 절단은 전체 내보내기 절단과 별개입니다.</li>
+<li><strong>남는 한계:</strong> XAML·외부 API·이벤트·동명/오버로드 등 확정 사실이 없는 대상은 unknown/미해소로 유지합니다. 전 언어 컴파일러 판정·무인 의미 provider·전역 훅/스킬·Git 게시는 추가하지 않았습니다. 새 세션 자동 인식과 독립 HTML 직접 열기는 이번 요청에서 제외했고 보안 차단도 우회하지 않았습니다.</li></ul>
+<p><a href="development-log/2026-10-02.md">2026-10-02 개발 이력</a></p>
+<details><summary>수정된 실제 호출선 선택·원문106행 근거</summary><img src="images/graphify-quality-2026-10-02.jpg" alt="SMSR에서 올바른 Extract 호출선과 원문106행 근거를 확인한 화면"></details>
+<h2 id="reference-quality">12. 외부 참조·XAML·보고서 보강 · 2026-10-02</h2>
+<p>원본 Graphify0.9.73의 58모듈은 변경하지 않았습니다. SMSR 어댑터와 공유 색인·보고서 경로를 보강했습니다. 아래 수치는 최종 분석 검증 스냅샷이며 이 결과 문서 자체의 후속 색인은 별도 리비전입니다.</p>
+<div class="scroll"><table><tr><th>검증 스냅샷</th><th>파일 / 노드 / 관계</th><th>미분류 심벌</th><th>미해소 진단</th><th>보고서</th></tr>
+<tr><td>SMSR · rev63</td><td>1,239 / 6,955 / 20,524</td><td>244 → 234</td><td>32,889 → 34,016</td><td>READY · 355그룹</td></tr>
+<tr><td>AO3.5_Main · rev13</td><td>2,603 / 31,399 / 66,372</td><td>5,848 → 5,730</td><td>63,958 → 65,757</td><td>READY · 2,100그룹</td></tr></table></div>
+<ul><li><strong>외부/모호한 참조:</strong> 실제 프로젝트의 NuGet 선언을 메타데이터로 구분합니다. 외부 또는 원문 없음, 로컬 미확정, 원본의 모호한 대상 상태를 표시하며 후보 경로는 최대12개입니다. 이름이 같다는 이유로 호출을 만들지 않습니다. 같은 행의 다른 대상명을 보존하면서 진단 건수가 증가할 수 있습니다. 진단 수는 서로 다른 호출 위치 수나 해소율이 아닙니다.</li>
+<li><strong>XAML:</strong> 화면 코드·화면 모델·이벤트 처리·속성 바인딩·명령 바인딩·변환기를 구분합니다. 유일한 AST 소유 속성15개를 AO3에 연결했고 파일 간 투영도 보존합니다. AO3 2,603파일 해시 불변, 이전 관계66,343개 대비 최종66,372개입니다. 실제 코드가 아닌 AdminModeRestartWindow의 가상 코드 대상1개는 진단으로 전환했습니다.</li>
+<li><strong>남는 한계:</strong> 외부 API 구현·동적 호출·오버로드·런타임 DI는 확정하지 않습니다. 템플릿·ElementName·RelativeSource·다른 Source·복잡한 DataContext가 있는 파일은 보수적으로 속성 자동 연결을 제외합니다. SMSR의 런타임 ViewModel 연결은 미확정이며 속성 연결0건입니다. AO315개 통과를 모든 XAML 바인딩 해소로 확대하지 않습니다.</li>
+<li><strong>보고서:</strong> HTTP가 요청 취소를 공유 작업의 수명으로 전달하던 경로를 앱 종료 토큰으로 수정했습니다. 비밀 원문 없는 취소·시간·메모리·입력 제한·작업기 실패 사유를 표시합니다. 실제 취소 → FAILED/ANALYSIS_CANCELLED → 명시 재조회 → READY 검사 통과. 과거 AO3 실패 원인은 당시 예외가 제거되어 확정할 수 없습니다. 이번 최종 운영 보고서는 두 프로젝트 모두 READY입니다.</li>
+<li><strong>발견·복구:</strong> 중간 rev62/rev12에서 새 XAML 관계의 파일 투영 허용 목록 누락을 발견했습니다. 완료 작업을 다시 열지 않고 후속 통합 수정 단계를 추가했습니다. 공유 GraphCodeIndex를 수정하고 실제 색인·DB·파일/속성 조회 회귀를 추가했습니다. 형식v16으로 다시 구축한 rev63/rev13을 최종 검증본으로 사용합니다.</li>
+<li><strong>검증:</strong> Release 경고·오류0, 실제 추출/패키지/바인딩/템플릿 오연결 거부·원본 해시·암호화 캐시·C#/Python 변경/삭제 전체 동등성·UI 관계/드래그/배치 검사 통과. 정적·문서·지식 자체 검사 종료0. 마지막 자산 포함 빌드는 검증 DLL 지문 불변·어댑터 지문 일치를 확인했습니다. 고아/근거 없는 관계0·재색인 직후 최신성 정상입니다.</li>
+<li><strong>화면:</strong> SMSR WorkflowPanel의 화면 코드/이벤트 처리와 원문5개, AO3 ChatAOAIWindow의 속성/명령/화면모델 관계·20/22~25행 근거·rev13 보고서2100그룹을 확인했습니다. 키보드 선택·브라우저 오류0입니다. 자동화의 SVG 요소 중앙 클릭은 인접한 실제 선을 고를 수 있어 제목/근거를 확인했고 의미 대상 검증에는 Enter를 사용했습니다.</li>
+<li><strong>운영·백업:</strong> 최종 PID30844, 후보 DLL/실행본 일치·HTTP·새 브리지 MCP 응답·config/hooks/settings 지문 불변. artifacts/app-deploy-backup-reference-20261002-0108의 application/database/database-v15와 Release의 predeploy-reference-20261002-0108/predeploy-reference-final-20261002-0126에 이전 실행본을 보존했습니다. LocalAppData/SMSR/verification-backups/20261001-160557-977519의 온라인 snapshot/restored는 모든 테이블 건수·무결성/외래키 검사 통과이며 정지 DB2개도 검사했습니다. 기록을 삭제하거나 DB를 교체하지 않았습니다.</li>
+<li><strong>산출물:</strong> artifacts/graphify-reference-final-acceptance-20261002-0133의 두 JSON·독립 HTML은 전체 노드/관계·절단false·소유/근거/고아·실제 속성 연결과 HTML 페이지/그룹/검색/키보드/상세/CSP 검사를 통과했습니다. 보고서 일부 상세와 전체 내보내기는 다릅니다. 새 세션 스킬 자동 인식과 file:// 직접 열기는 계속 제외하며 외부 provider·전역 설정·Git 게시도 변경하지 않았습니다.</li></ul>
+<h3>사용자가 확인할 순서</h3>
+<ol><li>열린 웹 화면을 새로고침합니다. 앱은 이미 적용·재시작·재색인되어 별도 설치가 필요하지 않습니다.</li>
+<li><a href="http://127.0.0.1:49783/graph/explore?projectId=AO3.5_Main">AO3 찾기</a>에서 <code>ChatAOAIWindow.xaml</code>을 검색하고 코드 파일을 선택합니다.</li>
+<li>ChatAOAIViewModel.cs로 향하는 연결의 제목·근거를 확인합니다. 속성/명령 바인딩·화면 모델은 호출 실행 순서가 아닙니다. 겹친 선은 Tab/Enter로 선택할 수 있습니다.</li>
+<li>속성 바인딩의 원문 버튼에서20행의 <code>DataSource="{Binding Items}"</code>와 화면 근거를 대조합니다. 추가 근거 버튼으로22~25행도 확인합니다.</li>
+<li>‘변경 감시 · 보고서 · 내보내기’ → ‘보고서 확인’에서 최신 리비전을 확인합니다. FAILED이면 표시된 분류에 따라 확인 후 명시적으로 재조회하고, 반복 실패하면 분류·리비전·재현 파일만 전달합니다. 비밀 원문을 보내지 않습니다.</li>
+<li>코드를 바꾼 뒤에는 ‘색인 범위 확인’에서 전체/폴더 색인을 실행합니다. 기본 정적 관계 분석은 함께 진행하지만 외부 구현·복잡한 바인딩·동적 대상까지 확정한다는 의미는 아닙니다. 새 세션 인식/독립 HTML 직접 확인은 제외한 선택 사항입니다.</li></ol>
+<details><summary>실제 AO3 바인딩과20행 근거</summary><img src="images/graphify-reference-binding-2026-10-02.jpg" alt="AO3 XAML에서 ViewModel 코드로 이어지는 바인딩과 원문20행 근거"></details>
+<details><summary>실제 SMSR 이벤트 처리 원문5개</summary><img src="images/graphify-reference-event-2026-10-02.jpg" alt="WorkflowPanel 이벤트 처리의 원문 근거5개"></details>
+<h2>13. 범용 큰 구조 보기 — 2026-10-02</h2>
+<p>12개 분석 그룹을 페이지로 넘기는 지도를 <strong>프로젝트 전체 → 폴더 → 파일 내부 항목</strong>으로 바꿨습니다. 특정 프로젝트나 언어가 아니라 저장된 경로와 관계를 사용합니다. 문서·미디어도 같은 방식으로 표시합니다. 폴더가 설계 역할이나 실행 순서를 의미하지는 않습니다.</p>
+<ol><li>찾기를 새로고침하고 ‘큰 구조 보기’에서 폴더/파일을 선택합니다.</li><li>위 경로 버튼으로 상위 영역으로 돌아갑니다. 심벌을 누르면 기존 상세·원문을 확인합니다.</li><li>현재 영역과 바깥 연결을 구분하고 관계선을 눌러 방향·상태·원문 근거를 확인합니다.</li><li>노드를 드래그/방향키로 이동하고 ‘배치 초기화’로 복원합니다. 관계 데이터는 바뀌지 않습니다.</li><li>‘현재 영역 찾기’는 현재 영역만 필터링합니다. 전체 검색은 위쪽 검색창을 사용합니다.</li><li>커뮤니티 분석이 필요할 때만 ‘세부 분석 그룹 찾기’를 펼쳐 항목명/파일 경로로 검색합니다. 기본 구조 보기는 그룹 페이지와 분리했습니다.</li></ol>
+<p>지도는 내부24·바깥8·연결 묶음80까지이며 나머지 항목은 건수 안내와 접힌 전체 목록에서 선택합니다. 서버 관계 요약은2,000개, 구조 조회는5만 노드/20만 관계로 제한하며 초과/생략을 안내합니다. 기존 상세 관계 조회는 유지합니다. 저장된 리비전을 읽으므로 소스 변경 뒤에는 별도 색인이 필요합니다.</p>
+<p>일반 혼합 언어·문서·미디어, 한글/공백/깊은 경로, 빈 데이터, 5,000파일/5,150항목 샘플을 검증했습니다. SMSR/AO3 전용 분류는 넣지 않았습니다. 실제 포인터 관계 선택·원문 근거·파일/심벌 상세·드래그·초기화·그룹 검색을 확인했습니다.</p>
+<details><summary>범용 샘플 실제 화면</summary><img src="images/graph-structure-general-2026-10-02.png" alt="일반 프로젝트의 현재 폴더와 바깥 문서 연결 및 원문 근거"></details>
+<p><strong>운영 반영:</strong> 백업 후 검증 후보를 설치·재시작했습니다. 실제 src/Net5 계층·바깥 연결·지도 밖 전체 목록 접근, HTTP ready·브리지 응답·설정 지문 불변을 확인했습니다. 두 프로젝트의 원본 파일·노드·관계 전체 행 지문과 리비전은 유지했으며 재색인하지 않았습니다. 상세 백업/검증 내역은 날짜별 개발 이력에 기록했습니다. 처음12개 루트 항목이 보이는 경우 실제 루트 경로 수이며, 기존 분석 그룹12개 표시 제한이 아닙니다.</p>
+<details><summary>설치본 실제 계층 탐색</summary><img src="images/graph-structure-live-2026-10-02.png" alt="현재 앱의 src 하위 프로젝트와 외부 연결"></details>
+</body></html>

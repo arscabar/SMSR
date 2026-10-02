@@ -56,7 +56,7 @@ public sealed partial class EventStore(string databasePath)
             CREATE TABLE IF NOT EXISTS agent_heartbeats (
               project_id TEXT NOT NULL, workflow_id TEXT NOT NULL, agent_id TEXT NOT NULL,
               agent_role TEXT NOT NULL, status TEXT NOT NULL, node_id TEXT, summary TEXT,
-              retry_count INTEGER NOT NULL, heartbeat_at_utc TEXT NOT NULL,
+              retry_count INTEGER NOT NULL, heartbeat_at_utc TEXT NOT NULL, metadata_json TEXT NOT NULL DEFAULT '{}',
               PRIMARY KEY(project_id, workflow_id, agent_id));
             CREATE TABLE IF NOT EXISTS daily_activities (
               activity_id TEXT PRIMARY KEY, project_id TEXT NOT NULL, task_id TEXT NOT NULL,

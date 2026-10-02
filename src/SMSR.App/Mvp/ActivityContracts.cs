@@ -18,7 +18,11 @@ public sealed record ActivityRecord(
     long? SessionOutputTokens = null,
     long? GraphInputTokens = null,
     long? GraphOutputTokens = null,
-    long? SessionCachedInputTokens = null);
+    long? SessionCachedInputTokens = null,
+    string? AgentRole = null,
+    string? Model = null,
+    string? ReasoningEffort = null,
+    string? ParentAgentId = null);
 
 internal sealed record TrackingSession(
     string ProjectId,
@@ -31,7 +35,9 @@ internal sealed record TrackingSession(
     long? GoalOutputBase = null,
     long? GraphInputTotal = null,
     long? GraphOutputTotal = null,
-    long? GoalCachedInputBase = null);
+    long? GoalCachedInputBase = null,
+    string? AgentId = null,
+    string? ParentAgentId = null);
 
 public sealed record TokenUsageSummary(long GoalInput, long GoalOutput, long GraphInput, long GraphOutput,
     bool HasGoalUsage, bool HasGraphUsage, long GoalCachedInput = 0, bool HasGoalBreakdown = false);

@@ -34,6 +34,7 @@ internal static class CodexMcpConfigSelfCheck
             File.WriteAllText(hooksPath, "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"other.exe\"}]}]}}");
             var hooksBackup = CodexAutoTrackingHook.Register(path, fakeExecutable);
             var hooksText = File.ReadAllText(hooksPath);
+            var startHook = System.Text.Json.Nodes.JsonNode.Parse(hooksText)!["hooks"]!["SessionStart"]![0]!["hooks"]![0]!;
             if (!CodexAutoTrackingHook.IsRegistered(path, fakeExecutable)
                 || !hooksText.Contains("other.exe", StringComparison.Ordinal)
                 || hooksText.Split("SMSR automatic tracking", StringSplitOptions.None).Length != 9
@@ -41,11 +42,20 @@ internal static class CodexMcpConfigSelfCheck
                 || !hooksText.Contains("PostToolUse", StringComparison.Ordinal)
                 || !hooksText.Contains("SubagentStart", StringComparison.Ordinal)
                 || !hooksText.Contains("SessionEnd", StringComparison.Ordinal)
+                || !startHook["commandWindows"]!.GetValue<string>().StartsWith("& \"", StringComparison.Ordinal)
+                || startHook["command"]!.GetValue<string>().StartsWith("& ", StringComparison.Ordinal)
                 || hooksText.Contains("record_lifecycle", StringComparison.Ordinal)
                 || hooksBackup is null || !File.Exists(hooksBackup))
                 throw new InvalidOperationException("Codex 작업 기록 훅 병합 검증이 실패했습니다.");
             if (CodexAutoTrackingHook.Register(path, fakeExecutable) is not null)
                 throw new InvalidOperationException("Codex 자동 추적 훅 중복 방지가 실패했습니다.");
+            var staleHooks = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(hooksPath))!;
+            staleHooks["hooks"]!["SessionStart"]![0]!["hooks"]![0]!["timeout"] = 3;
+            File.WriteAllText(hooksPath, staleHooks.ToJsonString());
+            if (CodexAutoTrackingHook.IsRegistered(path, fakeExecutable)
+                || CodexAutoTrackingHook.Register(path, fakeExecutable) is null
+                || !CodexAutoTrackingHook.IsRegistered(path, fakeExecutable))
+                throw new InvalidOperationException("Codex 훅 시간 제한 갱신 검증이 실패했습니다.");
             var gitConfig = Path.Combine(directory, "gitconfig");
             var gitHooks = Path.Combine(directory, "git-hooks");
             File.WriteAllText(gitConfig, "[user]\n\tname = Test\n");

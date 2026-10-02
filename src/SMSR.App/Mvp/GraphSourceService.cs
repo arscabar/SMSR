@@ -26,6 +26,7 @@ internal sealed class GraphSourceService(EventStore store)
             throw new ArgumentException(error, nameof(projectId));
         if (string.IsNullOrWhiteSpace(path) || path.Length > 1024)
             throw new ArgumentException("파일 경로 또는 줄 번호가 올바르지 않습니다.");
+        if (GraphFilePolicy.Sensitive(path)) throw new KeyNotFoundException("비밀 파일은 열 수 없습니다.");
         var info = await store.GetGraphInfoAsync(projectId, ct)
             ?? throw new KeyNotFoundException("이 프로젝트의 관계 색인이 없습니다.");
         var files = await store.GetGraphFilesAsync(projectId, ct, info.Revision);
@@ -48,6 +49,6 @@ internal sealed class GraphSourceService(EventStore store)
             throw new InvalidOperationException("큰 파일 또는 바이너리 파일은 열 수 없습니다.");
         if (!Convert.ToHexString(SHA256.HashData(bytes)).Equals(indexedHash, StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("색인 이후 파일이 변경되었습니다. 색인을 갱신하세요.");
-        return (Encoding.UTF8.GetString(bytes), indexedHash, info.Revision);
+        return (GraphCodeIndexInput.Supported(path) ? GraphCodeText.Decode(bytes) : Encoding.UTF8.GetString(bytes), indexedHash, info.Revision);
     }
 }

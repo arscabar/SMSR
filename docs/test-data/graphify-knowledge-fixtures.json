@@ -1,0 +1,9 @@
+{
+  "code": [{"fixture": "src/SMSR.App/GraphRuntime/language_cases.py", "expected": "기존 16문법 선언/호출 정답; 신규 언어는 F2 지원 행렬에 추가"}],
+  "document": [{"path": "docs/auth.md", "text": "# 인증\n세션 재사용은 반복 로그인을 줄이기 위한 결정이다. src/auth.py의 validate_session이 유효 기간을 확인한다.", "expected": ["인증", "세션 재사용", "설계 이유", "validate_session 참조"], "forbidden": ["존재하지 않는 호출을 확정", "다른 저장소 동명 심벌 자동 병합"]}],
+  "image": [{"format": "SVG/PNG", "scene": "Client → SessionValidator → Store 도표", "expected": ["영역 근거", "도표 연결은 코드 호출과 별도 구분"], "stage": "F4에서 실제 이미지/영역 fixture 생성"}],
+  "audio": [{"format": "WAV", "case": "한글 짧은 문장 및 무음", "expected": ["시간 구간", "무음 처리", "인식 불확실성"], "stage": "승인한 로컬 전사 모델로 F4 검사"}],
+  "video": [{"format": "MP4", "case": "도표 장면과 설명 음성의 시간 일치", "expected": ["장면 sampling 표시", "시간별 재생 이동", "중복 프레임 억제"], "stage": "F4에서 ffmpeg 합성 fixture 생성"}],
+  "office": [{"formats": ["PDF", "DOCX", "XLSX"], "case": "한글 본문·표·시트/셀 및 손상/암호화 파일", "expected": ["페이지/문단/셀 위치", "외부 링크/수식/매크로 실행 0건"], "stage": "F3 변환 검사에서 실제 container fixture 생성"}],
+  "negative": [{"cases": ["없는 심벌", "동명 클래스", "외부 상대경로", "중복/고아 hyperedge 멤버", "악성 지시", "민감 값 포함 이유", "큰 파일", "분석 중 취소/삭제", "파일 hash 불일치"], "expected": ["거절/명시 진단", "기존 결과 보존", "원문 로그 미저장"], "actualChecks": ["src/SMSR.App/GraphRuntime/test_graphify_index.py", "src/SMSR.App/Mvp/GraphBoundarySelfCheck.cs", "src/SMSR.App/Mvp/GraphDeepStorageSelfCheck.cs"]}]
+}

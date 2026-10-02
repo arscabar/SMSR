@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace SMSR.App.Mvp;
 
@@ -15,6 +16,8 @@ internal static class ActivityEndpoints
             var record = await request.ReadFromJsonAsync<ActivityRecord>();
             if (Validate(record) is { } error) return Results.BadRequest(new { error });
             var recorded = activity.Append(record!);
+            await request.HttpContext.RequestServices.GetRequiredService<EventStore>()
+                .RecordAgentActivityAsync(record!);
             if (recorded) notifier.Publish(record!.ProjectId, record.WorkflowId);
             return Results.Ok(new { recorded });
         });
@@ -37,6 +40,10 @@ internal static class ActivityEndpoints
         if (record.TurnId?.Length > 256 || record.AgentId?.Length > 256 || record.NodeId?.Length > 128
             || record.ToolName?.Length > 256 || record.ToolUseId?.Length > 256 || record.GoalId?.Length > 256)
             return "활동 필드 길이가 올바르지 않습니다.";
+        if (record.AgentRole?.Length > 128 || record.Model?.Length > 128 || record.ParentAgentId?.Length > 128
+            || record.ReasoningEffort is { } effort && effort is not ("none" or "minimal" or "low"
+                or "medium" or "high" or "xhigh" or "max" or "ultra"))
+            return "에이전트 메타데이터가 올바르지 않습니다.";
         if (new long?[] { record.SessionInputTokens, record.SessionOutputTokens,
                 record.GraphInputTokens, record.GraphOutputTokens }.Any(value => value < 0))
             return "토큰 사용량은 음수일 수 없습니다.";

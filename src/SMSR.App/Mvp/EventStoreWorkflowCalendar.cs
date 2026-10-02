@@ -32,6 +32,9 @@ public sealed partial class EventStore
               (SELECT COUNT(*) FROM plan_nodes p JOIN current_state s ON s.project_id=p.project_id
                 AND s.workflow_id=p.workflow_id AND s.node_id=p.node_id WHERE p.project_id=w.project_id
                 AND p.workflow_id=w.workflow_id AND s.status IN ('SUCCESS','FAILED','BLOCKED','CANCELLED')),
+              (SELECT COUNT(*) FROM plan_nodes p JOIN current_state s ON s.project_id=p.project_id
+                AND s.workflow_id=p.workflow_id AND s.node_id=p.node_id WHERE p.project_id=w.project_id
+                AND p.workflow_id=w.workflow_id AND s.status='BLOCKED'),
               a.updated_at
             FROM workflows w LEFT JOIN activity a ON a.project_id=w.project_id AND a.workflow_id=w.workflow_id
             ORDER BY a.updated_at IS NULL, a.updated_at DESC, w.project_id, w.workflow_id DESC LIMIT 1000;
@@ -42,9 +45,10 @@ public sealed partial class EventStore
         {
             var nodes = reader.GetInt32(3);
             var terminal = reader.GetInt32(4);
-            var status = nodes == 0 ? "NO_PLAN" : terminal == nodes ? "TERMINAL" : "ACTIVE";
+            var status = nodes == 0 ? "NO_PLAN" : terminal != nodes ? "ACTIVE"
+                : reader.GetInt32(5) > 0 ? "BLOCKED" : "TERMINAL";
             result.Add(new(reader.GetString(0), reader.GetString(1), reader.IsDBNull(2) ? null : reader.GetString(2),
-                nodes, status, reader.IsDBNull(5) ? null : DateTimeOffset.Parse(reader.GetString(5))));
+                nodes, status, reader.IsDBNull(6) ? null : DateTimeOffset.Parse(reader.GetString(6))));
         }
         return result;
     }

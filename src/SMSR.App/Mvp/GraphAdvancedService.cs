@@ -12,8 +12,10 @@ public sealed partial class GraphAdvancedService(EventStore store, GraphWorker w
         if (info.NodeCount > 50000 || info.EdgeCount > 200000)
             throw new InvalidOperationException("Cypher 투영 한도는 5만 노드·20만 관계입니다.");
         return await worker.RunAsync(new { operation = "cypher", query, revision = info.Revision,
-            nodes = await store.GetGraphRevisionNodesAsync(projectId, info.Revision, ct),
-            edges = await store.GetGraphRevisionEdgesAsync(projectId, info.Revision, ct) }, ct);
+            nodes = (await store.GetGraphRevisionNodesAsync(projectId, info.Revision, ct))
+                .Select(n => new { n.NodeId, n.Label, n.Kind, n.SourcePath, n.Line }),
+            edges = (await store.GetGraphRevisionEdgesAsync(projectId, info.Revision, ct))
+                .Select(e => new { e.SourceId, e.TargetId, e.Relation, e.Confidence }) }, ct);
     }
 
     private async Task<GraphInfo> RequireAsync(string projectId, CancellationToken ct)

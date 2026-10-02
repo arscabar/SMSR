@@ -36,7 +36,10 @@ public sealed partial class WorkflowSelectionViewModel : ViewModelBase
         get => _projectId;
         set
         {
+            if (_updatingCatalog) return;
             if (!SetField(ref _projectId, value)) return;
+            _workflowId = "";
+            OnPropertyChanged(nameof(WorkflowId));
             FilterProjectWorkflows();
         }
     }
@@ -55,29 +58,32 @@ public sealed partial class WorkflowSelectionViewModel : ViewModelBase
     public WorkflowChoice? SelectedWorkflow
     {
         get => Workflows.FirstOrDefault(item => item.WorkflowId == WorkflowId);
-        set => WorkflowId = value?.WorkflowId ?? "";
+        set { if (!_updatingCatalog) WorkflowId = value?.WorkflowId ?? ""; }
     }
 
     public async Task LoadAsync()
     {
         var saved = LoadSaved();
-        ProjectIds.Clear();
-        foreach (var id in await server.GetProjectIdsAsync()) ProjectIds.Add(id);
-        if (string.IsNullOrWhiteSpace(ProjectId) && ProjectIds.Count > 0) ProjectId = saved is not null && ProjectIds.Contains(saved.ProjectId) ? saved.ProjectId : ProjectIds[0];
+        foreach (var id in await server.GetProjectIdsAsync()) if (!ProjectIds.Contains(id)) ProjectIds.Add(id);
+        if (string.IsNullOrWhiteSpace(ProjectId) && ProjectIds.Count > 0)
+        {
+            _projectId = saved is not null && ProjectIds.Contains(saved.ProjectId) ? saved.ProjectId : ProjectIds[0];
+            _workflowId = saved?.ProjectId == _projectId ? saved.WorkflowId : "";
+            OnPropertyChanged(nameof(ProjectId));
+            OnPropertyChanged(nameof(WorkflowId));
+        }
         await LoadCalendarAsync();
         if (string.IsNullOrWhiteSpace(ProjectId)) return;
-        if (saved is not null && WorkflowIds.Contains(saved.WorkflowId)) WorkflowId = saved.WorkflowId;
     }
 
     public async Task SelectAsync(string projectId, string workflowId)
     {
         var projects = await server.GetProjectIdsAsync();
-        ProjectIds.Clear();
-        foreach (var id in projects) ProjectIds.Add(id);
+        foreach (var id in projects) if (!ProjectIds.Contains(id)) ProjectIds.Add(id);
         if (!ProjectIds.Contains(projectId)) return;
         ProjectId = projectId;
         await LoadWorkflowsAsync(projectId);
-        if (WorkflowIds.Contains(workflowId)) WorkflowId = workflowId;
+        if (ProjectId == projectId && WorkflowIds.Contains(workflowId)) WorkflowId = workflowId;
     }
 
     public async Task ReloadCalendarAsync()

@@ -10,6 +10,6 @@ public sealed record WorkflowChoice(
 {
     public DateTime? ActivityDate => UpdatedAtUtc?.ToLocalTime().Date;
     public string DateTimeLabel => UpdatedAtUtc?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "기록 시각 없음";
-    public string DisplayName => Title;
-    public override string ToString() => Title;
+    public string DisplayName => Status == "BLOCKED" ? $"{Title} · 확인 필요" : Title;
+    public override string ToString() => DisplayName;
 }

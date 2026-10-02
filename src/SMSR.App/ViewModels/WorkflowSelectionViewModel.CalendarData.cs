@@ -2,20 +2,23 @@ namespace SMSR.App.ViewModels;
 
 public sealed partial class WorkflowSelectionViewModel
 {
+    private readonly SemaphoreSlim _calendarGate = new(1, 1);
+    private bool _updatingCatalog;
     private async Task LoadCalendarAsync()
     {
+        await _calendarGate.WaitAsync();
+        try
+        {
+        var entries = await server.GetWorkflowCalendarAsync();
         _calendarSource.Clear();
-        foreach (var entry in await server.GetWorkflowCalendarAsync())
+        foreach (var entry in entries)
             _calendarSource.Add(new(entry.ProjectId, entry.WorkflowId,
                 string.IsNullOrWhiteSpace(entry.Title) ? "이름 없는 이전 작업" : entry.Title,
                 entry.Status, entry.NodeCount, entry.UpdatedAtUtc));
         _calendarSource.Sort((left, right) => Nullable.Compare(right.UpdatedAtUtc, left.UpdatedAtUtc));
-        var latestDaily = await server.GetLatestDailyActivityAtAsync();
         if (SelectedDate is null)
         {
-            var latestGraph = _calendarSource.FirstOrDefault(item => item.ActivityDate is not null)?.UpdatedAtUtc;
-            _selectedDate = new[] { latestGraph, latestDaily }.Where(value => value is not null)
-                .Max()?.ToLocalTime().Date ?? DateTime.Today;
+            _selectedDate = DateTime.Today;
             OnPropertyChanged(nameof(SelectedDate));
         }
         var selectedDate = SelectedDate ?? DateTime.Today;
@@ -23,6 +26,8 @@ public sealed partial class WorkflowSelectionViewModel
         await LoadMonthActivitiesAsync();
         BuildMonthGrid();
         FilterCalendar();
+        }
+        finally { _calendarGate.Release(); }
     }
 
     private async Task LoadMonthActivitiesAsync()
@@ -48,11 +53,10 @@ public sealed partial class WorkflowSelectionViewModel
                      .GroupBy(item => (item.ProjectId, item.WorkflowId)).Select(group => group.First()).Take(200))
             CalendarWorkflows.Add(item);
         var currentProject = ProjectId;
-        ProjectIds.Clear();
-        foreach (var projectId in CalendarWorkflows.Select(item => item.ProjectId).Distinct(StringComparer.OrdinalIgnoreCase))
-            ProjectIds.Add(projectId);
-        if (!ProjectIds.Contains(currentProject)) ProjectId = ProjectIds.FirstOrDefault() ?? "";
-        else FilterProjectWorkflows();
+        foreach (var projectId in _calendarSource.Select(item => item.ProjectId).Append(currentProject)
+                     .Where(id => !string.IsNullOrWhiteSpace(id)).Distinct(StringComparer.OrdinalIgnoreCase))
+            if (!ProjectIds.Contains(projectId)) ProjectIds.Add(projectId);
+        FilterProjectWorkflows();
         foreach (var item in _dailyCalendarSource
                      .Where(item => item.RecordedAtUtc.ToLocalTime().Date == SelectedDate).Take(200))
             DailyActivities.Add(item);
@@ -62,6 +66,10 @@ public sealed partial class WorkflowSelectionViewModel
 
     private void FilterProjectWorkflows()
     {
+        _updatingCatalog = true;
+        try
+        {
+        var selected = SelectedWorkflow;
         WorkflowIds.Clear();
         Workflows.Clear();
         foreach (var item in CalendarWorkflows.Where(item => item.ProjectId == ProjectId))
@@ -69,7 +77,14 @@ public sealed partial class WorkflowSelectionViewModel
             WorkflowIds.Add(item.WorkflowId);
             Workflows.Add(item);
         }
+        if (selected is not null && selected.ProjectId == ProjectId && !WorkflowIds.Contains(selected.WorkflowId))
+        {
+            WorkflowIds.Add(selected.WorkflowId);
+            Workflows.Add(selected);
+        }
+        }
+        finally { _updatingCatalog = false; }
         OnPropertyChanged(nameof(SelectedWorkflow));
-        if (!WorkflowIds.Contains(WorkflowId)) WorkflowId = WorkflowIds.FirstOrDefault() ?? "";
+        if (string.IsNullOrWhiteSpace(WorkflowId)) WorkflowId = WorkflowIds.FirstOrDefault() ?? "";
     }
 }

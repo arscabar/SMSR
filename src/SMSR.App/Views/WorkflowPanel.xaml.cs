@@ -39,13 +39,6 @@ public partial class WorkflowPanel : WpfUserControl
         eventArgs.Handled = true;
     }
 
-    private void ScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs eventArgs)
-    {
-        if (sender is not ScrollViewer viewer) return;
-        viewer.ScrollToVerticalOffset(viewer.VerticalOffset - eventArgs.Delta);
-        eventArgs.Handled = true;
-    }
-
     private static T? FindParent<T>(DependencyObject? child) where T : DependencyObject
     {
         while (child is not null && child is not T) child = VisualTreeHelper.GetParent(child);

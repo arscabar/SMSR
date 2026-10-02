@@ -4,7 +4,7 @@ namespace SMSR.App.Mvp;
 
 public sealed partial class EventStore
 {
-    internal const string GraphFormat = "commonmark-1.3.2-canonical-path-v6-csharp-calls";
+    internal const string GraphFormat = "commonmark-1.3.2-canonical-path-v17-graphify-0.9.73-knowledge";
 
     internal async Task<bool> IsGraphFormatCurrentAsync(string projectId, CancellationToken ct)
     {

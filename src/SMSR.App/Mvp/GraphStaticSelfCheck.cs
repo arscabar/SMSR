@@ -19,7 +19,7 @@ internal static class GraphStaticSelfCheck
                 await git.WaitForExitAsync();
                 if (git.ExitCode != 0) throw new InvalidOperationException("Git 초기화 실패");
             }
-            await File.WriteAllTextAsync(Path.Combine(root, "A.cs"), "class A { void Go() { new B().Run(); } }");
+            await File.WriteAllTextAsync(Path.Combine(root, "A.cs"), "class A { void Go() { B worker = new B(); worker.Run(); } }");
             await File.WriteAllTextAsync(Path.Combine(root, "B.cs"), "class B { public void Run() {} }");
             var store = new EventStore(Path.Combine(root, "graph.db"));
             await store.InitializeAsync();

@@ -90,15 +90,17 @@ internal static class EventStoreGraphSchema
             command.CommandText = "ALTER TABLE graph_issues ADD COLUMN candidates_json TEXT NOT NULL DEFAULT '[]';";
             await command.ExecuteNonQueryAsync(ct);
         }
+        await GraphKnowledgeSchema.EnsureAsync(connection, ct);
         command.CommandText = """
             INSERT OR IGNORE INTO graph_revision_nodes
-            SELECT n.project_id,p.revision,n.node_id,n.owner_path,n.kind,n.label,n.source_path,n.source_line,n.content_hash
+            SELECT n.project_id,p.revision,n.node_id,n.owner_path,n.kind,n.label,n.source_path,n.source_line,n.content_hash,n.details_json
             FROM graph_nodes n JOIN graph_projects p ON p.project_id=n.project_id;
             INSERT OR IGNORE INTO graph_revision_edges
-            SELECT e.project_id,p.revision,e.source_id,e.target_id,e.relation,e.owner_path,e.source_line,e.resolution,e.confidence
+            SELECT e.project_id,p.revision,e.source_id,e.target_id,e.relation,e.owner_path,e.source_line,e.resolution,e.confidence,e.evidence_json
             FROM graph_edges e JOIN graph_projects p ON p.project_id=e.project_id;
             """;
         await command.ExecuteNonQueryAsync(ct);
+        await EventStoreGraphDeepSchema.CreateAsync(connection, ct);
     }
 
     public static async Task BackupBeforeP2Async(SqliteConnection connection, string path, CancellationToken ct)

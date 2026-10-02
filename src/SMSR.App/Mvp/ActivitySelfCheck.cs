@@ -23,7 +23,8 @@ internal static class ActivitySelfCheck
             """), dataPath);
         await CodexActivityHook.ProcessAsync(HookJsonDocument.Parse("""
             {"session_id":"activity-session","turn_id":"turn-1","hook_event_name":"SubagentStart",
-             "agent_id":"agent-child","agent_type":"worker"}
+             "agent_id":"agent-child","agent_type":"worker","model":"gpt-test",
+             "model_reasoning_effort":"high"}
             """), dataPath);
         await CodexActivityHook.ProcessAsync(HookJsonDocument.Parse("""
             {"session_id":"untracked","turn_id":"turn-2","hook_event_name":"PostToolUse",
@@ -34,13 +35,17 @@ internal static class ActivitySelfCheck
         var records = store.ReadLatest("demo", "activity-wf", 10);
         var text = File.ReadAllText(store.PathFor("demo", "activity-wf"));
         if (records.Count != 4 || records[0].Event != "AGENT_STARTED"
+            || records[0].AgentId != "agent-child" || records[0].AgentRole != "worker"
+            || records[0].Model != "gpt-test" || records[0].ReasoningEffort != "high"
+            || records[0].ParentAgentId != session || records[0].NodeId is not null
             || records[1].Event != "TOOL_COMPLETED" || records[1].Category != "FILE_EDIT"
             || records[2].Event != "TOOL_STARTED" || records[2].Category != "FILE_EDIT"
             || records[3].Category != "SMSR"
             || text.Contains("SECRET-CONTENT", StringComparison.Ordinal)
             || text.Contains("SHOULD-NOT-EXIST", StringComparison.Ordinal)
             || new TrackingSessionStore(dataPath).Load(session)?.WorkflowId != "activity-wf"
-            || new TrackingSessionStore(dataPath).Load("agent-child")?.WorkflowId != "activity-wf")
+            || new TrackingSessionStore(dataPath).Load("agent-child")?.WorkflowId != "activity-wf"
+            || new TrackingSessionStore(dataPath).Load("agent-child")?.NodeId is not null)
             throw new InvalidOperationException("Codex 훅 활동 JSONL 검증이 실패했습니다.");
         var liveActivity = DashboardPanels.RenderActivities([records[2]], new("demo", "activity-wf", []));
         if (!liveActivity.Contains("작업 시작", StringComparison.Ordinal)
@@ -49,6 +54,17 @@ internal static class ActivitySelfCheck
             throw new InvalidOperationException("실시간 도구 시작 표시 검증이 실패했습니다.");
         if (store.Append(records[0]) || store.ReadLatest("demo", "activity-wf", 10).Count != 4)
             throw new InvalidOperationException("Codex 훅 활동 중복 방지가 실패했습니다.");
+
+        await CodexActivityHook.ProcessAsync(HookJsonDocument.Parse("""
+            {"session_id":"activity-session","turn_id":"turn-1","hook_event_name":"PostToolUse",
+             "tool_name":"mcp__smsr__record_event","tool_use_id":"child-event",
+             "tool_input":{"projectId":"demo","workflowId":"activity-wf",
+                           "agentId":"agent-child","nodeId":"child-node"}}
+            """), dataPath);
+        var childActivity = store.ReadLatest("demo", "activity-wf", 10)[0];
+        var rootNode = new TrackingSessionStore(dataPath).Load(session)?.NodeId;
+        if (childActivity.AgentId != "agent-child" || !string.IsNullOrEmpty(rootNode))
+            throw new InvalidOperationException($"하위 에이전트 작업 귀속 실패: agent={childActivity.AgentId}, rootNode={rootNode}");
 
         await CodexActivityHook.ProcessAsync(HookJsonDocument.Parse("""
             {"session_id":"activity-session","turn_id":"turn-2","hook_event_name":"PostToolUse",
@@ -68,9 +84,24 @@ internal static class ActivitySelfCheck
              "agent_id":"agent-child","agent_type":"worker"}
             """), dataPath);
         if (new TrackingSessionStore(dataPath).Load("agent-child") is not null
-            || store.ReadLatest("demo", "activity-wf", 10).Count != 4
-            || store.ReadLatest("project-b", "workflow-b", 10).Count != 3)
+            || store.ReadLatest("demo", "activity-wf", 10).Count != 6
+            || store.ReadLatest("demo", "activity-wf", 10)[0].Event != "AGENT_STOPPED"
+            || store.ReadLatest("project-b", "workflow-b", 10).Count != 2)
             throw new InvalidOperationException("하위 에이전트 활동 매핑 정리가 실패했습니다.");
+        await CodexActivityHook.ProcessAsync(HookJsonDocument.Parse("""
+            {"session_id":"linked-root","hook_event_name":"PostToolUse","tool_name":"mcp__smsr__save_plan",
+             "tool_input":{"projectId":"linked","workflowId":"linked-wf"}}
+            """), dataPath);
+        await CodexActivityHook.ProcessAsync(HookJsonDocument.Parse("""
+            {"session_id":"linked-root","hook_event_name":"PostToolUse","tool_name":"mcp__smsr__record_event",
+             "tool_input":{"projectId":"linked","workflowId":"linked-wf","agentId":"root-agent","nodeId":"root-node"}}
+            """), dataPath);
+        await CodexActivityHook.ProcessAsync(HookJsonDocument.Parse("""
+            {"session_id":"linked-root","hook_event_name":"SubagentStart","agent_id":"linked-child","agent_type":"worker"}
+            """), dataPath);
+        if (store.ReadLatest("linked", "linked-wf", 10)[0].ParentAgentId != "root-agent"
+            || new TrackingSessionStore(dataPath).Load("linked-child")?.AgentId != "linked-child")
+            throw new InvalidOperationException("하위 에이전트와 주 에이전트 연결 검증이 실패했습니다.");
         VerifyTokenUsage(dataPath, store);
         var isolated = await CodexHookRunner.ProcessAsync("""
             {"session_id":"isolated","cwd":"C:\\projects\\demo","hook_event_name":"UserPromptSubmit",
@@ -79,6 +110,7 @@ internal static class ActivitySelfCheck
         if (isolated is null || isolated.Contains("PRIVATE-HOOK-INPUT", StringComparison.Ordinal))
             throw new InvalidOperationException("활동 기록 실패 격리가 실패했습니다.");
         await ActivityStoreSelfCheck.RunAsync(dataPath);
+        await AgentStopMappingSelfCheck.RunAsync(dataPath);
     }
 
     private static void VerifyTokenUsage(string dataPath, ActivityJsonlStore store)

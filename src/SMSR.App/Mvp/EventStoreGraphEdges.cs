@@ -14,10 +14,10 @@ public sealed partial class EventStore
         await connection.OpenAsync(ct);
         var key = incoming ? "target_id" : "source_id";
         var placeholders = string.Join(",", Enumerable.Range(1, ids.Count).Select(index => "$p" + index));
-        var table = revision.HasValue ? "graph_revision_edges" : "graph_edges";
-        var version = revision.HasValue ? "AND revision=$revision" : "";
+        var table = "graph_effective_edges";
+        var version = revision.HasValue ? "AND revision=$revision" : "AND revision=(SELECT revision FROM graph_projects WHERE project_id=$p0)";
         using var command = GraphSql.Create(connection, null, $"""
-            SELECT source_id,target_id,relation,owner_path,source_line,resolution,confidence
+            SELECT source_id,target_id,relation,owner_path,source_line,resolution,confidence,provenance_json,evidence_json
             FROM {table} WHERE project_id=$p0 {version} AND {key} IN ({placeholders}) LIMIT $p{ids.Count + 1};
             """, [projectId, .. ids.Cast<object>(), limit]);
         if (revision.HasValue) command.Parameters.AddWithValue("$revision", revision.Value);
@@ -64,5 +64,8 @@ public sealed partial class EventStore
 
     private static GraphEdge ReadEdge(SqliteDataReader reader)
         => new(reader.GetString(0), reader.GetString(1), reader.GetString(2), reader.GetString(3),
-            reader.GetInt32(4), reader.GetString(5), reader.GetString(6));
+            reader.GetInt32(4), reader.GetString(5), reader.GetString(6), reader.FieldCount > 7 && !reader.IsDBNull(7)
+                ? JsonSerializer.Deserialize<GraphDeepEvidence[]>(reader.GetString(7), GraphWorker.Json) : null,
+            reader.FieldCount > 8 && !reader.IsDBNull(8)
+                ? JsonSerializer.Deserialize<GraphSourceEvidence>(reader.GetString(8), GraphWorker.Json) : null);
 }

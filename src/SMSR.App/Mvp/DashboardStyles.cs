@@ -2,7 +2,7 @@ namespace SMSR.App.Mvp;
 
 internal static class DashboardStyles
 {
-    public static string For(string? theme) => DashboardPalette.Resolve(theme) + Css + DashboardGraphStyles.Css + DashboardTimelineStyles.Css;
+    public static string For(string? theme) => DashboardPalette.Resolve(theme) + Css + DashboardGraphStyles.Css + DashboardTimelineStyles.Css + DashboardEvidenceStyles.Css;
 
     private const string Css = """
         *{box-sizing:border-box}
@@ -19,6 +19,7 @@ internal static class DashboardStyles
         .breadcrumb a{color:#62adff;text-decoration:none}.agent{padding:13px;margin:9px 0;border:1px solid var(--border2);border-radius:10px;background:var(--surface)}
         .agent.active{border-color:#61a8ff;background:var(--active)}.agent.error{border-color:#dd5668}.agent.stale{border-color:#a4937d}.agent-line{display:flex;align-items:center;gap:8px;min-width:0}
         .agent-name,.badge{white-space:nowrap}.agent-name{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;font-weight:700}.badge{flex:none}.agent-focus{margin-top:12px;padding:10px;border-radius:8px;background:var(--bg)}.agent-focus span,.agent-facts span{display:block;margin-bottom:4px;color:var(--muted);font-size:10px;white-space:nowrap}.agent-focus strong{display:block;font-size:13px;line-height:1.4}.agent-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:9px}.agent-facts div{min-width:0;padding:8px;border:1px solid var(--border);border-radius:7px}.agent-facts strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
+        .agent-description{margin-top:9px;padding:9px;border:1px solid var(--border);border-radius:7px;font-size:11px;line-height:1.45}.agent-description strong,.agent-description span,.agent-description small{display:block}.agent-description p{margin:5px 0;overflow-wrap:anywhere}.agent-description span{overflow-wrap:anywhere}.agent-description small{margin-top:4px;color:var(--muted)}
         .badge{padding:3px 7px;border-radius:999px;background:var(--pending-stroke);font-size:10px;font-weight:700}.active .badge{background:#124d88;color:#cce7ff}.error .badge{background:#7f2837;color:#ffe0e3}.stale .badge{background:#665b4e;color:#fff1df}.task{margin-top:7px}
         .tech-details{margin-top:10px;color:var(--muted);font-size:11px}.tech-details summary{cursor:pointer}.tech-details code,.tech-details span{display:block;margin-top:5px;overflow-wrap:anywhere}
         #graph{min-height:500px;padding:20px;overflow:auto;border:1px solid var(--border);border-radius:10px;background:var(--graph)}

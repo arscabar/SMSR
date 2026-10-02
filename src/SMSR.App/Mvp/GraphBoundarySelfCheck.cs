@@ -53,6 +53,7 @@ internal static class GraphBoundarySelfCheck
                 throw new Exception("경로 노드 한도·끝점 절단 검증 실패");
             await GraphUnicodeSelfCheck.RunAsync(store, root, index);
             await GraphRevisionSelfCheck.RunAsync(store, root, index);
+            await GraphSensitiveFileSelfCheck.RunAsync(store, root, index);
         }
         finally { Directory.Delete(root, true); }
     }

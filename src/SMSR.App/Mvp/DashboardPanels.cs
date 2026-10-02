@@ -21,6 +21,7 @@ internal static class DashboardPanels
                   <div class="agent-line"><span class="agent-name">{Encode(AgentName(agent.AgentId))}</span><span class="badge">{Encode(AgentStatus(agent))}</span></div>
                   <div class="agent-focus"><span>현재 담당</span><strong>{Encode(nodeTitle)}</strong></div>
                   <div class="agent-facts"><div><span>역할</span><strong>{Encode(Role(agent.AgentRole))}</strong></div><div><span>마지막 신호</span><strong>{agent.LastHeartbeatAt.ToLocalTime():HH:mm:ss}</strong></div></div>
+                  {DashboardAgentDescription.Render(agent)}
                   <details class="tech-details"><summary>기술 정보</summary><code>에이전트 {Encode(agent.AgentId)}</code><code>노드 {Encode(agent.NodeId ?? "-")}</code><span>재시도 {agent.RetryCount}회</span></details>
                 </article>
                 """);
@@ -32,15 +33,19 @@ internal static class DashboardPanels
     {
         var reason = context?.Reason ?? "작업 배경 미기록";
         var approach = context?.Approach ?? "진행 방식 미기록";
+        var blocked = state.Nodes.Any(node => node.Status == "BLOCKED");
         var finished = plan.Nodes.Count > 0 && plan.Nodes.All(node => state.Nodes.Any(item =>
-            item.NodeId == node.NodeId && item.Status is "SUCCESS" or "FAILED" or "BLOCKED" or "CANCELLED"));
-        var result = context?.Result ?? (finished ? "최종 결과 미기록" : "진행 중 · 종료 후 결과가 기록됩니다");
+            item.NodeId == node.NodeId && item.Status is "SUCCESS" or "FAILED" or "CANCELLED"));
+        var savedResult = blocked && context?.Result?.StartsWith("자동 요약(완료 기록): ", StringComparison.Ordinal) == true
+            ? null : context?.Result;
+        var result = savedResult ?? (blocked ? "확인 필요 · 다음 조치를 마친 후 최종 결과를 기록하세요"
+            : finished ? "최종 결과 미기록" : "진행 중 · 종료 후 결과가 기록됩니다");
         string Field(string key, string title, string value, bool empty) =>
             $"<section class=\"context-field\" data-field=\"{key}\" data-empty=\"{empty.ToString().ToLowerInvariant()}\" tabindex=\"0\" role=\"button\" aria-label=\"{title} 수정, 두 번 클릭\" title=\"두 번 클릭해 수정\"><h3>{title} <span aria-hidden=\"true\">✎</span></h3><p>{Encode(value)}</p><span class=\"context-feedback\" role=\"status\" aria-live=\"polite\"></span></section>";
         return $"<article class=\"workflow-context\" data-project=\"{Encode(state.ProjectId)}\" data-workflow=\"{Encode(state.WorkflowId)}\">"
             + Field("reason", "작업 배경", reason, string.IsNullOrWhiteSpace(context?.Reason))
             + Field("approach", "진행 방식", approach, string.IsNullOrWhiteSpace(context?.Approach))
-            + Field("result", "최종 결과", result, string.IsNullOrWhiteSpace(context?.Result)) + "</article>";
+            + Field("result", "최종 결과", result, string.IsNullOrWhiteSpace(savedResult)) + "</article>";
     }
 
     public static string RenderDetails(WorkflowState state, WorkflowPlan plan, string? selectedNodeId = null, string? parentNodeId = null)
@@ -58,6 +63,7 @@ internal static class DashboardPanels
               <div class="detail-head"><h3>{Encode(planNode?.Title ?? nodeId)}</h3><span class="detail-status {StatusClass(status)}">{StatusLabel(status)} · {WorkflowProgress.Value(stateNode)}%</span></div>
               <div class="detail-meta"><div><span>담당 · 역할</span><strong>{Encode(AgentName(agentId))} · {Encode(Role(role))}</strong></div><span>재시도 {(stateNode?.RetryCount ?? 0)}회</span></div>
               {DetailSection(currentLabel, stateNode?.Error ?? stateNode?.Summary, "primary")}
+              {DetailSection("다음 조치", stateNode?.NextAction)}
               {CriteriaSection(planNode?.CompletionCriteria)}
               {ArtifactSection(stateNode?.Artifacts)}
               {NodeActions(state, nodeId, status, selectedNodeId is not null)}

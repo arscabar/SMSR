@@ -1,3 +1,4 @@
+using System.IO;
 using System.Net.Http;
 using System.Net.Http.Json;
 using SMSR.App.Mvp;
@@ -17,6 +18,12 @@ internal sealed class ActivityHookClient(string dataPath)
         }
         catch { }
         new ActivityJsonlStore(dataPath).Append(record);
+        try
+        {
+            var database = Path.Combine(dataPath, "smsr.db");
+            if (File.Exists(database)) await new EventStore(database).RecordAgentActivityAsync(record);
+        }
+        catch { }
     }
 
     public static async Task<bool> IsTerminalAsync(TrackingSession tracking)

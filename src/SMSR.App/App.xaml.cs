@@ -22,7 +22,7 @@ public partial class App : WpfApplication
         if (e.Args.Contains("--smsr-auto-track-hook"))
         {
             try { await CodexHookRunner.RunAsync(); Shutdown(); }
-            catch { Shutdown(-1); }
+            catch (Exception exception) { CodexHookRunner.LogFailure("startup", exception); Shutdown(-1); }
             return;
         }
         if (e.Args.Contains("--smsr-git-post-commit"))
@@ -111,9 +111,24 @@ public partial class App : WpfApplication
             }
             return;
         }
+        if (e.Args.Contains("--graph-code-project-self-test"))
+        {
+            try
+            {
+                await GraphCodeProjectSelfCheck.RunAsync(e.Args[Array.IndexOf(e.Args, "--graph-code-project-self-test") + 1]);
+                Shutdown();
+            }
+            catch (Exception exception)
+            {
+                System.IO.File.WriteAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(),
+                    "smsr-graph-code-project-self-test-error.txt"), exception.ToString());
+                Shutdown(-1);
+            }
+            return;
+        }
         if (e.Args.Contains("--graph-static-self-test"))
         {
-            try { await GraphStaticSelfCheck.RunAsync(); Shutdown(); }
+            try { await GraphStaticSelfCheck.RunAsync(); await GraphCodeIndexSelfCheck.RunAsync(); Shutdown(); }
             catch (Exception exception)
             {
                 System.IO.File.WriteAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(),
@@ -148,6 +163,108 @@ public partial class App : WpfApplication
             catch(Exception exception)
             {
                 System.IO.File.WriteAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(),"smsr-graph-jdt-self-test-error.txt"),exception.ToString());
+                Shutdown(-1);
+            }
+            return;
+        }
+        if (e.Args.Contains("--dashboard-panel-preview-self-test"))
+        {
+            try
+            {
+                await DashboardPanelPreviewSelfCheck.RunAsync(e.Args[Array.IndexOf(e.Args, "--dashboard-panel-preview-self-test") + 1]);
+                Shutdown();
+            }
+            catch (Exception exception)
+            {
+                System.IO.File.WriteAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(),
+                    "smsr-dashboard-panel-preview-self-test-error.txt"), exception.ToString());
+                Shutdown(-1);
+            }
+            return;
+        }
+        if (e.Args.Contains("--graph-document-self-test"))
+        {
+            try { await GraphDocumentSelfCheck.RunAsync(); Shutdown(); }
+            catch (Exception exception)
+            {
+                System.IO.File.WriteAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(),
+                    "smsr-graph-document-self-test-error.txt"), exception.ToString());
+                Shutdown(-1);
+            }
+            return;
+        }
+        if (e.Args.Contains("--graph-role-self-test"))
+        {
+            try { await GraphRoleAcceptance.RunAsync(); Shutdown(); }
+            catch (Exception exception)
+            {
+                System.IO.File.WriteAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(),
+                    "smsr-graph-role-self-test-error.txt"), exception.ToString());
+                Shutdown(-1);
+            }
+            return;
+        }
+        if (e.Args.Contains("--graph-role-live-self-test"))
+        {
+            try { await GraphRoleLiveSelfCheck.RunAsync(); Shutdown(); }
+            catch (Exception exception)
+            {
+                System.IO.File.WriteAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(),
+                    "smsr-graph-role-live-self-test-error.txt"), exception.ToString()); Shutdown(-1);
+            }
+            return;
+        }
+        if (e.Args.Contains("--graph-overview-large-self-test"))
+        {
+            try { await GraphOverviewLargeSelfCheck.RunAsync(); Shutdown(); }
+            catch (Exception exception)
+            {
+                System.IO.File.WriteAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(),"smsr-graph-overview-large-self-test-error.txt"),exception.ToString());
+                Shutdown(-1);
+            }
+            return;
+        }
+        if(e.Args.Contains("--graph-quality-preview"))
+        {
+            try{await GraphQualityPreview.RunAsync(e.Args[Array.IndexOf(e.Args,"--graph-quality-preview")+1]);Shutdown();}
+            catch(Exception exception){System.IO.File.WriteAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(),"smsr-graph-quality-preview-error.txt"),exception.ToString());Shutdown(-1);}
+            return;
+        }
+        if(e.Args.Contains("--graph-feature-preview"))
+        {
+            try{await GraphFeaturePreview.RunAsync(e.Args[Array.IndexOf(e.Args,"--graph-feature-preview")+1]);Shutdown();}
+            catch(Exception exception){System.IO.File.WriteAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(),"smsr-graph-feature-preview-error.txt"),exception.ToString());Shutdown(-1);}
+            return;
+        }
+        if(e.Args.Contains("--graph-knowledge-project-self-test"))
+        {
+            try{await GraphKnowledgeProjectSelfCheck.RunAsync(e.Args[Array.IndexOf(e.Args,"--graph-knowledge-project-self-test")+1]);Shutdown();}
+            catch(Exception exception){System.IO.File.WriteAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(),"smsr-graph-knowledge-project-self-test-error.txt"),exception.ToString());Shutdown(-1);}
+            return;
+        }
+        if (e.Args.Contains("--graph-knowledge-self-test"))
+        {
+            try { await GraphKnowledgeSelfCheck.RunAsync(); Shutdown(); }
+            catch (Exception exception)
+            {
+                System.IO.File.WriteAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(),
+                    "smsr-graph-knowledge-self-test-error.txt"), exception.ToString());
+                Shutdown(-1);
+            }
+            return;
+        }
+        if (e.Args.Contains("--graph-deep-self-test"))
+        {
+            try
+            {
+                await GraphDeepStorageSelfCheck.RunAsync();
+                await GraphDeepLanguageSelfCheck.RunAsync();
+                Shutdown();
+            }
+            catch (Exception exception)
+            {
+                System.IO.File.WriteAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(),
+                    "smsr-graph-deep-self-test-error.txt"), exception.ToString());
                 Shutdown(-1);
             }
             return;
@@ -224,7 +341,7 @@ public partial class App : WpfApplication
             settings.Changed += (_, _) => Dispatcher.Invoke(() => AppThemeService.Apply(settings.Current.DashboardTheme));
             _server = new LocalServerHost(dashboardTheme: () => settings.Current.DashboardTheme);
             if (ensureServer || settings.Current.StartServerAutomatically) await _server.StartAsync();
-            if (settings.Current.AutomateCodexIntegration)
+            if (settings.Current.AutomateCodexIntegration && !e.Args.Contains("--skip-codex-integration", StringComparer.OrdinalIgnoreCase))
                 await new CodexConnectionService(_server, settings).SetupAsync();
             var viewModel = new MainWindowViewModel(_server, new WindowsPlatformActions(), settings, ExitApplication);
             await viewModel.LoadAsync();
@@ -249,7 +366,8 @@ public partial class App : WpfApplication
             _server.StateChanged += OnServerStateChanged;
             _mainInstance.Listen(() => Dispatcher.BeginInvoke(() => window.ShowFromTray()));
             if (!startInBackground) MainWindow.Show();
-            _ = viewModel.Settings.CheckForUpdatesOnStartupAsync();
+            if (!e.Args.Contains("--skip-update-check", StringComparer.OrdinalIgnoreCase))
+                _ = viewModel.Settings.CheckForUpdatesOnStartupAsync();
         }
         catch (Exception exception)
         {

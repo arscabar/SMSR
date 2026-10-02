@@ -39,6 +39,7 @@ public sealed partial class EventStore
                 return new(projectId, revision, scan.Files.Count, (int)oldNodes,
                     (int)await GraphSql.CountAsync(connection, transaction,
                         "SELECT COUNT(*) FROM graph_edges WHERE project_id=$p0;", ct, projectId), 0, 0, true);
+            await GraphSemanticInvalidation.ApplyAsync(connection, transaction, projectId, scan, ct);
             foreach (var path in scan.RemovedPaths)
             {
                 await GraphSql.ExecuteAsync(connection, transaction, "DELETE FROM graph_issues WHERE project_id=$p0 AND owner_path=$p1;", ct, projectId, path);
@@ -49,8 +50,8 @@ public sealed partial class EventStore
             foreach (var path in scan.ChangedPaths.Concat(scan.ReparsedDocs).Distinct(StringComparer.OrdinalIgnoreCase))
             {
                 await GraphSql.ExecuteAsync(connection, transaction, "DELETE FROM graph_issues WHERE project_id=$p0 AND owner_path=$p1;", ct, projectId, path);
-                await GraphSql.ExecuteAsync(connection, transaction, "DELETE FROM graph_edges WHERE project_id=$p0 AND owner_path=$p1;", ct, projectId, path);
-                await GraphSql.ExecuteAsync(connection, transaction, "DELETE FROM graph_nodes WHERE project_id=$p0 AND owner_path=$p1 AND kind IN ('heading','api_route','mcp_tool');", ct, projectId, path);
+                await GraphSql.ExecuteAsync(connection, transaction, "DELETE FROM graph_edges WHERE project_id=$p0 AND owner_path=$p1 AND source_id NOT LIKE 'semantic:%' AND target_id NOT LIKE 'semantic:%';", ct, projectId, path);
+                await GraphSql.ExecuteAsync(connection, transaction, "DELETE FROM graph_nodes WHERE project_id=$p0 AND owner_path=$p1 AND kind IN ('heading','api_route','mcp_tool','symbol');", ct, projectId, path);
             }
             foreach (var file in scan.Files.Where(file => scan.ChangedPaths.Contains(file.Path, StringComparer.OrdinalIgnoreCase)))
                 await GraphSql.ExecuteAsync(connection, transaction, """
@@ -58,18 +59,30 @@ public sealed partial class EventStore
                     ON CONFLICT(project_id,path) DO UPDATE SET content_hash=$p2,kind=$p3;
                     """, ct, projectId, file.Path, file.Hash, file.Kind);
             foreach (var node in scan.Nodes)
+            {
+                GraphKnowledgeValidation.Node(node);
+                if (node.Details is { } details)
+                    await GraphKnowledgeWrites.ValidateEvidenceAsync(connection, transaction, projectId,
+                        node.OwnerPath, new(details.Analyzer, details.AnalyzerVersion, node.Hash), ct);
                 await GraphSql.ExecuteAsync(connection, transaction, """
-                    INSERT INTO graph_nodes(project_id,node_id,owner_path,kind,label,source_path,source_line,content_hash)
-                    VALUES ($p0,$p1,$p2,$p3,$p4,$p5,$p6,$p7)
-                    ON CONFLICT(project_id,node_id) DO UPDATE SET kind=$p3,label=$p4,source_line=$p6,content_hash=$p7;
+                    INSERT INTO graph_nodes(project_id,node_id,owner_path,kind,label,source_path,source_line,content_hash,details_json)
+                    VALUES ($p0,$p1,$p2,$p3,$p4,$p5,$p6,$p7,$p8)
+                    ON CONFLICT(project_id,node_id) DO UPDATE SET kind=$p3,label=$p4,source_line=$p6,content_hash=$p7,details_json=$p8;
                     """, ct, projectId, node.NodeId, node.OwnerPath, node.Kind, node.Label,
-                    node.SourcePath, node.Line, node.Hash);
+                    node.SourcePath, node.Line, node.Hash, node.Details is null ? null : JsonSerializer.Serialize(node.Details, GraphWorker.Json));
+            }
             foreach (var edge in scan.Edges)
+            {
+                await GraphKnowledgeWrites.ValidateEvidenceAsync(connection, transaction, projectId, edge.OwnerPath, edge.Evidence, ct);
                 await GraphSql.ExecuteAsync(connection, transaction, """
-                    INSERT OR IGNORE INTO graph_edges(project_id,source_id,target_id,relation,owner_path,source_line,resolution,confidence)
-                    VALUES ($p0,$p1,$p2,$p3,$p4,$p5,$p6,$p7);
+                    INSERT OR IGNORE INTO graph_edges(project_id,source_id,target_id,relation,owner_path,source_line,resolution,confidence,evidence_json)
+                    VALUES ($p0,$p1,$p2,$p3,$p4,$p5,$p6,$p7,$p8);
                     """, ct, projectId, edge.SourceId, edge.TargetId, edge.Relation, edge.OwnerPath,
-                    edge.SourceLine, edge.Resolution, edge.Confidence);
+                    edge.SourceLine, edge.Resolution, edge.Confidence,
+                    edge.Evidence is null ? null : JsonSerializer.Serialize(edge.Evidence with {
+                        CapturedAt = edge.Evidence.CapturedAt ?? DateTimeOffset.UtcNow }, GraphWorker.Json));
+            }
+            await GraphKnowledgeWrites.ApplyAsync(connection, transaction, projectId, scan, ct);
             foreach (var issue in scan.Issues)
                 await GraphSql.ExecuteAsync(connection, transaction, """
                     INSERT OR IGNORE INTO graph_issues(project_id,owner_path,source_line,relation,reason,candidates_json)
@@ -93,13 +106,15 @@ public sealed partial class EventStore
                 JsonSerializer.Serialize(scan.Folders ?? []));
             await GraphSql.ExecuteAsync(connection, transaction, """
                 INSERT INTO graph_revision_nodes
-                SELECT project_id,$p1,node_id,owner_path,kind,label,source_path,source_line,content_hash
+                SELECT project_id,$p1,node_id,owner_path,kind,label,source_path,source_line,content_hash,details_json
                 FROM graph_nodes WHERE project_id=$p0;
                 """, ct, projectId, revision);
             await GraphSql.ExecuteAsync(connection, transaction, """
                 INSERT INTO graph_revision_edges
-                SELECT project_id,$p1,source_id,target_id,relation,owner_path,source_line,resolution,confidence
+                SELECT project_id,$p1,source_id,target_id,relation,owner_path,source_line,resolution,confidence,evidence_json
                 FROM graph_edges WHERE project_id=$p0;
+                INSERT INTO graph_revision_hyperedges SELECT project_id,$p1,hyperedge_id,owner_path,payload_json
+                FROM graph_hyperedges WHERE project_id=$p0;
                 """, ct, projectId, revision);
             var edgeCount = await GraphSql.CountAsync(connection, transaction,
                 "SELECT COUNT(*) FROM graph_edges WHERE project_id=$p0;", ct, projectId);

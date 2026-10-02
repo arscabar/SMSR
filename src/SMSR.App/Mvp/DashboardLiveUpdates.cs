@@ -19,6 +19,8 @@ internal static class DashboardLiveUpdates
               let refreshController = null;
               let liveStatus = '자동 갱신 연결 중';
               const scrollIds = ['flow', 'graph', 'details'];
+              const scope = url => ['projectId','workflowId','parentNodeId'].map(k => url.searchParams.get(k) || '').join('\u001f');
+              const initialScope = scope(new URL(location.href));
               const cardStateKey = 'smsr-status-cards:{{project}}:{{workflow}}';
               const showLiveStatus = value => {
                 const element = document.getElementById('live-connection');
@@ -115,20 +117,25 @@ internal static class DashboardLiveUpdates
                     refreshController = controller;
                     const timeout = setTimeout(() => controller.abort(), 8000);
                     try {
-                    const response = await fetch(location.href, { cache: 'no-store', signal: controller.signal });
+                    const requested = location.href;
+                    const response = await fetch(requested, { cache: 'no-store', signal: controller.signal });
+                    if (requested !== location.href) { queued = true; continue; }
                     if (!response.ok) continue;
                     const next = new DOMParser().parseFromString(await response.text(), 'text/html');
                     if (document.querySelector('.context-editing')) return;
                     const scroll = captureScroll();
+                    const pagePosition = {left:window.scrollX, top:window.scrollY};
                     const timelineInput = document.getElementById('timeline-step');
                     const timelineAtEnd = timelineInput?.value === timelineInput?.max;
                     const timelineStep = Number(timelineInput?.value || 0);
                     saveCardState();
+                    window.smsrDisclosures?.capture();
                     document.querySelector('header')?.replaceWith(next.querySelector('header'));
                     setLiveStatus(liveStatus);
                     document.querySelector('main')?.replaceWith(next.querySelector('main'));
                     restoreScroll(scroll);
                     restoreCardState();
+                    window.smsrDisclosures?.restore();
                     const currentTimeline = document.getElementById('timeline-step');
                     if (currentTimeline && !timelineAtEnd) { currentTimeline.value = String(Math.min(timelineStep, Number(currentTimeline.max))); replay(currentTimeline); }
                     ['alert', 'integrity-alert'].forEach(id => {
@@ -138,6 +145,7 @@ internal static class DashboardLiveUpdates
                       else if (currentAlert) currentAlert.remove();
                       else if (nextAlert) document.querySelector('main')?.before(nextAlert);
                     });
+                    window.scrollTo(pagePosition.left,pagePosition.top);
                     } catch { }
                     finally { clearTimeout(timeout); if (refreshController === controller) refreshController = null; }
                   } while (queued);
@@ -187,16 +195,29 @@ internal static class DashboardLiveUpdates
                 }
                 const link = event.target.closest?.('.flow-svg a');
                 if (!link) return;
-                event.preventDefault();
-                if (navigating) return;
+                if (event.button || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
                 const target = link.getAttribute('href');
                 if (!target) return;
+                const nextUrl = new URL(target,location.href);
+                if (nextUrl.origin === location.origin && scope(nextUrl) === initialScope && nextUrl.searchParams.has('selectedNodeId')) {
+                  if (document.querySelector('.context-editing')) return;
+                  event.preventDefault();
+                  history.pushState(null,'',nextUrl);
+                  void refresh();
+                  return;
+                }
+                event.preventDefault();
+                if (navigating) return;
                 navigating = true;
                 queued = false;
                 refreshController?.abort();
                 stream.close();
                 showLiveStatus('선택 작업 여는 중…');
                 location.assign(target);
+              });
+              window.addEventListener('popstate', () => {
+                if (scope(new URL(location.href)) === initialScope) void refresh();
+                else location.reload();
               });
               document.addEventListener('input', event => {
                 if (event.target.matches?.('#timeline-step')) replay(event.target);

@@ -74,6 +74,21 @@ public sealed class LocalServer(WebApplication app, EventStore events, WorkflowS
         builder.Services.AddSingleton<GraphFeedbackService>();
         builder.Services.AddSingleton<GraphValidationService>();
         builder.Services.AddSingleton<GraphWorker>();
+        builder.Services.AddSingleton<GraphDocumentService>();
+        builder.Services.AddSingleton<GraphRoleService>();
+        builder.Services.AddSingleton<GraphRoleJobs>();
+        builder.Services.AddSingleton<GraphRoleBatchService>();
+        builder.Services.AddSingleton<GraphVaultService>();
+        builder.Services.AddSingleton<GraphRoleCoverageService>();
+        builder.Services.AddHostedService<GraphRoleJobWorker>();
+        builder.Services.AddSingleton<GraphSemanticService>();
+        builder.Services.AddSingleton<GraphOverviewService>();
+        builder.Services.AddSingleton<GraphQuestionService>();
+        builder.Services.AddSingleton<GraphReportService>();
+        builder.Services.AddSingleton<GraphExportService>();
+        builder.Services.AddSingleton<GraphMediaAnalysisService>();
+        builder.Services.AddSingleton<GraphWatchService>();
+        builder.Services.AddHostedService(sp=>sp.GetRequiredService<GraphWatchService>());
         builder.Services.AddSingleton<GraphAdvancedService>();
         builder.Services.AddSingleton(notifier);
         builder.Services.AddSingleton(summaries);
@@ -91,8 +106,18 @@ public sealed class LocalServer(WebApplication app, EventStore events, WorkflowS
             .WithTools<DailyActivityTools>()
             .WithTools<DailySummaryTools>()
             .WithTools<GraphTools>()
+            .WithTools<GraphExplorerTools>()
+            .WithTools<GraphKnowledgeTools>()
+            .WithTools<GraphDocumentTools>()
+            .WithTools<GraphRoleTools>()
+            .WithTools<GraphOverviewTools>()
+            .WithTools<GraphQuestionTools>()
+            .WithTools<GraphReportTools>()
+            .WithTools<GraphWatchTools>()
+            .WithTools<GraphMediaAnalysisTools>()
             .WithTools<GraphAdvancedTools>();
         var app = builder.Build();
+        app.Services.GetRequiredService<GraphVaultService>().SourceAddress = () => app.Urls.SingleOrDefault() ?? "";
         LocalServerEndpoints.Map(app, oauth, bridgeToken, flows, oauthAudit, connections, notifier, activity,
             activityToken, operatorInstructions, dashboardTheme);
         await app.StartAsync();

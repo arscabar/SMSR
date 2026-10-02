@@ -8,6 +8,7 @@ internal static partial class EventStoreMigrations
     {
         await EnsureColumnAsync(connection, "plan_nodes", "metadata_json", cancellationToken);
         await EnsureColumnAsync(connection, "current_state", "metadata_json", cancellationToken);
+        await EnsureColumnAsync(connection, "agent_heartbeats", "metadata_json", cancellationToken);
     }
 
     private static async Task EnsureColumnAsync(SqliteConnection connection, string table, string column, CancellationToken cancellationToken)

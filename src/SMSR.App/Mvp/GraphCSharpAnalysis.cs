@@ -30,7 +30,7 @@ public sealed partial class GraphAdvancedService
         var payload = JsonSerializer.Serialize(new { analysisVersion = CSharpAnalysisVersion, revision = info.Revision, analyzedAt = DateTimeOffset.UtcNow,
             inputHashes = hashes, result }, GraphWorker.Json);
         await store.SaveGraphDerivedAsync(request.ProjectId, "csharp", request.Key, info.Revision, payload, ct);
-        return JsonSerializer.Deserialize<JsonElement>(payload);
+        return JsonSerializer.Deserialize<JsonElement>((await store.GetGraphDerivedAsync(request.ProjectId, "csharp", request.Key, ct))!);
     }
 
     internal async Task<object> CSharpAnalysisAsync(GraphCSharpRequest request, CancellationToken ct = default)
@@ -40,8 +40,7 @@ public sealed partial class GraphAdvancedService
         var saved = await store.GetGraphDerivedAsync(request.ProjectId, "csharp", request.Key, ct)
             ?? throw new KeyNotFoundException("같은 파일·버전·조건부 심벌 묶음의 분석 결과가 없습니다.");
         var report = JsonSerializer.Deserialize<JsonElement>(saved);
-        var stale = report.GetProperty("revision").GetInt32() != info.Revision ||
-            !report.TryGetProperty("analysisVersion", out var version) || version.GetInt32() != CSharpAnalysisVersion;
+        var stale = !await store.IsGraphDeepReportCurrentAsync(request.ProjectId, "csharp", request.Key, report, ct);
         foreach (var pair in report.GetProperty("inputHashes").EnumerateObject())
             try { stale |= (await new GraphSourceService(store).ReadAsync(request.ProjectId, pair.Name, ct)).Hash != pair.Value.GetString(); }
             catch (Exception e) when (e is InvalidOperationException or KeyNotFoundException or System.IO.IOException or UnauthorizedAccessException) { stale = true; }

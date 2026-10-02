@@ -1,0 +1,29 @@
+<!doctype html><html lang="ko"><meta charset="utf-8"><title>Graphify F0·F1 구현 상태</title>
+<style>body{max-width:1000px;margin:30px auto;padding:20px;font:16px/1.7 "Malgun Gothic",sans-serif;color:#203047}table{border-collapse:collapse;width:100%}td,th{border:1px solid #cbd6e4;padding:10px;text-align:left}h2{background:#eef4fc;padding:10px}code{overflow-wrap:anywhere}a{color:#245db4}</style>
+<h1>Graphify 기능 흡수 · F0·F1 구현 상태</h1><p>2026-10-01 · 승인된 <a href="graphify-capability-roadmap-2026-10-01.html">전체 계획</a>의 첫 구현 구간. 전체 14개 기능 개발 완료 보고서가 아닙니다.</p>
+<p><strong>이 문서는 이전 F0·F1 시점의 배포 기록입니다.</strong> 이후 F2·F3 호스트 경로·F5-1~4·F6-1·2·5 소스 구현과 검증은 <a href="graphify-next-status-2026-10-01.html">최신 결과</a>를 확인하세요. 아래 미착수·버전 표기는 당시 상태이며 현재 소스 상태가 아닙니다.</p>
+<h2>F0 기준·재사용</h2><table><tr><th>항목</th><th>확정 내용</th></tr>
+<tr><td>기준</td><td>비교 버전 0.9.73 / commit ef4450d9c28acb2b8cdc22d369c1777b77148eef. 현재 실행 버전은 0.9.70 / commit 4c21b15e9beeba5faa6871ad7dd188571a6fbb84. F2 검증 전 vendor 갱신 금지.</td></tr>
+<tr><td>지원 목록</td><td><a href="test-data/graphify-baseline-2026-10-01.json">고정 manifest</a>에 원본 분류 확장자와 실제 SMSR 19확장자/16문법을 분리. 원본 코드 분류 111확장자는 111개 언어/관계 지원을 뜻하지 않음.</td></tr>
+<tr><td>원본 재사용</td><td>현재 56모듈 해시를 유지. extract/detect/심벌 해소는 고정 vendor를 재사용하며 향후 analyze/cluster/export도 entry point·의존성·라이선스를 확인 후 가져옴.</td></tr>
+<tr><td>어댑터</td><td>GraphRuntime의 graphify_normalize/edges·검증·캐시·증분, GraphContracts·SQLite·MCP·웹은 SMSR 소유 경계. 원본 코드에 변경을 숨기지 않음.</td></tr>
+<tr><td>고지</td><td>Apache-2.0·LICENSE-MIT·NOTICE와 upstream manifest를 보존. 새 원본 포함 시 모듈/해시·변경 여부를 갱신. thinking-orbs 공통 UI 고지도 유지.</td></tr>
+<tr><td>중복 금지</td><td>기존 SQLite·MCP·색인·본문 벡터·경로/영향·리비전·GraphDeep·DPAPI/lease/TTL을 재사용. 별도 Graphify CLI/서버를 상시 실행하지 않음.</td></tr>
+</table>
+<h2>F0 정답 자료와 실행 조건</h2><p><a href="test-data/graphify-knowledge-fixtures.json">검증 자료 규격</a>은 정답·오연결 금지·실제 기존 검사와 아직 생성할 미디어/Office 자료를 구분합니다. 규격 정의만으로 실제 분석 시험 PASS를 주장하지 않습니다.</p>
+<ul><li>정적 추출은 기존 SMSR Python runtime·16문법 검사와 다중 파일 oracle를 사용. F2에서 고정 원본의 지원 행렬 전체로 확장.</li><li>한글 문서·없는 심벌·동명·경로 경계·취소·삭제·고아 관계·민감 이유를 필수 negative 자료로 사용.</li><li>문서/미디어 모델 기본 경로는 호스트 에이전트의 구조화 결과 제출. 별도 무인 모델·provider·외부 전송·예산은 아직 결정/적용하지 않음.</li><li>현재 ffmpeg와 Python/.NET 경로는 확인. 음성/vision 모델 다운로드·전사/영상 내용 분석은 미실행이며 F4 착수 때 가용성을 확인.</li><li>원문 질문 로그 제외·전역 훅 미적용·명시적 저장소 참조·그래프 DB 실측 정책을 유지.</li><li>측정은 실제 SMSR/AO3·5만 노드/20만 관계·대형 합성 자료. 정적 p95와 모델 대기, 냉/온 캐시·입력 수·바이트·상한을 따로 기록.</li></ul>
+<h2>F1 구현·검증 완료</h2>
+<ul><li>GraphNode의 기존 kind·ID·검색 계약을 유지하고 details에 entityKind·fileType·분석기/버전·소유 노드·선언 끝 줄·제한된 설계 이유를 보존합니다. 원본에 종류 근거가 없으면 unknown이며 모든 심벌 유형을 추정하지 않습니다.</li>
+<li>정적 관계의 원문 hash·확실성·선택적 추론 점수·생성 시각을 저장합니다. AMBIGUOUS는 기존 진단에 남기며 가짜 대상은 만들지 않습니다. 점수는 정확도 확률이 아닙니다. 생성 시각은 구조 변경 비교에서 제외하되 조회와 리비전에는 보존합니다.</li>
+<li>hyperedge는 3~64개의 서로 다른 실제 노드와 역할·근거를 저장합니다. 중복·범위 밖 참여자·잘못된 hash는 전체 트랜잭션을 거부합니다. 그룹 자체를 참여자로 허용하지 않으며 pairwise 관계를 합성하지 않습니다.</li>
+<li>SQLite 이행 전 .bak-knowledge 백업, 반복 이행, 사본 복원, 과거 리비전 보존을 검증했습니다. 파일 삭제·변경으로 무효가 된 그룹은 현재 조회에서 제거하고 과거 조회는 보존합니다. 구형 정보를 역산해 채우지 않습니다.</li>
+<li>HTTP <code>/api/graph/hyperedges</code>, <code>/api/graph/coverage</code>와 MCP <code>get_graph_hyperedges</code>, <code>get_graph_coverage</code>를 추가했습니다. 페이지 기본 20/50, 최대 100, offset 최대 1,000,000입니다.</li>
+<li>coverage는 실제 보존된 근거의 범위를 보고합니다. DETAILS_AVAILABLE / NO_SYMBOLS_OR_LEGACY / STRUCTURE_UNSUPPORTED / FILE_ONLY를 구분하며 빈 파일의 분석 실패나 전체 관계의 완전성을 추정하지 않습니다.</li>
+<li>색인 형식을 v12로 변경했습니다. 기존 프로젝트는 다음 사용자 색인 때 메타데이터를 다시 추출하며 지금 자동 전체 색인하거나 원본 vendor를 갱신하지 않았습니다.</li></ul>
+<h2>우측 패널 추가 요청</h2><p>작업 이력·계획 순서·작업 상세·상태 기록·활동 영역을 산출물·검증 근거와 같은 접이식 카드로 통일했습니다. 이력·순서·상세는 기본 펼침, 상태·활동·근거는 기본 접힘입니다. 사용자가 접은 상태는 실시간 DOM 교체와 같은 브라우저 탭의 새로고침에서 보존합니다. <a href="images/dashboard-panel-folding-2026-10-01.jpg">실제 테스트 화면</a>.</p>
+<h2>검증 결과와 남은 범위</h2><p>Python 16문법·심벌/근거/그룹·비밀값 제거·증분/전체 동등성·C# 문맥·복구 검사 통과. 전체 Release 시험 출력 빌드 경고·오류 0. 신규 지식 데이터 self-check의 DB 이행/사본 복원·원자적 실패·삭제·리비전·HTTP/MCP 검사 및 기존 정적/심층/추적 self-check 종료 0. 접기·Enter 펼치기·새로고침 후 이력 접힘 및 상세 펼침 유지를 실제 HTTP 화면에서 확인했고 실시간 DOM 교체·저장 차단은 스크립트 검사로 확인했습니다.</p>
+<h2>운영 앱 적용과 대형 조회 보강</h2><p>사용자 승인 후 검증 출력을 현재 실행 경로 <code>src/SMSR.App/bin/Release/net8.0-windows</code>에 반영하고 기존 주소 <code>http://127.0.0.1:49783</code>로 재시작했습니다. 실행 파일 백업은 <code>artifacts/app-deploy-backup-20261001-1147</code>와 보강 전 <code>artifacts/app-deploy-backup-20261001-1151</code>입니다. 운영 DB 이행 전 백업 <code>smsr.db.bak-knowledge-20261001-024707590</code>가 생성됐습니다. 재시작 때 <code>--skip-codex-integration</code>을 사용해 자동 재설정을 생략했고 전후 Codex config.toml·hooks.json의 지문이 동일합니다.</p>
+<p>첫 운영 AO3 조회는 리비전 전체에 파일별 심벌 조인을 반복해 MCP 제한 시간을 넘겼습니다. 계획 조회에서 소유 경로 인덱스 부재를 확인하고 복합 인덱스 및 파일 페이지 선조회를 적용했습니다. 재검증 HTTP 1/100/1개 페이지는 각각 3988/493/412ms였고 MCP도 정상 응답했습니다. 이는 3회 실측이며 p95 벤치마크나 전 규모 성능 보장은 아닙니다. 기존 AO3 리비전 9의 2603파일·17778심벌은 구형 세부 정보로 표시되며, 다음 사용자 색인 때 v12 정보를 추출합니다. hyperedge가 없는 기존 자료에 그룹을 임의 합성하지 않았습니다.</p>
+<p>운영 화면에서도 이력·순서를 접고 상세를 펼친 상태가 heartbeat에 따른 실제 DOM 갱신 후 유지됐습니다. <a href="images/dashboard-panel-folding-live-2026-10-01.jpg">운영 화면 증빙</a>.</p>
+<p>F2~F8은 미착수입니다. Office·미디어 자료 규격이 있어도 실제 의미 추출·전사·영상 모델 검증을 했다는 뜻은 아닙니다. 그래프 활용 스킬·본문 의미 관계·언어 확장·커뮤니티 고도화·피드백 재사용·감시·지식 내보내기는 후속 단계입니다. 운영 앱 적용은 완료했지만 Git 커밋/푸시/릴리즈는 수행하지 않았습니다.</p>
+</html>

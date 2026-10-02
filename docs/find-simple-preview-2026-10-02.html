@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SMSR · 찾기 화면 샘플</title>
+<link rel="stylesheet" href="find-simple-preview.css">
+<script defer src="find-simple-preview-data.js"></script>
+<script defer src="find-simple-preview-view.js"></script>
+<script defer src="find-simple-preview.js"></script></head>
+<body><aside class="sidebar"><strong class="brand">SMSR</strong><div class="project">현재 프로젝트<strong>샘플 프로젝트</strong></div><nav aria-label="화면"><span>작업 현황</span><a href="#search" aria-current="page">찾기</a><a href="#tools">추가 기능</a></nav></aside>
+<main><header><h1>찾기</h1><span class="sample">화면 샘플 · 가상 데이터</span></header>
+<form id="search" role="search"><label class="sr-only" for="query">파일·문서 검색</label><input id="query" type="search" placeholder="파일이나 문서를 찾아보세요" autocomplete="off"><button class="primary">찾기</button></form>
+<div id="filters" aria-label="파일 종류 필터"><button type="button" data-kind="" aria-pressed="true">전체</button><button type="button" data-kind="code" aria-pressed="false">코드</button><button type="button" data-kind="document" aria-pressed="false">문서</button><button type="button" data-kind="image" aria-pressed="false">이미지</button><button type="button" data-kind="video" aria-pressed="false">영상</button><button type="button" data-kind="audio" aria-pressed="false">음원</button></div>
+<div class="workspace"><section class="results-panel"><h2>검색 결과 <small id="count" role="status"></small></h2><div id="results"></div></section>
+<section class="selection-panel" aria-label="선택 항목"><div id="selection"><h2>항목을 선택하세요</h2></div>
+<details id="connections" hidden><summary>관계 그래프 보기</summary><div id="graph" aria-label="선택 항목 주변 관계"></div><p class="muted">저장된 관계의 예시이며 실제 실행 순서를 뜻하지 않습니다.</p></details></section></div>
+<details id="tools"><summary>색인·분석 도구</summary><div class="tool-grid"><details><summary>색인 범위</summary><p>프로젝트 전체 / 선택한 폴더</p><p class="muted">샘플에서는 색인을 실행하지 않습니다.</p></details><details><summary>전체 관계·분석 정보</summary><p class="muted">실제 화면에서는 기존 전체 관계 지도·분석 통계·내보내기를 이곳에서 열 수 있습니다. 이 샘플에는 연결하지 않았습니다.</p></details></div></details>
+<footer>검토용 화면입니다. 현재 앱과 색인 DB는 변경하지 않습니다.</footer></main>
+<dialog id="source"><form method="dialog"><button autofocus aria-label="원문 미리보기 닫기">닫기</button></form><h2 id="source-title"></h2><p class="muted">가상 원문 · 실제 프로젝트 파일이 아닙니다.</p><pre id="source-text"></pre></dialog>
+</body></html>

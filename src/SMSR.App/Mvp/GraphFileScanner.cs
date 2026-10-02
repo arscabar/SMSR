@@ -17,7 +17,7 @@ internal static class GraphFileScanner
         ".html", ".css", ".scss", ".sql", ".sh", ".ps1", ".xaml", ".xml", ".yaml", ".yml",
         ".toml", ".gradle", ".sln", ".slnx", ".csproj", ".json", ".scala", ".lua",
         ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp", ".avif",
-        ".mp4", ".webm", ".ogv", ".mp3", ".wav", ".ogg", ".m4a"
+        ".mp4", ".webm", ".ogv", ".mp3", ".wav", ".ogg", ".m4a", ".pdf", ".docx", ".xlsx"
     };
     private static readonly HashSet<string> HiddenDirectories = new(StringComparer.OrdinalIgnoreCase)
         { ".git", "bin", "obj", "node_modules", "dist", ".venv", ".cache", "graphify-out", "secrets" };
@@ -43,7 +43,8 @@ internal static class GraphFileScanner
             var selected = folders.ToHashSet(StringComparer.Ordinal);
             paths = paths.Where(path => selected.Contains(path.Replace('\\', '/').Split('/')[0])).ToArray();
         }
-        if (paths.Length > 10_000) throw new InvalidOperationException("색인 파일은 10,000개 이하로 제한됩니다.");
+        paths = paths.Where(path => Allowed(path.Replace('\\', '/'))).ToArray();
+        if (paths.Length > 50_000) throw new InvalidOperationException("색인 가능한 파일 50,000개 한도를 초과했습니다. 폴더를 선택하세요. 기존 색인은 유지됩니다.");
         var files = new List<GraphSourceFile>();
         var canonicalPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var name in paths)
@@ -61,8 +62,9 @@ internal static class GraphFileScanner
                 if (new DirectoryInfo(parent).Attributes.HasFlag(FileAttributes.ReparsePoint)) { linkedParent = true; break; }
             if (linkedParent) continue;
             var info = new FileInfo(absolute);
-            var mediaKind = IsImage(relative) ? "image" : IsVideo(relative) ? "video" : IsAudio(relative) ? "audio" : null;
-            if (info.Length > (mediaKind is null ? 2_000_000 : mediaKind == "image" ? 20_000_000 : 100_000_000)
+            var mediaKind = IsImage(relative) ? "image" : IsVideo(relative) ? "video" : IsAudio(relative) ? "audio"
+                : GraphDocumentService.Binary(relative) ? "document" : null;
+            if (info.Length > (mediaKind is null ? 2_000_000 : mediaKind is "image" or "document" ? 20_000_000 : 100_000_000)
                 || info.Attributes.HasFlag(FileAttributes.ReparsePoint)) continue;
             if (mediaKind is not null)
             {
@@ -97,18 +99,13 @@ internal static class GraphFileScanner
     private static bool IsVideo(string path) => Path.GetExtension(path).ToLowerInvariant() is ".mp4" or ".webm" or ".ogv";
     private static bool IsAudio(string path) => Path.GetExtension(path).ToLowerInvariant() is ".mp3" or ".wav" or ".ogg" or ".m4a";
 
-    private static bool Allowed(string path)
+    internal static bool Allowed(string path)
     {
         if (path.Length > 1024) return false;
         var parts = path.Split('/');
-        if (parts.Any(HiddenDirectories.Contains) || !Extensions.Contains(Path.GetExtension(path))) return false;
-        var name = parts[^1];
-        return !name.StartsWith(".env", StringComparison.OrdinalIgnoreCase)
-            && !name.StartsWith("appsettings", StringComparison.OrdinalIgnoreCase)
-            && !name.Contains("credential", StringComparison.OrdinalIgnoreCase)
-            && !name.Contains("secret", StringComparison.OrdinalIgnoreCase)
-            && !name.Equals("config.toml", StringComparison.OrdinalIgnoreCase)
-            && !name.Equals("settings.local.json", StringComparison.OrdinalIgnoreCase);
+        if (parts.Any(HiddenDirectories.Contains)
+            || !(Extensions.Contains(Path.GetExtension(path)) || GraphCodeFormats.All.Contains(Path.GetExtension(path)))) return false;
+        return !GraphFilePolicy.Sensitive(path);
     }
 
     private static async Task<string> GitAsync(string root, CancellationToken ct, params string[] arguments)

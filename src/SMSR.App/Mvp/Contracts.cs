@@ -82,7 +82,10 @@ public sealed record AgentState(
     string? Summary,
     int RetryCount,
     DateTimeOffset LastHeartbeatAt,
-    bool IsStale);
+    bool IsStale,
+    string? Model = null,
+    string? ReasoningEffort = null,
+    string? ParentAgentId = null);
 
 public sealed record WorkflowSummary(
     string ProjectId,

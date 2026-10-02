@@ -1,0 +1,18 @@
+SMSR interactive knowledge visualization
+
+Adapted from Graphify-Labs/graphify 0.9.73, commit ef4450d9c28acb2b8cdc22d369c1777b77148eef
+graphify/exporters/html.py: _html_script, _hyperedge_script, to_html
+Source: https://github.com/Graphify-Labs/graphify/blob/ef4450d9c28acb2b8cdc22d369c1777b77148eef/graphify/exporters/html.py
+Copyright Graphify contributors. Apache License 2.0; LICENSE and NOTICE bundled in GraphRuntime/vendor.
+SMSR changes: live revision-safe local API; source links; community drilldown; bounded rendering;
+Korean accessible DOM controls; keyboard navigation; reduced motion; all original source edges retained in SQLite.
+Large-view labels prioritize important nodes; every visible node remains searchable/inspectable.
+Node/edge styles, forceAtlas2Based settings, spiral seeds, confidence styles and convex hull algorithm are adapted from the source above.
+No source files or questions are sent to an external provider.
+
+vis-network 9.1.6 standalone UMD
+Source: https://unpkg.com/vis-network@9.1.6/standalone/umd/vis-network.min.js
+Copyright vis contributors; Apache-2.0 OR MIT. Apache-2.0 license: vis-network-LICENSE.txt
+SHA256: 576bb887733eb01bb52ee75b90ef46d818454de5fddb5b616fb8a298d307ca12
+Verified upstream Graphify SRI: sha384-Ux6phic9PEHJ38YtrijhkzyJ8yQlH8i/+buBR8s3mAZOJrP1gwyvAcIYl3GWtpX1
+The pinned asset is served locally; no CDN dependency at runtime.

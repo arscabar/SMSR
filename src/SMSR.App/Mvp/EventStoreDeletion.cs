@@ -48,7 +48,7 @@ public sealed partial class EventStore
                     : "DELETE FROM graph_cross_repo_edges WHERE source_project_id=$projectId OR target_project_id=$projectId;";
                 AddScopeParameters(cross, projectId, null);
                 await cross.ExecuteNonQueryAsync(cancellationToken);
-                foreach (var table in new[] { "graph_index_formats", "graph_derived", "graph_feedback", "graph_revision_edges", "graph_revision_nodes",
+                foreach (var table in new[] { "graph_deep_manifests", "graph_deep_edges", "graph_deep_status", "graph_index_formats", "graph_derived", "graph_feedback", "graph_revision_edges", "graph_revision_nodes",
                     "graph_issues", "graph_edges", "graph_nodes", "graph_files", "graph_projects" })
                 {
                     var command = connection.CreateCommand();

@@ -41,8 +41,7 @@ public sealed partial class WorkflowWorkspaceViewModel
                     StatusMessage = $"다른 작업이 갱신되었습니다: {eventArgs.ProjectId}. 캘린더에서 선택할 수 있습니다.";
                 return;
             }
-            await Selection.SelectAsync(eventArgs.ProjectId, eventArgs.WorkflowId);
-            await RefreshMonitorAsync();
+            StatusMessage = $"작업 목록이 갱신되었습니다: {eventArgs.ProjectId}. 열 작업을 선택하세요.";
         }
         catch { StatusMessage = "갱신된 그래프 목록을 불러오지 못했습니다."; }
     }

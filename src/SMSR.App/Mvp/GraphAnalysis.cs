@@ -16,7 +16,7 @@ public sealed partial class GraphAdvancedService
         var payload = JsonSerializer.Serialize(new { analysisVersion = CodeAnalysisVersion, revision = source.Revision, hash = source.Hash,
             analyzedAt = DateTimeOffset.UtcNow, result }, GraphWorker.Json);
         await store.SaveGraphDerivedAsync(projectId, "analysis", path, source.Revision, payload, ct);
-        return JsonSerializer.Deserialize<JsonElement>(payload);
+        return JsonSerializer.Deserialize<JsonElement>((await store.GetGraphDerivedAsync(projectId, "analysis", path, ct))!);
     }
 
     public async Task<object> AnalysisAsync(string projectId, string path, CancellationToken ct = default)
@@ -27,8 +27,7 @@ public sealed partial class GraphAdvancedService
             ?? throw new KeyNotFoundException("이 파일의 저장된 분석 결과가 없습니다.");
         var report = JsonSerializer.Deserialize<JsonElement>(saved);
         var files = await store.GetGraphFilesAsync(projectId, ct);
-        var stale = !report.TryGetProperty("analysisVersion", out var version) || version.GetInt32() != CodeAnalysisVersion ||
-            !files.TryGetValue(path, out var hash) || hash != report.GetProperty("hash").GetString();
+        var stale = !await store.IsGraphDeepReportCurrentAsync(projectId, "analysis", path, report, ct);
         if (!stale)
             try { await new GraphSourceService(store).ReadAsync(projectId, path, ct); }
             catch (Exception error) when (error is InvalidOperationException or KeyNotFoundException or System.IO.IOException)

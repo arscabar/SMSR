@@ -78,7 +78,7 @@ public sealed class GraphTools(GraphIndexService index, GraphQueryService queryS
     public Task<string> GetWorkflowGraphEvidence(string projectId, string workflowId)
         => ReplyAsync(() => evidence.GetAsync(projectId, workflowId));
 
-    private static async Task<string> ReplyAsync<T>(Func<Task<T>> action)
+    internal static async Task<string> ReplyAsync<T>(Func<Task<T>> action)
     {
         try { return JsonSerializer.Serialize(await action()); }
         catch (Exception error) when (error is ArgumentException or InvalidOperationException or KeyNotFoundException or IOException)

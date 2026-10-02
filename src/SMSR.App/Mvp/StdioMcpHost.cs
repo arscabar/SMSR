@@ -19,6 +19,15 @@ public static class StdioMcpHost
             .WithTools<StdioDailyActivityTools>()
             .WithTools<StdioDailySummaryTools>()
             .WithTools<StdioGraphTools>()
+            .WithTools<StdioGraphExplorerTools>()
+            .WithTools<StdioGraphKnowledgeTools>()
+            .WithTools<StdioGraphDocumentTools>()
+            .WithTools<StdioGraphRoleTools>()
+            .WithTools<StdioGraphOverviewTools>()
+            .WithTools<StdioGraphQuestionTools>()
+            .WithTools<StdioGraphReportTools>()
+            .WithTools<StdioGraphWatchTools>()
+            .WithTools<StdioGraphMediaAnalysisTools>()
             .WithTools<StdioGraphAdvancedTools>();
         await using var provider = services.BuildServiceProvider();
         await provider.GetRequiredService<McpServer>().RunAsync();

@@ -2,18 +2,19 @@ namespace SMSR.App.Mvp;
 
 public sealed record GraphFile(string Path, string Hash, string Kind);
 public sealed record GraphNode(string NodeId, string OwnerPath, string Kind, string Label,
-    string SourcePath, int Line, string Hash);
-public sealed record GraphEdge(string SourceId, string TargetId, string Relation,
-    string OwnerPath, int SourceLine, string Resolution, string Confidence);
+    string SourcePath, int Line, string Hash, GraphEntityDetails? Details = null);
 public sealed record GraphIssue(string OwnerPath, int SourceLine, string Relation, string Reason,
     IReadOnlyList<string> CandidatePaths);
 public sealed record GraphScan(string RootPath, IReadOnlyList<GraphFile> Files,
     IReadOnlyList<GraphNode> Nodes, IReadOnlyList<GraphEdge> Edges, IReadOnlyList<GraphIssue> Issues,
     IReadOnlyList<string> ChangedPaths, IReadOnlyList<string> ReparsedDocs,
     IReadOnlyList<string> RemovedPaths, int? ExpectedRevision = null,
-    IReadOnlyList<string>? Folders = null);
+    IReadOnlyList<string>? Folders = null, IReadOnlyList<GraphHyperedge>? Hyperedges = null);
 public sealed record GraphIndexResult(string ProjectId, int Revision, int FileCount,
-    int NodeCount, int EdgeCount, int ChangedFiles, int RemovedFiles, bool Unchanged);
+    int NodeCount, int EdgeCount, int ChangedFiles, int RemovedFiles, bool Unchanged,
+    GraphCodeAnalysis? CodeAnalysis = null);
+public sealed record GraphCodeAnalysis(string Mode, int AffectedFiles, int ReusedFiles,
+    string? FallbackReason, bool ContextStored);
 public sealed record GraphFreshness(int Revision, bool IsStale, int AddedCount, int ChangedCount,
     int RemovedCount, IReadOnlyList<string> SamplePaths, bool Truncated);
 public sealed record GraphInfo(string ProjectId, string RootPath, int Revision,
@@ -24,7 +25,8 @@ public sealed record GraphContext(GraphNode Node, IReadOnlyList<GraphNeighbor> O
 public sealed record GraphPath(IReadOnlyList<GraphEdge> Edges, bool Found, bool Truncated,
     int VisitedNodes, int Revision);
 public sealed record GraphImpact(IReadOnlyList<GraphNode> Nodes, bool Truncated,
-    int Revision);
+    int Revision, IReadOnlyList<GraphImpactStep>? Steps = null);
+public sealed record GraphImpactStep(string NodeId, string NextId, int Depth, GraphEdge Edge);
 public sealed record GraphSearch(IReadOnlyList<GraphNode> Nodes, bool Truncated, int Revision);
 public sealed record GraphHealth(GraphInfo Info, int DanglingEdges, int SelfLoops,
     int DuplicateReferences, int IssueCount, IReadOnlyList<GraphIssue> Issues);

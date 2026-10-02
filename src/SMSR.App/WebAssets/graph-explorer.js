@@ -1,4 +1,20 @@
-import { kindName, kindClass, relationName, labelLines } from './graph-explorer-labels.js';
+import { kindName, kindClass } from './graph-explorer-labels.js';
+import { drawRelations,clearRelationGraph } from './graph-explorer-render.js';
+import { relations } from './graph-explorer-relations.js';
+import { tracing } from './graph-explorer-trace.js';
+import { explanations } from './graph-explorer-diagnostics.js';
+import {overview} from './graph-explorer-overview.js';
+import {structure} from './graph-explorer-structure.js';
+import {semanticDetails} from './graph-explorer-semantic.js';
+import {knowledge} from './graph-explorer-knowledge.js';
+import {mediaAnalysis} from './graph-explorer-media.js';
+import {selectionExport} from './graph-explorer-export.js';
+import {roleDetails} from './graph-explorer-role.js';
+import {relatedItems} from './graph-explorer-related.js';
+import {symbolTree} from './graph-explorer-symbols.js';
+import {roleCoverage} from './graph-explorer-role-coverage.js';
+import {roleBatch} from './graph-explorer-role-batch.js';
+import {vaultPanel,vaultNote} from './graph-explorer-vault.js';
 
 const root = document.querySelector('#explorer');
 const projectId = root.dataset.project, workflowId = root.dataset.workflow;
@@ -6,8 +22,21 @@ const results = document.querySelector('#results'), details = document.querySele
 const graph = document.querySelector('#graph');
 const status = document.querySelector('#status');
 const indexPanel = document.querySelector('#index-panel'), indexForm = document.querySelector('#index-form');
-let request = 0, selectedKind = '', indexed = false, page = 0, relationData = null, expanded = false;
+let request = 0, selectedKind = '', indexed = false, page = 0, relationData = null, selectedNode=null;
+const relationPanel=document.querySelector('#relation-panel');
+relationPanel.addEventListener('toggle',()=>{if(relationPanel.open&&selectedNode)relationControl.select(selectedNode);});
 const pageSize = 60, pages = document.querySelector('#search-pages');
+const relationControl=relations({get,render:relationGraph,message,projectId,clearGraph:()=>{
+  clearRelationGraph(graph);graph.replaceChildren();relationData=null;
+  document.querySelector('#edge-details').replaceChildren();
+}});
+const traceControl=tracing({get,projectId,select,sourceLink});
+const explain=explanations({get,projectId,sourceLink});
+overview({get,projectId,select,sourceLink});
+structure({get,projectId,select});
+knowledge({get,projectId,select});
+roleCoverage({get,projectId,select});
+roleBatch({get,projectId});vaultPanel({get,projectId});
 
 function element(tag, label, className) {
   const node = document.createElement(tag);
@@ -27,8 +56,9 @@ async function get(path, params) {
 }
 function sourceLink(node) {
   if (!node.sourcePath || ['image','video','audio'].includes(node.kind)) return null;
-  const link = element('a', node.kind === 'code' ? '코드 원문 열기' : '문서 원문 열기', 'source-action');
-  link.href = '/graph/source?' + new URLSearchParams({projectId, path:node.sourcePath,
+  const link = element('a', ['code','symbol'].includes(node.kind) ? '코드 원문 열기' : '문서 원문 열기', 'source-action');
+  const document = /\.(pdf|docx|xlsx|png|jpg|jpeg|gif|webp|bmp|mp4|webm|ogv|mp3|wav|ogg|m4a)$/i.test(node.sourcePath) || ['concept','requirement','rationale'].includes(node.kind);
+  link.href = (document ? '/graph/document?' : '/graph/source?') + new URLSearchParams({projectId, path:node.sourcePath,
     line:String(Math.max(1,node.line || 1)),...(workflowId?{workflowId}:{})});
   return link;
 }
@@ -36,6 +66,16 @@ function detail(node) {
   details.replaceChildren(element('h3', node.label));
   details.append(element('p', `종류: ${kindName(node.kind)}`), element('p', `위치: ${node.sourcePath || '없음'}${node.line ? ':' + node.line : ''}`));
   const link = sourceLink(node); if (link) details.append(link);
+  vaultNote(node,details,{get,projectId});
+  roleDetails(node,details,{get,projectId,sourceLink});
+  symbolTree(node,details,{get,projectId,select});
+  relatedItems(node,details,{get,projectId,select,sourceLink});
+  const tools=element('details');tools.append(element('summary','추가 확인'));
+  details.append(tools);traceControl.node(node,tools);
+  explain(node);
+  semanticDetails(node,details,{get,projectId,sourceLink});
+  mediaAnalysis(node,details,{get,projectId});
+  selectionExport(node,tools,projectId);
   if (!['image','video','audio'].includes(node.kind)) return;
   if (node.sourcePath.toLowerCase().endsWith('.svg')) {
     details.append(element('p','SVG는 보안을 위해 웹 미리보기를 제공하지 않습니다.','muted')); return;
@@ -46,74 +86,17 @@ function detail(node) {
   else { media.controls = true; media.preload = 'metadata'; if (node.kind === 'video') media.playsInline = true; }
   details.append(media);
 }
-function nodeHeight(node) { return 38 + labelLines(node.label).length * 16; }
-function svgNode(svg, node, x, y, selected, onClick) {
-  const ns = 'http://www.w3.org/2000/svg', group = document.createElementNS(ns,'g');
-  group.setAttribute('class', `graph-node ${kindClass(node.kind)}${selected ? ' selected' : ''}`);
-  group.setAttribute('tabindex','0'); group.setAttribute('role','button');
-  group.setAttribute('aria-label',node.label); group.style.cursor = 'pointer';
-  const rect = document.createElementNS(ns,'rect');
-  for (const [key,value] of Object.entries({x,y,width:200,height:nodeHeight(node),rx:10})) rect.setAttribute(key,value);
-  if (selected) rect.style.strokeWidth = '4';
-  const tooltip = document.createElementNS(ns,'title'); tooltip.textContent = node.label;
-  const title = document.createElementNS(ns,'text'); title.setAttribute('x',x+10);
-  labelLines(node.label).forEach((line,index)=>{
-    const part=document.createElementNS(ns,'tspan');
-    part.setAttribute('x',x+10); part.setAttribute('y',y+22+index*16);
-    part.textContent=line; title.append(part);
-  });
-  const kind = document.createElementNS(ns,'text');
-  kind.setAttribute('x',x+10); kind.setAttribute('y',y+nodeHeight(node)-12); kind.setAttribute('class','edge-label'); kind.textContent = kindName(node.kind);
-  group.append(tooltip,rect,title,kind);
-  group.addEventListener('click',onClick);
-  group.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();onClick()}});
-  svg.append(group);
-}
 function relationGraph(data) {
   relationData = data;
-  graph.replaceChildren();
-  const tools = document.querySelector('#graph-tools'), toggle = document.querySelector('#toggle-relations');
-  tools.hidden = false;
-  document.querySelector('#relation-count').textContent = `들어오는 관계 ${data.incoming.length}개 · 나가는 관계 ${data.outgoing.length}개${data.truncated?' · 일부만 조회됨':''}`;
-  toggle.hidden = data.incoming.length <= 8 && data.outgoing.length <= 8;
-  toggle.textContent = expanded ? '접기' : '더 보기'; toggle.setAttribute('aria-expanded',String(expanded));
-  const ns='http://www.w3.org/2000/svg', svg=document.createElementNS(ns,'svg');
-  svg.setAttribute('aria-label',`${data.node.label}의 대표 관계`);
-  const defs=document.createElementNS(ns,'defs'),marker=document.createElementNS(ns,'marker'),arrow=document.createElementNS(ns,'path');
-  for(const [key,value] of Object.entries({id:'relation-arrow',markerWidth:8,markerHeight:8,refX:7,refY:4,orient:'auto'})) marker.setAttribute(key,value);
-  arrow.setAttribute('d','M0 0 L8 4 L0 8 Z');arrow.setAttribute('fill','#88a7ca');marker.append(arrow);defs.append(marker);svg.append(defs);
-  const incoming=data.incoming.slice(0,expanded?100:8), outgoing=data.outgoing.slice(0,expanded?100:8);
-  const place=items=>{let y=20;return items.map(item=>{const position={...item,y};y+=nodeHeight(item.node)+18;return position})};
-  const left=place(incoming),right=place(outgoing);
-  const height=Math.max(450,...[left,right].map(side=>side.length?side.at(-1).y+nodeHeight(side.at(-1).node)+20:0));
-  const centerY=(height-nodeHeight(data.node))/2;
-  svg.setAttribute('viewBox',`0 0 760 ${height}`);
-  svg.style.height = `${height}px`;
-  const nearby=[...left.map(item=>({...item,left:true})),...right.map(item=>({...item,left:false}))];
-  nearby.forEach(item=>{
-    const x=item.left?20:540, y=item.y;
-    const line=document.createElementNS(ns,'line');
-    for(const [key,value] of Object.entries({x1:item.left?220:480,y1:item.left?y+nodeHeight(item.node)/2:centerY+nodeHeight(data.node)/2,x2:item.left?280:540,y2:item.left?centerY+nodeHeight(data.node)/2:y+nodeHeight(item.node)/2})) line.setAttribute(key,value);
-    line.setAttribute('marker-end','url(#relation-arrow)');
-    svg.append(line);
-    const itemText=`${item.left?'들어옴':'나감'} · ${relationName(item.edge.relation)} · ${item.node.label}`;
-    line.setAttribute('aria-label',itemText);
-    const hint=document.createElementNS(ns,'title'); hint.textContent=itemText; line.append(hint);
-  });
-  svgNode(svg,data.node,280,centerY,true,()=>detail(data.node));
-  nearby.forEach(item=>svgNode(svg,item.node,item.left?20:540,item.y,false,()=>select(item.node)));
-  graph.append(svg);
+  drawRelations(data,{graph,details:document.querySelector('#edge-details'),sourceLink,select,detail});
 }
 async function select(node) {
-  const mine=++request;
-  expanded = false;
+  ++request;
+  selectedNode=node;document.querySelector('#edge-details').replaceChildren();
   document.querySelectorAll('.result').forEach(button=>button.setAttribute('aria-selected',String(button.dataset.id===node.nodeId)));
-  detail(node); message('관계 확인 중…',true);
-  try {
-    const data = await get('/api/graph/context',{projectId,nodeId:node.nodeId,limit:'100'});
-    if(mine!==request) return;
-    relationGraph(data); message('선택한 항목을 표시했습니다.');
-  } catch(error) { if(mine===request) message(error.message); }
+  detail(node);
+  relationControl.clear();clearRelationGraph(graph);graph.replaceChildren();
+  if(relationPanel.open)await relationControl.select(node);
 }
 async function search(event) {
   event?.preventDefault(); const mine=++request;
@@ -121,11 +104,12 @@ async function search(event) {
   document.querySelector('#next-page').disabled=true;
   message('찾는 중…',true);
   try {
-    const data=await get('/api/graph/search',{projectId,q:document.querySelector('#query').value,limit:String(pageSize),offset:String(page*pageSize),kind:selectedKind||'files'});
+    const data=await get('/api/graph/files',{projectId,q:document.querySelector('#query').value,limit:String(pageSize),offset:String(page*pageSize),...(selectedKind?{kind:selectedKind}:{})});
     if(mine!==request) return;
     const nodes=data.nodes;
     results.replaceChildren(); results.scrollTop=0;
-    graph.replaceChildren(); relationData=null; document.querySelector('#graph-tools').hidden=true;
+    selectedNode=null;document.querySelector('#edge-details').replaceChildren();
+    clearRelationGraph(graph);graph.replaceChildren(); relationData=null; relationControl.clear();
     details.replaceChildren(element('p','왼쪽에서 파일이나 문서를 선택하세요.'));
     document.querySelector('#count').textContent=nodes.length?`${page*pageSize+1}–${page*pageSize+nodes.length}개${data.truncated?' 이상':''}`:'0개';
     pages.hidden=page===0&&!data.truncated;
@@ -144,13 +128,12 @@ async function search(event) {
 document.querySelector('#search-form').addEventListener('submit',event=>{page=0;search(event)});
 document.querySelector('#previous-page').addEventListener('click',()=>{if(page>0){page--;search()}});
 document.querySelector('#next-page').addEventListener('click',()=>{page++;search()});
-document.querySelector('#toggle-relations').addEventListener('click',()=>{if(relationData){expanded=!expanded;relationGraph(relationData)}});
 document.querySelector('.legend').addEventListener('click', event => {
   const button = event.target.closest('button[data-kind]'); if (!button) return;
   page = 0;
   selectedKind = selectedKind === button.dataset.kind ? '' : button.dataset.kind;
   document.querySelectorAll('.legend button').forEach(item => item.setAttribute('aria-pressed', String(item.dataset.kind === selectedKind)));
-  graph.replaceChildren(); relationData=null; document.querySelector('#graph-tools').hidden=true;
+  graph.replaceChildren(); relationData=null; relationControl.clear();
   details.replaceChildren(element('p','왼쪽에서 파일이나 문서를 선택하세요.'));
   if (indexed) search();
 });
@@ -166,7 +149,7 @@ indexForm.addEventListener('submit', async event => {
   const note = document.querySelector('#index-status');
   if (selected && !folders.length) { note.textContent = '폴더를 하나 이상 선택하세요.'; return; }
   const button = indexForm.querySelector('button[type="submit"]'); button.disabled = true;
-  note.textContent = '색인 중…'; window.smsrLoading?.show(note, 'connecting', '색인 중…');
+  note.textContent = '색인·관계 분석 중…'; window.smsrLoading?.show(note, 'connecting', '색인·관계 분석 중…');
   try {
     let allowLargeReduction = false;
     for (;;) {

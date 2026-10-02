@@ -13,6 +13,9 @@ internal static class GraphEndpoints
     public static void Map(WebApplication app, Func<string>? theme)
     {
         GraphAdvancedEndpoints.Map(app, theme);
+        GraphExplorerEndpoints.Map(app);
+        GraphDocumentEndpoints.Map(app);
+        GraphExportEndpoints.Map(app);
         app.MapGet("/graph/explore", (string projectId, string? workflowId, string? view) =>
             view is "relations" or "flow"
                 ? Results.Redirect("/graph/explore?projectId=" + Uri.EscapeDataString(projectId)

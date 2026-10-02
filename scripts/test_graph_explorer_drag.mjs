@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import {dragNode,bounded} from '../src/SMSR.App/WebAssets/graph-explorer-drag.js';
+import {edgePoints} from '../src/SMSR.App/WebAssets/graph-explorer-edges.js';
+import {Element as Group} from './graph-explorer-drag-fixture.mjs';
+
+const svg={getScreenCTM:()=>({inverse:()=>({scale:.5})}),createSVGPoint:()=>({x:0,y:0,matrixTransform(matrix){return {x:this.x*matrix.scale,y:this.y*matrix.scale}}})};
+const group=new Group(),commits=[];let position={x:20,y:20},selected=0;
+group.addEventListener('click',()=>selected++);
+const dispose=dragNode(group,svg,position,{width:460,height:450,nodeHeight:70},value=>position=value,value=>commits.push(value));
+group.event('pointerdown',{clientX:40,clientY:40});group.event('pointermove',{clientX:160,clientY:100});
+assert.deepEqual(position,{x:80,y:50});assert.equal(commits.length,0);
+group.event('pointerup');group.event('click',{timeStamp:101});assert.equal(selected,0);assert.equal(commits.length,1);
+group.event('pointerdown',{clientX:160,clientY:100});group.event('pointerup');group.event('click',{timeStamp:102});assert.equal(selected,1);
+group.event('pointerdown',{clientX:160,clientY:100});group.event('pointermove',{clientX:300,clientY:300});group.event('pointercancel');assert.deepEqual(position,{x:80,y:50});
+group.event('keydown',{key:'ArrowRight'});assert.equal(position.x,90);assert.equal(commits.length,2);
+group.event('pointerdown',{clientX:160,clientY:100,button:2});group.event('pointermove',{clientX:500,clientY:500});assert.equal(position.x,90);
+group.event('pointerdown',{clientX:160,clientY:100});group.event('pointermove',{clientX:300,clientY:300});group.event('lostpointercapture');assert.deepEqual(position,{x:90,y:50});
+assert.deepEqual(bounded({x:-20,y:999},{width:460,height:450,nodeHeight:70}),{x:8,y:372});
+const node={label:'a'};assert.notDeepEqual(edgePoints({x:20,y:20,node},{x:240,y:20,node}),edgePoints({...position,node},{x:240,y:20,node}));
+dispose();assert.equal(group.captured,null);assert.equal(group.listeners.get('pointermove').length,0);
+console.log('Pointer scale/drag/click/cancel/keyboard/bounds/edge-follow/cleanup OK');

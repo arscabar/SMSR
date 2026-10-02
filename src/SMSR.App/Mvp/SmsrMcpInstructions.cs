@@ -9,5 +9,6 @@ internal static class SmsrMcpInstructions
         계획 저장 직후 첫 노드를 IN_PROGRESS로 기록하고 의미 있는 변화는 즉시 record_event로 보내세요. record_event 또는 활성 record_heartbeat 응답에 operatorInstruction이 있으면 사용자가 대시보드에서 현재 작업 노드에 보낸 지시이므로 현재 작업에 즉시 반영하세요. 그래프를 만든 최초 요청과 활성 그래프에 반영한 관련 후속 요청은 해당 노드 시작 이벤트의 summary에 `사용자 요청 요약:`으로 시작하는 1~2문장 요약을 남기세요. 프롬프트 원문·비밀·개인정보는 복사하지 마세요. 최종 응답 직전 get_state로 남은 노드를 확인해 실제 결과에 따라 SUCCESS, FAILED, BLOCKED 또는 CANCELLED로 종결하고 끝난 작업의 진행 노드를 남겨두지 마세요. 완료하지 않고 다음 요청으로 넘어가거나 사용자가 중단하면 CANCELLED(중단), 실패는 FAILED, 사용자 결정 대기는 BLOCKED를 사용하세요.
         선행 노드는 SUCCESS 후 후행 노드를 시작하고 독립 작업만 병렬로 진행하세요. 의미 있는 변화 없이 오래 실행할 때만 30초 이내 heartbeat를 사용하세요. 모든 계획 노드가 종료되면 범위를 닫고 이후 무관한 요청을 붙이지 마세요. 이전 그래프는 list_workflows, get_plan, get_state로 재개하며 후보가 모호하면 사용자에게 선택을 요청하세요.
         새 그래프의 save_plan에는 reason과 approach를 요약해 넣고, 계획을 수정할 때는 changeReason에 변경 이유를 남기세요. record_event의 artifacts에는 비밀이 아닌 산출물 식별자만 넣으세요. 종료 전 save_workflow_context의 result에 실제 결과를 기록하세요. 과거 흐름은 get_plan_revisions와 get_workflow_timeline으로 확인하세요.
+        코드·문서 질문은 사용 가능한 smsr-query/explain/impact/report 스킬과 읽기 전용 그래프 근거를 먼저 확인하세요. 실제 도구 스키마와 색인 상태를 확인하고 동명 노드·리비전·stale·후보 관계·절단을 구별하세요. 역할·설계 이유·실행 순서를 통계만으로 추측하지 마세요. 질문만으로 색인·의미 제출·감시 활성화·외부 모델·훅 설치·원문 저장을 수행하지 마세요. 유지관리 변경은 별도 사용자 요청 범위에서만 처리하세요.
         """;
 }

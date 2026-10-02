@@ -12,6 +12,7 @@ internal sealed class GraphMediaService(EventStore store)
         if (string.IsNullOrWhiteSpace(path) || path.Length > 1024 || path.Contains('\\') || path.Any(char.IsControl)
             || !GraphMediaTypes.TryGet(path, out var type))
             throw new ArgumentException("미리보기 형식 또는 경로가 올바르지 않습니다.", nameof(path));
+        if (GraphFilePolicy.Sensitive(path)) throw new KeyNotFoundException("비밀 파일은 열 수 없습니다.");
         var info = await store.GetGraphInfoAsync(projectId, ct)
             ?? throw new KeyNotFoundException("관계 색인이 없습니다.");
         var node = await store.GetGraphNodeAsync(projectId, "file:" + path, ct, info.Revision);

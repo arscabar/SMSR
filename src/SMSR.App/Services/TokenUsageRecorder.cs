@@ -29,7 +29,8 @@ public sealed class TokenUsageRecorder(string dataPath, ActivityJsonlStore activ
             graphOutput += Estimate(graphRequest);
             sessions.Save(sessionId, new(projectId, workflowId, nodeId, DateTimeOffset.UtcNow,
                 goalId, usage?.RolloutPath ?? previous?.RolloutPath, goalInputBase, goalOutputBase,
-                graphInput, graphOutput, goalCachedInputBase));
+                graphInput, graphOutput, goalCachedInputBase,
+                sameGraph ? previous!.AgentId : null, sameGraph ? previous!.ParentAgentId : null));
             activity.Append(new(DateTimeOffset.UtcNow, projectId, workflowId, sessionId,
                 "TOKEN_SNAPSHOT", "LIFECYCLE", AgentId: sessionId, NodeId: nodeId,
                 ActivityId: $"tokens:{sessionId}:{usage?.Input}:{usage?.Output}:{graphInput}:{graphOutput}", GoalId: goalId,

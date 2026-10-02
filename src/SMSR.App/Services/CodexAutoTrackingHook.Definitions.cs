@@ -10,7 +10,8 @@ internal static partial class CodexAutoTrackingHook
         return entries.OfType<JsonObject>().Any(entry => IsOwned(entry, name)
             && entry["hooks"]!.AsArray().OfType<JsonObject>()
                 .Any(hook => hook["type"]?.GetValue<string>() == "command"
-                    && hook["commandWindows"]?.GetValue<string>() == command));
+                    && hook["commandWindows"]?.GetValue<string>() == command
+                    && hook["timeout"]?.GetValue<int>() == TimeoutFor(name)));
     }
 
     private static void SetOwnedEntry(JsonObject hooks, string name, string command)
@@ -32,10 +33,12 @@ internal static partial class CodexAutoTrackingHook
         {
             new JsonObject
             {
-                ["type"] = "command", ["command"] = command, ["commandWindows"] = command,
-                ["timeout"] = 3, ["statusMessage"] = $"{Marker}: {name}"
+                ["type"] = "command", ["command"] = command[2..], ["commandWindows"] = command,
+                ["timeout"] = TimeoutFor(name), ["statusMessage"] = $"{Marker}: {name}"
             }
         };
         return new JsonObject { ["hooks"] = handlers };
     }
+
+    private static int TimeoutFor(string name) => name == "SessionEnd" ? 3 : 10;
 }

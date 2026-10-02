@@ -1,0 +1,635 @@
+{
+  "version": "0.9.73",
+  "revision": "ef4450d9c28acb2b8cdc22d369c1777b77148eef",
+  "extensions": [
+    {
+      "extension": ".asd",
+      "extractor": "extract_commonlisp",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".astro",
+      "extractor": "extract_astro",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".bash",
+      "extractor": "extract_bash",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".c",
+      "extractor": "extract_c",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".cbl",
+      "extractor": "extract_cobol",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".cc",
+      "extractor": "extract_cpp",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".cjs",
+      "extractor": "extract_js",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".cl",
+      "extractor": "extract_commonlisp",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".cls",
+      "extractor": "extract_apex",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".cob",
+      "extractor": "extract_cobol",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".cobol",
+      "extractor": "extract_cobol",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".cpp",
+      "extractor": "extract_cpp",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".cpy",
+      "extractor": "extract_cobol",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".cs",
+      "extractor": "extract_csharp",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".cshtml",
+      "extractor": "extract_razor",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".csproj",
+      "extractor": "extract_csproj",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".cts",
+      "extractor": "extract_js",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".cu",
+      "extractor": "extract_cpp",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".cuh",
+      "extractor": "extract_cpp",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".cxx",
+      "extractor": "extract_cpp",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".dart",
+      "extractor": "extract_dart",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".dfm",
+      "extractor": "extract_delphi_form",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".dm",
+      "extractor": "extract_dm",
+      "status": "FILE_ONLY",
+      "missing": "tree-sitter-dm"
+    },
+    {
+      "extension": ".dme",
+      "extractor": "extract_dm",
+      "status": "FILE_ONLY",
+      "missing": "tree-sitter-dm"
+    },
+    {
+      "extension": ".dmf",
+      "extractor": "extract_dmf",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".dmm",
+      "extractor": "extract_dmm",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".dpk",
+      "extractor": "extract_pascal",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".dpr",
+      "extractor": "extract_pascal",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".erl",
+      "extractor": "extract_erlang",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".escript",
+      "extractor": "extract_erlang",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".ex",
+      "extractor": "extract_elixir",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".exs",
+      "extractor": "extract_elixir",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".f",
+      "extractor": "extract_fortran",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".f03",
+      "extractor": "extract_fortran",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".f08",
+      "extractor": "extract_fortran",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".f90",
+      "extractor": "extract_fortran",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".f95",
+      "extractor": "extract_fortran",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".fsproj",
+      "extractor": "extract_csproj",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".go",
+      "extractor": "extract_go",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".gradle",
+      "extractor": "extract_groovy",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".groovy",
+      "extractor": "extract_groovy",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".h",
+      "extractor": "extract_c",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".hcl",
+      "extractor": "extract_terraform",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".hpp",
+      "extractor": "extract_cpp",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".hrl",
+      "extractor": "extract_erlang",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".inc",
+      "extractor": "extract_pascal",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".java",
+      "extractor": "extract_java",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".jl",
+      "extractor": "extract_julia",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".js",
+      "extractor": "extract_js",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".json",
+      "extractor": "extract_json",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".jsx",
+      "extractor": "extract_js",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".kt",
+      "extractor": "extract_kotlin",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".kts",
+      "extractor": "extract_kotlin",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".lfm",
+      "extractor": "extract_lazarus_form",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".lisp",
+      "extractor": "extract_commonlisp",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".lpk",
+      "extractor": "extract_lazarus_package",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".lpr",
+      "extractor": "extract_pascal",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".lsp",
+      "extractor": "extract_commonlisp",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".lua",
+      "extractor": "extract_lua",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".luau",
+      "extractor": "extract_lua",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".m",
+      "extractor": "extract_objc",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".metal",
+      "extractor": "extract_cpp",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".mjs",
+      "extractor": "extract_js",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".ml",
+      "extractor": "extract_ocaml",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".mli",
+      "extractor": "extract_ocaml",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".mm",
+      "extractor": "extract_objc",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".mts",
+      "extractor": "extract_js",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".pas",
+      "extractor": "extract_pascal",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".php",
+      "extractor": "extract_php",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".pp",
+      "extractor": "extract_pascal",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".ps1",
+      "extractor": "extract_powershell",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".psd1",
+      "extractor": "extract_powershell_manifest",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".psm1",
+      "extractor": "extract_powershell",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".py",
+      "extractor": "extract_python",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".r",
+      "extractor": "extract_r",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".rake",
+      "extractor": "extract_ruby",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".razor",
+      "extractor": "extract_razor",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".rb",
+      "extractor": "extract_ruby",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".resource",
+      "extractor": "extract_robot",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".robot",
+      "extractor": "extract_robot",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".rs",
+      "extractor": "extract_rust",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".scala",
+      "extractor": "extract_scala",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".sh",
+      "extractor": "extract_bash",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".sln",
+      "extractor": "extract_sln",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".slnx",
+      "extractor": "extract_slnx",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".sol",
+      "extractor": "extract_solidity",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".sql",
+      "extractor": "extract_sql",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".sv",
+      "extractor": "extract_verilog",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".svelte",
+      "extractor": "extract_svelte",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".svh",
+      "extractor": "extract_verilog",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".swift",
+      "extractor": "extract_swift",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".tf",
+      "extractor": "extract_terraform",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".tfvars",
+      "extractor": "extract_terraform",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".toc",
+      "extractor": "extract_lua",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".trigger",
+      "extractor": "extract_apex",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".ts",
+      "extractor": "extract_js",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".tsx",
+      "extractor": "extract_js",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".v",
+      "extractor": "extract_verilog",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".vb",
+      "extractor": "extract_vbnet",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".vbproj",
+      "extractor": "extract_csproj",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".vue",
+      "extractor": "extract_vue",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".xaml",
+      "extractor": "extract_xaml",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    },
+    {
+      "extension": ".zig",
+      "extractor": "extract_zig",
+      "status": "EXTRACTOR_AVAILABLE",
+      "missing": null
+    }
+  ],
+  "availabilityIsNotAccuracy": true,
+  "executionChecks": {
+    "legacyGrammars": 16,
+    "additionalFixtures": 26,
+    "fixtureFile": "src/SMSR.App/GraphRuntime/language_extension_cases.py",
+    "limitations": [
+      "동적 런타임 해소·컴파일러 수준 판정 아님",
+      "일부 템플릿/정규식 추출은 관계 종류 제한",
+      "추가 고정 의존성은 별도 시험 폴더에만 설치됨; 운영 설치 아직 미적용"
+    ]
+  }
+}

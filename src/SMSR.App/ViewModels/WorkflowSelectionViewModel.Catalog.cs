@@ -6,13 +6,21 @@ public sealed partial class WorkflowSelectionViewModel
 {
     private async Task LoadWorkflowsAsync(string projectId)
     {
+        var entries = await server.GetWorkflowCatalogAsync(projectId);
+        if (ProjectId != projectId) return;
+        _updatingCatalog = true;
+        try
+        {
         WorkflowIds.Clear();
         Workflows.Clear();
-        foreach (var entry in await server.GetWorkflowCatalogAsync(projectId))
+        foreach (var entry in entries)
         {
             WorkflowIds.Add(entry.WorkflowId);
             Workflows.Add(CreateChoice(projectId, entry));
         }
+        }
+        finally { _updatingCatalog = false; }
+        OnPropertyChanged(nameof(SelectedWorkflow));
     }
 
     private static WorkflowChoice CreateChoice(string projectId, WorkflowCatalogEntry entry)

@@ -1,0 +1,11 @@
+{
+  "source": "docs/test-data/media-semantic-flow.png",
+  "model": "codex-host-vision",
+  "nodes": [
+    ["validate", "Validate", "image:30,70,240,120"],
+    ["store", "Store", "image:330,70,240,120"],
+    ["report", "Report", "image:630,70,240,120"]
+  ],
+  "edges": [["validate", "store", "image:270,121,57,19"], ["store", "report", "image:570,121,57,19"]],
+  "policy": "Graphify host vision identified the diagram. SMSR stores visual interpretations as inferred candidates; metadata proves source region, not textual truth or runtime order. Model identifier is a host method label; exact inherited model was unavailable."
+}

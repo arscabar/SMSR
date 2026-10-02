@@ -8,7 +8,7 @@ public sealed class GraphFeedbackService(EventStore store)
         if (error is not null || new[] { request.SourceId, request.TargetId, request.Relation, request.OwnerPath }
                 .Any(value => string.IsNullOrWhiteSpace(value) || value.Length > 1024)
             || request.SourceLine is < 1 or > 1_000_000
-            || request.Verdict is not ("USEFUL" or "ERROR" or "CORRECTED"))
+            || request.Verdict is not ("USEFUL" or "ERROR" or "CORRECTED" or "DEAD_END"))
             throw new ArgumentException(error ?? "관계 피드백 값이 올바르지 않습니다.");
         return store.RecordGraphFeedbackAsync(request, ct);
     }

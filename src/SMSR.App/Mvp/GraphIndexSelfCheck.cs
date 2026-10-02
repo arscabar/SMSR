@@ -20,7 +20,7 @@ internal static class GraphIndexSelfCheck
                 || page.Contains("data-kind=\"heading\"", StringComparison.Ordinal)
                 || !page.Contains("data-kind=\"audio\"", StringComparison.Ordinal)
                 || !page.Contains("data-kind=\"video\"", StringComparison.Ordinal)
-                || !page.Contains("id=\"toggle-relations\"", StringComparison.Ordinal))
+                || !page.Contains("id=\"relation-next\"", StringComparison.Ordinal))
                 throw new InvalidOperationException("단일 찾기 화면 정리 실패");
         }
         if (!WebNavigation.Render("sample", null, "find").Contains("sessionStorage", StringComparison.Ordinal)
@@ -91,7 +91,7 @@ internal static class GraphIndexSelfCheck
             var firstSourceHtml = GraphSourcePage.Render("sample", firstSource, null);
             var issuePage = GraphPage.Render("sample", null, "", firstHealth,
                 await query.SearchAsync("sample", ""), null, null, null, null, null);
-            if (first.FileCount != 2 || first.EdgeCount != 6 || !found.Found || found.Edges.Count != 2
+            if (first.FileCount != 2 || first.EdgeCount != 7 || !found.Found || found.Edges.Count != 2
                 || !impact.Nodes.Any(node => node.NodeId == "file:docs/a.md")
                 || firstHealth?.Issues.Count != 3 || firstHealth.Info.UnresolvedEdges != 2
                 || firstHealth.SelfLoops != 1 || firstHealth.DuplicateReferences != 1
@@ -154,7 +154,7 @@ internal static class GraphIndexSelfCheck
                 throw new InvalidOperationException("삭제된 파일의 색인 오래됨 검증 실패");
             var removed = await index.IndexAsync("sample", root);
             var health = await store.GetGraphHealthAsync("sample");
-            if (removed.RemovedFiles != 1 || health?.DanglingEdges != 0 || health.Info.EdgeCount != 1
+            if (removed.RemovedFiles != 1 || health?.DanglingEdges != 0 || health.Info.EdgeCount != 2
                 || (await store.GetGraphNodeAsync("sample", "file:src/code.cs")) is not null)
                 throw new InvalidOperationException("삭제·고아 관계 정리 검증 실패");
             var many = Path.Combine(root, "docs", "many.md");
@@ -226,6 +226,8 @@ internal static class GraphIndexSelfCheck
             await using (var host = await LocalServer.StartAsync(serverData, 0))
             {
                 using var client = new HttpClient();
+                if (!(await client.GetStringAsync(host.Address + "/assets/graph-explorer-evidence.js")).Contains("showEvidence"))
+                    throw new InvalidOperationException("관계 근거 모듈 제공 검증 실패");
                 using var denied = await client.PostAsJsonAsync(host.Address + "/api/graph/index",
                     new GraphIndexRequest("sample", root));
                 var gateway = new McpHttpGateway(host.Address, serverData);
@@ -254,6 +256,7 @@ internal static class GraphIndexSelfCheck
                 var scopeJson = await client.GetStringAsync(host.Address + "/api/graph/scope?projectId=sample&nodeId=file%3Adocs%2Fa.md");
                 var communityTool = await gateway.CallAsync("get_graph_communities", new { projectId = "sample" });
                 var communityJson = await client.GetStringAsync(host.Address + "/api/graph/communities?projectId=sample");
+                await GraphExplorerHttpSelfCheck.RunAsync(client, host.Address, gateway);
                 using var download = await client.GetAsync(host.Address + "/api/graph/export?projectId=sample&nodeId=file%3Adocs%2Fa.md");
                 var searched = await gateway.CallAsync("search_project_graph", new { projectId = "sample", query = "Renamed" });
                 var documentSearch = await client.GetFromJsonAsync<GraphSearch>(host.Address + "/api/graph/search?projectId=sample&q=&kind=document");
@@ -288,8 +291,10 @@ internal static class GraphIndexSelfCheck
                     || !explorer.Contains("id=\"index-form\"", StringComparison.Ordinal)
                     || !explorer.Contains("data-kind=\"document\" aria-pressed=\"false\"", StringComparison.Ordinal)
                     || !explorer.Contains("id=\"search-pages\"", StringComparison.Ordinal)
-                    || !explorerScript.Contains("kind:selectedKind||'files'", StringComparison.Ordinal)
-                    || !explorerScript.Contains("limit:'100'", StringComparison.Ordinal)
+                    || !explorerScript.Contains("get('/api/graph/files'", StringComparison.Ordinal)
+                    || !explorerScript.Contains("...(selectedKind?{kind:selectedKind}:{})", StringComparison.Ordinal)
+                    || !explorerScript.Contains("symbolTree(node,details", StringComparison.Ordinal)
+                    || !explorerScript.Contains("graph-explorer-relations.js", StringComparison.Ordinal)
                     || documentSearch?.Nodes.Count == 0 || documentSearch?.Nodes.Any(node => node.Kind != "document") != false
                     || fileSearch?.Nodes.Count == 0 || fileSearch?.Nodes.Any(node => node.Kind == "heading") != false
                     || firstSearchPage?.Truncated != true || secondSearchPage?.Nodes.Count != 1
@@ -297,7 +302,7 @@ internal static class GraphIndexSelfCheck
                     || invalidSearchPage.StatusCode != System.Net.HttpStatusCode.BadRequest
                     || !indexOptions.Contains("\"indexed\":true", StringComparison.Ordinal)
                     || !indexOptions.Contains("\"docs\"", StringComparison.Ordinal)
-                    || !explorerScript.Contains("/api/graph/context", StringComparison.Ordinal)
+                    || !explorerScript.Contains("relationControl.select(node)", StringComparison.Ordinal)
                     || !explorerLabels.Contains("labelLines", StringComparison.Ordinal)
                     || denied.StatusCode != System.Net.HttpStatusCode.Unauthorized
                     || !indexed.Contains("ProjectId", StringComparison.Ordinal)

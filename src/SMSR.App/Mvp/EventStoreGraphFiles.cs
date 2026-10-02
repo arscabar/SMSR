@@ -32,8 +32,8 @@ public sealed partial class EventStore
             SELECT root_path,revision,indexed_at_utc,
               (SELECT COUNT(*) FROM graph_files WHERE project_id=$p0),
               (SELECT COUNT(*) FROM graph_nodes WHERE project_id=$p0),
-              (SELECT COUNT(*) FROM graph_edges WHERE project_id=$p0),
-              (SELECT COUNT(*) FROM graph_edges WHERE project_id=$p0 AND resolution<>'RESOLVED') +
+              (SELECT COUNT(*) FROM graph_effective_edges WHERE project_id=$p0 AND revision=graph_projects.revision),
+              (SELECT COUNT(*) FROM graph_effective_edges WHERE project_id=$p0 AND revision=graph_projects.revision AND resolution<>'RESOLVED') +
               (SELECT COUNT(*) FROM graph_issues WHERE project_id=$p0
                 AND reason NOT IN ('동일 위치 중복 참조','자기 파일 참조'))
             FROM graph_projects WHERE project_id=$p0;

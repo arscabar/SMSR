@@ -8,6 +8,7 @@ internal static class TrackingContractSelfCheck
 {
     public static async Task RunAsync()
     {
+        DashboardEvidenceSelfCheck.Run();
         if (!SmsrMcpInstructions.Text.Contains("record_daily_activity", StringComparison.Ordinal)
             || !SmsrMcpInstructions.Text.Contains("계산, 짧은 검색", StringComparison.Ordinal)
             || !SmsrMcpInstructions.Text.Contains("workflowId를 생략", StringComparison.Ordinal)

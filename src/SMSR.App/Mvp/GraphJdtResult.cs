@@ -13,7 +13,7 @@ public sealed partial class GraphAdvancedService
             inputHashes=hashes,path=request.Path,position=new GraphLspPosition(request.Line,request.Character),
             sourceRoots=request.SourceRoots,candidates,excluded},GraphWorker.Json);
         await store.SaveGraphDerivedAsync(request.ProjectId,"jdt",request.Key,revision,payload,ct);
-        return JsonSerializer.Deserialize<JsonElement>(payload);
+        return JsonSerializer.Deserialize<JsonElement>((await store.GetGraphDerivedAsync(request.ProjectId,"jdt",request.Key,ct))!);
     }
     internal async Task<object> JdtResultAsync(GraphJdtRequest request,CancellationToken ct=default)
     {
@@ -21,7 +21,7 @@ public sealed partial class GraphAdvancedService
         var saved=await store.GetGraphDerivedAsync(request.ProjectId,"jdt",request.Key,ct)
             ?? throw new KeyNotFoundException("같은 입력 파일·위치·소스 루트의 정의 조회 결과가 없습니다.");
         var report=JsonSerializer.Deserialize<JsonElement>(saved);
-        var stale=report.GetProperty("revision").GetInt32()!=info.Revision || report.GetProperty("analysisVersion").GetInt32()!=1;
+        var stale=!await store.IsGraphDeepReportCurrentAsync(request.ProjectId,"jdt",request.Key,report,ct);
         foreach(var hash in report.GetProperty("inputHashes").EnumerateObject())
             try { stale|=(await new GraphSourceService(store).ReadAsync(request.ProjectId,hash.Name,ct)).Hash!=hash.Value.GetString(); }
             catch(Exception e) when(e is InvalidOperationException or IOException or KeyNotFoundException or UnauthorizedAccessException){stale=true;}

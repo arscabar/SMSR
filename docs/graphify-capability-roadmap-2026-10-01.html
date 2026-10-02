@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SMSR · Graphify 기능 흡수 작업계획서</title>
+<style>
+:root{color-scheme:light;--blue:#245db4;--line:#dbe3ef}*{box-sizing:border-box}body{margin:0;background:#edf2f8;color:#203047;font:16px/1.7 "Segoe UI","Malgun Gothic",sans-serif}main{max-width:1180px;margin:auto;padding:36px;background:white}h1{font-size:30px;line-height:1.4}h2{margin-top:40px;border-left:5px solid var(--blue);padding:8px 14px;background:#edf3fc}h3{margin-top:26px}p,li,td{overflow-wrap:anywhere}a{color:var(--blue)}code{background:#eff3f7;padding:2px 5px;border-radius:4px}.note{padding:16px 20px;background:#fff7df;border-left:4px solid #c98c18}.meta{color:#52657e}.scroll{overflow:auto}table{width:100%;border-collapse:collapse;font-size:14px;margin:16px 0}th,td{border:1px solid var(--line);padding:10px;vertical-align:top;text-align:left}th{background:#eaf1fb}tbody tr:nth-child(even){background:#fafcff}.tasks th:first-child{width:78px}.tasks th:nth-child(3){width:180px}.tasks th:nth-child(4){width:80px}nav{display:flex;flex-wrap:wrap;gap:8px}nav a{padding:5px 12px;border:1px solid var(--line);border-radius:20px;text-decoration:none}details{border:1px solid var(--line);border-radius:9px;padding:12px 16px;margin:14px 0}summary{cursor:pointer;font-weight:600;color:var(--blue)}@media(max-width:700px){main{padding:18px}h1{font-size:24px}table{min-width:690px}}@media print{body{background:white}main{padding:0;max-width:none}nav{display:none}h2{break-after:avoid}tr{break-inside:avoid}details{border:0}.scroll{overflow:visible}table{min-width:0;font-size:10px}a{color:inherit}}
+</style>
+</head>
+<body><main>
+<h1>SMSR · Graphify 기능 흡수 작업계획서</h1>
+<p class="meta">2026-10-01 · 승인 v2 · 대상: 지식 그래프 분석과 이를 활용하는 SMSR 스킬 · 상태: F4·F5-5·F6-3·4·6·F7·F8 소스 구현·시험 / F2~F8 운영 실행본 적용</p>
+<div class="note"><strong>전체 14개 기능의 완료 보고서가 아닙니다.</strong> <a href="graphify-final-source-status-2026-10-01.html">최신 소스 구현·측정·운영 인수</a>, <a href="graphify-next-status-2026-10-01.html">이전 소스 기록</a>, <a href="graphify-foundation-status-2026-10-01.html">F0·F1 배포 기록</a>을 구분합니다. 사용자 승인 후 현재 실행 앱에 반영·재시작했습니다. 배포 당시 기존 저장 그래프는 재색인하지 않았습니다. 이후 다섯 전용 스킬 실사용과 재색인을 확인했고 2026-10-02 밀집 선 마우스 선택·C# 종류/범위/소유·반복 호출·구조 근거를 보강해 SMSR rev61·AO3.5_Main rev11을 저장했습니다. 최신 결과11절에 전후 수치·실제 화면·실패 이력을 구분했습니다. 새 세션 자동 인식과 독립 HTML 직접 열기는 사용자 지정 제외 사항입니다. XAML·외부 API·동명·이벤트 등 미분류/미해소 제한은 남습니다. F3/F4 의미 분석은 호스트 명시 제출이며 별도 무인 모델 경로는 구현하지 않았습니다. 이미 완료된 작업 이력 그래프는 다시 열지 않습니다.</div>
+<p>목표는 Graphify를 별도 제품으로 상시 병행하는 것이 아니라, 필요한 추출·분석 코드를 라이선스를 지켜 재사용하고 SMSR의 SQLite·MCP·웹·스킬에 연결하는 것입니다. 정적 관계와 의미 추론을 구분하고, 사용자에게 출처·범위·누락·오래된 결과를 정직하게 보여줍니다.</p>
+<nav aria-label="계획서 목차"><a href="#scope">범위</a><a href="#coverage">14개 항목</a><a href="#phases">페이즈</a><a href="#f0">F0</a><a href="#f1">F1</a><a href="#f2">F2</a><a href="#f3">F3</a><a href="#f4">F4</a><a href="#f5">F5</a><a href="#f6">F6</a><a href="#f7">F7</a><a href="#f8">F8</a><a href="#decisions">결정 사항</a><a href="#acceptance">최종 완료 기준</a></nav>
+
+<h2 id="scope">1. 목표·범위·제외 범위</h2>
+<h3>목표</h3>
+<ul><li>코드·문서·미디어를 파일 목록뿐 아니라 근거 있는 지식과 관계로 색인합니다.</li><li>질문·구성요소 설명·변경 영향·구조 보고서를 SMSR 전용 스킬과 기존 MCP 도구로 제공합니다.</li><li>대형 그래프는 의미 있는 그룹으로 요약하고, 필요한 상세 관계와 원문으로 이동합니다.</li><li>변경·삭제·실패·갱신·피드백이 다음 분석에 반영되도록 관리합니다.</li></ul>
+<h3>구현 범위</h3>
+<p>요청한 14개 항목 모두를 포함합니다. 언어별 구조 분석은 F0에서 고정한 Graphify 버전의 지원 목록을 기준으로 확장하고, 언어·확장자·프레임워크별 실제 지원 등급을 공개합니다. PDF·DOCX·XLSX, 이미지·음원·영상은 변환·추출·관계 저장·조회·근거 화면까지 연결합니다. 스킬도 문서 파일 생성만으로 완료 처리하지 않고 실제 호출 경로를 검증합니다.</p>
+<h3>보존할 구현과 사용자 결정</h3>
+<ul><li>기존 색인·검색·경로·영향·리비전·본문 벡터 검색·읽기 전용 Cypher·심층 결과 통합·부분 재분석·DPAPI 캐시를 재사용합니다.</li><li>SQLite를 기본 저장소로 유지합니다. 전용 그래프 DB 교체 여부는 같은 데이터와 질의로 성능을 실측한 뒤 별도로 결정합니다.</li><li>원문 질문·프롬프트 로그는 저장하지 않습니다. 학습 기록은 동의된 구조화된 요약·노드 ID·결과 등급만 사용합니다.</li><li>전역 Git/Codex 훅 설치는 검사·설치·복구 기능까지만 구현합니다. 사용자 전역 설정은 별도 승인 없이 변경하지 않습니다.</li><li>저장소 간 확정 연결은 명시적 파일/프로젝트 참조만 허용합니다. 같은 이름이나 의미 유사도만으로 실제 호출·참조를 확정하지 않습니다.</li><li>찾기 한 화면에서 검색·관계·원문 탐색을 유지합니다. 기존에 제거한 중복 메뉴, 문서 제목 범례, 불필요한 기술 설명을 다시 노출하지 않습니다.</li></ul>
+<h3>제외 범위</h3>
+<p>전 언어 컴파일러 수준의 판정, 실제 실행 순서 보장, 정밀 alias/taint/PDG, 자동 공개 게시, 무승인 외부 데이터 전송·전역 설정 변경, Neo4j/FalkorDB 운영 서버 구축·자동 push, 기존 기록의 결과 추정 복원은 포함하지 않습니다. WPF 전용 기능으로 범위를 한정하지 않습니다. 필요한 보안·입력 검증·접근성은 제외하지 않습니다.</p>
+
+<h2 id="coverage">2. 요구사항 추적표 — 14개 항목 전부 포함</h2>
+<div class="scroll"><table><thead><tr><th>ID</th><th>요청 항목</th><th>주 담당 작업</th><th>사용자에게 보이는 완료 결과</th></tr></thead><tbody>
+<tr><td>R01</td><td>그래프 활용 스킬</td><td>F6-1~F6-6, F7-4, F8-1</td><td>질문·설명·영향·유지관리·보고서 스킬이 실제 SMSR MCP를 사용</td></tr>
+<tr><td>R02</td><td>문서 의미 관계 추출</td><td>F3-2~F3-5</td><td>개념·요구사항·설계 이유가 코드/문서와 연결되고 근거 구간 표시</td></tr>
+<tr><td>R03</td><td>PDF·Office 문서 분석</td><td>F3-1, F3-3, F8-1</td><td>PDF 페이지·DOCX 문단·XLSX 시트/셀 위치까지 추적</td></tr>
+<tr><td>R04</td><td>이미지·음원·영상 내용 분석</td><td>F4-1~F4-4</td><td>이미지 영역과 음원/영상 시간 구간에서 개념과 관계 확인</td></tr>
+<tr><td>R05</td><td>질문 → 관련 그래프 → 근거 있는 답변</td><td>F6-1~F6-2, F6-5~F6-6</td><td>한국어 질문도 실제 그래프 용어와 근거 경로로 답변</td></tr>
+<tr><td>R06</td><td>노드 설명</td><td>F1-1~F1-2, F6-3</td><td>역할·연결·설계 이유·알 수 없는 부분을 구분한 설명</td></tr>
+<tr><td>R07</td><td>핵심 구성요소·숨은 연결 발견</td><td>F5-2~F5-3</td><td>중요 노드·비직관적 연결·추천 질문과 선정 이유 표시</td></tr>
+<tr><td>R08</td><td>커뮤니티 분석·대형 그래프 요약</td><td>F5-1, F5-4~F5-5</td><td>이름 있는 그룹 → 그룹 간 연결 → 상세 원문 탐색</td></tr>
+<tr><td>R09</td><td>심벌·설계 이유의 세부 정보 보존</td><td>F1-1~F1-4, F2-4, F3-3</td><td>함수·클래스·개념·설계 이유와 추출 출처를 보존</td></tr>
+<tr><td>R10</td><td>여러 노드가 참여하는 하나의 관계</td><td>F1-3, F3-3, F5-4, F8-2</td><td>hyperedge의 참여 대상·역할·근거·상세 조회/내보내기</td></tr>
+<tr><td>R11</td><td>언어·프레임워크 범위</td><td>F0-1, F2-1~F2-4</td><td>Graphify 기준 지원 목록과 언어별 검증 결과 공개</td></tr>
+<tr><td>R12</td><td>피드백의 다음 분석 재사용</td><td>F6-5~F6-6</td><td>유용한 근거·실패 경로·교정을 다음 탐색에서 활용</td></tr>
+<tr><td>R13</td><td>변경 감시·스킬 사용 유도</td><td>F7-1~F7-4</td><td>승인된 감시 범위 자동 갱신과 중복 없는 스킬 연결</td></tr>
+<tr><td>R14</td><td>공유 가능한 지식 산출물</td><td>F5-5, F8-2~F8-3</td><td>JSON·독립 HTML·SVG·GraphML·Wiki·Obsidian 생성</td></tr>
+</tbody></table></div>
+
+<h2 id="phases">3. 페이즈와 실행 순서</h2>
+<p>총 9개 페이즈·42개 세부 작업입니다. <strong>페이즈는 상위 작업, 표의 ID는 독립 추적할 하위 작업</strong>입니다. 담당 역할은 실제 에이전트 수를 뜻하지 않습니다. 아래 병렬 표시는 기술적 가능성이고, 별도 승인 없이 하위 에이전트를 시작하지 않습니다.</p>
+<div class="scroll"><table><thead><tr><th>페이즈</th><th>목적</th><th>착수 조건</th><th>병렬 가능 범위</th><th>종료 게이트</th></tr></thead><tbody>
+<tr><td>F0</td><td>기준·재사용·검증 정립</td><td>초안 승인</td><td>기준 조사와 테스트 자료 준비</td><td>G0: 14개 항목·지원 목록·검증 기준 확정</td></tr>
+<tr><td>F1</td><td>지식 데이터·근거 계약</td><td>G0</td><td>문서화와 API 설계; DB 적용은 순차</td><td>G1: 이행·복원·기존 조회 호환 통과</td></tr>
+<tr><td>F2</td><td>정적 분석 범위·규모 확장</td><td>F1-4</td><td>F3/F4와 서로 다른 추출 파일</td><td>G2: 언어별 원본 대조와 전체/증분 동등성</td></tr>
+<tr><td>F3</td><td>문서 변환·의미 관계</td><td>F1-4</td><td>변환기는 F2와 병렬; 코드 연결은 G2 이후</td><td>G3: 출처 검증·재색인·실패 보존 통과</td></tr>
+<tr><td>F4</td><td>이미지·음원·영상 의미 분석</td><td>F3-2</td><td>이미지와 음원 분석은 독립</td><td>G4: 영역/시간 근거와 내용 변경 처리 통과</td></tr>
+<tr><td>F5</td><td>구조 발견·커뮤니티·보고서</td><td>G2</td><td>F3/F4/F6 일부와 병렬; 의미 결과는 G3/G4 후 추가</td><td>G5: 대형 그룹 요약·상세 탐색·보고서 일관성</td></tr>
+<tr><td>F6</td><td>질문·설명·영향·학습 스킬</td><td>G2; 세부 선행은 아래 표</td><td>기본 질의는 F3/F4와 병렬; 전체 검증은 G3/G5 후</td><td>G6: 실제 스킬 호출·근거 답변·무근거 거절</td></tr>
+<tr><td>F7</td><td>변경 감시·통합 운영</td><td>G2/G3</td><td>감시는 미디어 확장과 병렬</td><td>G7: 동시성·중단 복구·무승인 변경 방지</td></tr>
+<tr><td>F8</td><td>공통 UI·공유 산출물·인수</td><td>계약 확정 후 개발, G4~G7 후 통합 검증</td><td>서로 다른 exporter; 공통 렌더러 변경은 조율</td><td>G8: R01~R14 전체 인수와 실제 실행본 검증</td></tr>
+</tbody></table></div>
+<p>주요 의존 흐름: <code>F0 → F1 → F2/F3 → F4/F5/F6 → F7 → F8</code>. 이 표는 개요이고 실제 착수는 세부 작업의 선행 ID를 따릅니다. F6을 먼저 붙여 코드 질문을 중간 검증할 수 있지만, 문서·미디어·학습·보고서 검증까지 끝나야 전체 스킬 완성으로 판정합니다.</p>
+<p>일정은 임의 주차를 확정하지 않습니다. F0에서 실제 자료량·실행 환경을 측정하고, 각 게이트의 검증 결과로 잔여 소요를 갱신합니다. AI 구현 시간을 줄여도 다운로드·추출·대형 자료 재분석·사용자 환경 검증 시간은 별도로 표시합니다.</p>
+
+<h2 id="f0">F0. 기준 고정·재사용 조사·검증 설계</h2>
+<p><strong>목적:</strong> 기능 이름만 복제하지 않고 고정된 원본 동작을 기준으로 구현합니다. 기존 2026-09-28 계획은 이력으로 보존하며 이번 문서를 후속 범위로 사용합니다.</p>
+<div class="scroll"><table class="tasks"><thead><tr><th>ID</th><th>작업 / 상위: F0</th><th>선행</th><th>담당</th><th>구체적인 완료 기준</th></tr></thead><tbody>
+<tr><td>F0-1</td><td>Graphify 기준 버전·지원 목록 고정</td><td>계획 승인</td><td>분석</td><td>현재 포함 0.9.70과 비교한 0.9.73의 차이, 고정 commit, 언어/템플릿/입력 형식 목록을 기록. 미지원·부분 지원을 구분.</td></tr>
+<tr><td>F0-2</td><td>재사용 경계·라이선스 결정</td><td>F0-1</td><td>설계</td><td>원본 재사용/어댑터/독립 구현 파일을 지정하고 Apache-2.0·MIT·NOTICE와 변경 고지 계획을 확정. 기존 MCP/SQLite 기능의 중복 구현 금지 목록 작성.</td></tr>
+<tr><td>F0-3</td><td>정답 자료·회귀 기준 준비</td><td>F0-1</td><td>검증</td><td>언어별 다중 파일, 문서/미디어, 모호성·삭제·비밀값·외부경로·큰 파일 자료의 예상 관계와 오연결 금지 목록을 준비. 실제 SMSR/AO3 검증 범위 지정.</td></tr>
+<tr><td>F0-4</td><td>인수 기준·실행 조건 확정</td><td>F0-2,F0-3</td><td>조정</td><td>14개 요구의 담당 ID, 모델/도구 가용성, 비용·동의 조건, 측정 방법·지원 등급을 확정. 해결하지 못한 필수 조건은 BLOCKED로 명시.</td></tr>
+</tbody></table></div>
+<p><strong>검증:</strong> 지원 목록과 원본 entry point 대조, 정답 자료 재현, 라이선스 파일·기존 기능 목록 확인. <strong>산출물:</strong> 기준 manifest, 재사용/라이선스 표, 검증 자료 및 요구-검사 매핑. <strong>G0:</strong> 필수 실행 조건이 정해져야 다음 단계 착수.</p>
+
+<h2 id="f1">F1. 세부 심벌·설계 이유·hyperedge·근거 데이터</h2>
+<p><strong>재사용:</strong> GraphContracts, graphify_normalize, 기존 GraphDeep overlay·리비전·이행·조회 계층. 기존 노드 ID의 변경은 필수가 아니며 가능한 한 안정적으로 유지합니다.</p>
+<div class="scroll"><table class="tasks"><thead><tr><th>ID</th><th>작업 / 상위: F1</th><th>선행</th><th>담당</th><th>구체적인 완료 기준</th></tr></thead><tbody>
+<tr><td>F1-1</td><td>노드 세부 형식 보존</td><td>F0-4</td><td>데이터</td><td>파일 종류와 entity 종류를 분리. 함수·메서드·클래스·개념·설계 이유, 선언 범위·소유 관계·제한된 속성을 허용 목록으로 저장. 기존 kind·검색 호환 유지.</td></tr>
+<tr><td>F1-2</td><td>관계 출처·확실성 계약</td><td>F1-1</td><td>데이터</td><td>EXTRACTED/INFERRED/AMBIGUOUS, 해소 상태·분석기/버전·source hash·근거 위치·생성 시각을 구분. 추론 점수는 통계적 정확도로 오인하지 않게 표시. 원문 비밀값은 저장하지 않음.</td></tr>
+<tr><td>F1-3</td><td>hyperedge 저장·조회</td><td>F1-2</td><td>데이터</td><td>그룹 관계 ID·참여 노드/역할·관계 유형·근거를 저장. 유효한 3개 이상 대상만 수용하고 중복·고아 참여자·순환 확장을 검증. 기존 pairwise 관계를 불필요하게 증식시키지 않음.</td></tr>
+<tr><td>F1-4</td><td>이행·리비전·복원 적용</td><td>F1-3</td><td>데이터</td><td>기존 DB 사본 이행, 기본/심층/의미 결과의 유효한 조회 조합, 재색인·파일 삭제·실패 시 원자적 반영 검증. 구형 결과는 UNKNOWN/STALE로 표시하고 추정 복원 금지.</td></tr>
+<tr><td>F1-5</td><td>분석 범위·누락 진단 계약</td><td>F1-4</td><td>분석</td><td>발견/선택/지원/성공/실패/제외/대기 건수를 형식·언어별로 반환. 파일 색인 완료와 관계/의미 분석 완료를 분리하고 상한·잘림·누락 사유를 조회 가능하게 함.</td></tr>
+</tbody></table></div>
+<p><strong>검증:</strong> 기존 DB 사본 백업→이행→재조회→복원, 구버전 HTTP/MCP 회귀, 고아·중복·hash 불일치·삭제·취소 테스트. <strong>산출물:</strong> 스키마/계약, migration, 실패 보호 검사. <strong>G1:</strong> 원본 DB를 훼손하지 않고 새 정보 왕복 저장·조회.</p>
+
+<h2 id="f2">F2. Graphify 추출기 갱신·언어 범위·대형 색인</h2>
+<p>지원 확대는 Graphify 기준의 정적 분석입니다. 언어마다 실제 사용 가능한 imports/calls/inherits/implements/참조를 검증하고, 원본에도 없는 관계를 전부 보장하지 않습니다.</p>
+<div class="scroll"><table class="tasks"><thead><tr><th>ID</th><th>작업 / 상위: F2</th><th>선행</th><th>담당</th><th>구체적인 완료 기준</th></tr></thead><tbody>
+<tr><td>F2-1</td><td>고정 원본 추출 코드 업데이트</td><td>F1-4</td><td>추출</td><td>F0 고정 버전의 import closure·의존성·해시를 재현 가능한 절차로 갱신. 기존 SMSR 보완 어댑터 회귀를 통과하고 원본 변경/별도 보완을 구분.</td></tr>
+<tr><td>F2-2</td><td>언어·확장자·템플릿 지원 연결</td><td>F2-1</td><td>추출</td><td>원본 지원 manifest와 scanner/grammar/runtime allowlist를 일치. SQL·PowerShell·쉘·Vue/Svelte/Astro·Razor/Blade 등 실제 기준 버전 지원 형식을 순차 연결. 파일 전용/구문/관계 지원 등급 공개.</td></tr>
+<tr><td>F2-3</td><td>분할 분석·범위 완주 처리</td><td>F2-2,F1-5</td><td>추출</td><td>10,000파일·28MiB 일괄 입력 제한의 무조건 실패 경로를 자료 목록/분할 처리로 보완. 전체 심벌 문맥과 파일 간 관계를 보존하고 메모리·취소·재개·파일 변경을 통제. 단일 큰 파일은 지원/제외 사유 명시.</td></tr>
+<tr><td>F2-4</td><td>언어별 관계·증분 정합성 인수</td><td>F2-3</td><td>검증</td><td>지원 목록 전체의 다중 파일 정답·원본 대조 결과 기록. alias/동명/호출 방향/모호성/동적 외부 대상을 검사. 추가·수정·삭제 후 전체/증분 결과 동등성 및 실제 SMSR/AO3 누락을 확인.</td></tr>
+</tbody></table></div>
+<p><strong>검증:</strong> Python 추출 검사, 기존 Node/앱 graph self-check, 순서 섞은 분할 입력, 대형 합성 자료, 실제 AO3 재색인 사본. <strong>산출물:</strong> vendor manifest·라이선스, 지원 행렬, 재색인 coverage 보고서. <strong>G2:</strong> 원본 parity와 SMSR 통합 검증 모두 통과. 원본의 한계와 SMSR 연결 누락을 별도로 기록.</p>
+
+<h2 id="f3">F3. 문서 변환·의미 추출·코드 연결</h2>
+<p><strong>재사용:</strong> 기존 문서 링크·본문 검색·근거 조회·DPAPI 캐시와 Graphify 의미 추출 계약. 검색 점수만으로 실제 호출 관계를 만들지 않습니다.</p>
+<div class="scroll"><table class="tasks"><thead><tr><th>ID</th><th>작업 / 상위: F3</th><th>선행</th><th>담당</th><th>구체적인 완료 기준</th></tr></thead><tbody>
+<tr><td>F3-1</td><td>PDF·DOCX·XLSX 입력 변환</td><td>F1-4</td><td>입력</td><td>본문·표를 위치 정보와 함께 추출. PDF 페이지, DOCX 문단/표, XLSX 시트/셀을 원본 hash와 연결. 매크로·수식·외부 링크를 실행하지 않고 암호화/손상/압축폭탄/큰 자료를 진단. 스캔 PDF는 F4로 전달.</td></tr>
+<tr><td>F3-2</td><td>의미 분석 실행·결과 수용 경로</td><td>F3-1</td><td>의미</td><td>호스트 에이전트가 구조화된 결과를 제출하는 경로와 승인된 모델 호출 경로를 분리. 무키 정적 모드는 유지. JSON 계약·출처·길이·비밀값·없는 대상·prompt injection을 검증하고 외부 전송 동의/예산을 적용.</td></tr>
+<tr><td>F3-3</td><td>문서 개념·요구사항·설계 이유 추출</td><td>F3-2</td><td>의미</td><td>Markdown/TXT/HTML 및 변환 문서에서 명시적 사실과 추론 관계를 구분. 개념·요구사항·설계 이유·문헌 참조·필요한 hyperedge를 근거 구간과 함께 저장. 제목을 뜻 없는 독립 지식으로 늘리지 않음.</td></tr>
+<tr><td>F3-4</td><td>문서↔코드 연결·동명 병합</td><td>F3-3,F2-4</td><td>의미</td><td>명시적 심벌/파일 참조와 의미 유사성 후보를 분리. 실제 존재하는 ID·프로젝트 범위 안에서 연결. 동일 명칭의 다른 실체를 자동 합치지 않고 모호성 후보를 보존. 저장소 간 확정 연결 정책 유지.</td></tr>
+<tr><td>F3-5</td><td>의미 증분·캐시·실패 보존</td><td>F3-4</td><td>운영</td><td>source hash·모델·프롬프트/추출 계약 버전에 따른 캐시 무효화. 실패한 문서는 완료로 stamp하지 않고 재시도 대상으로 유지. 삭제/범위 제외/모델 변경 후 오래된 관계 제거 또는 STALE 처리. 비용/토큰은 가용 값만 기록.</td></tr>
+</tbody></table></div>
+<p><strong>검증:</strong> 한글·표·각주·복수 개념·중복 이름·없는 심벌·악성 지시·민감 문장·손상 파일 정답집, 모델 결과와 원문 근거 재대조. <strong>산출물:</strong> 변환기·의미 제출 MCP/API·분석 결과 overlay·문서 근거 viewer. <strong>G3:</strong> 단순 본문 검색이 아니라 실제 의미 관계의 저장·조회·변경 반영.</p>
+
+<h2 id="f4">F4. 이미지·음원·영상 내용 분석</h2>
+<p>웹 재생 기능을 그대로 재사용합니다. 미디어 분석은 원본을 변경하지 않고 파생 자료·영역·시간 위치와 연결합니다. 모델/실행 도구가 없으면 기능을 성공으로 표시하지 않고 필요한 설치·결정을 명시합니다.</p>
+<div class="scroll"><table class="tasks"><thead><tr><th>ID</th><th>작업 / 상위: F4</th><th>선행</th><th>담당</th><th>구체적인 완료 기준</th></tr></thead><tbody>
+<tr><td>F4-1</td><td>이미지 이해·OCR·스캔 PDF</td><td>F3-2</td><td>미디어</td><td>텍스트 인식과 장면/도표 의미 해석을 구분. 페이지/이미지 좌표와 근거 crop을 연결하며 불확실성 표시. 허용 decoder·픽셀 상한·비밀값 제거·원본 hash 검증.</td></tr>
+<tr><td>F4-2</td><td>음원 전사·구간 추출</td><td>F3-2</td><td>미디어</td><td>승인된 로컬 Whisper 계열/대체 경로로 한글·영문 시간 구간 전사. 무음·인식 실패·불확실한 화자 표시. 모델 다운로드·보관 범위 동의, 시간/파일 상한과 취소 지원.</td></tr>
+<tr><td>F4-3</td><td>영상 프레임·음성 결합</td><td>F4-1,F4-2</td><td>미디어</td><td>프레임 sampling/장면 구간과 음성 전사를 시간축으로 결합. 중복 프레임을 억제하고 누락/분석 밀도 표시. ffmpeg 등 subprocess 입력을 인자로 전달하고 악성 미디어·timeout 격리.</td></tr>
+<tr><td>F4-4</td><td>미디어 의미 관계·웹 근거 연결</td><td>F4-3,F3-5</td><td>통합</td><td>이미지/시간 구간 개념을 문서·코드와 연결. 근거 클릭 시 이미지 영역/영상·음원 시점 표시. 원본 변경/삭제 후 파생 결과·캐시 정리와 재분석을 검증.</td></tr>
+</tbody></table></div>
+<p><strong>검증:</strong> OCR만으로 이해 불가능한 도표, 한글 음성·무음·긴 영상·손상 자료, 시간 구간과 실제 재생 위치 대조. <strong>산출물:</strong> 미디어 분석기·파생 자료 manifest·내용 관계·근거 표시. <strong>G4:</strong> 등록·재생이 아니라 내용 분석 결과까지 실제 원문 위치로 확인.</p>
+
+<h2 id="f5">F5. 중요 구성요소·숨은 연결·커뮤니티·보고서</h2>
+<div class="scroll"><table class="tasks"><thead><tr><th>ID</th><th>작업 / 상위: F5</th><th>선행</th><th>담당</th><th>구체적인 완료 기준</th></tr></thead><tbody>
+<tr><td>F5-1</td><td>커뮤니티 구조·이름·응집도</td><td>F2-4</td><td>분석</td><td>기존 간이 탐지와 Graphify Leiden 기준을 대조해 재사용 경로 선택. 그룹 이름·응집도·대표 노드 순위·그룹 간 방향/관계 요약 생성. 고립 노드와 무의미 파일 허브 별도 처리.</td></tr>
+<tr><td>F5-2</td><td>핵심 노드 선정</td><td>F5-1</td><td>분석</td><td>연결도와 구조적 중요도를 근거로 실제 구성요소를 선정. import/contains 파일 허브·내장 타입·mock 노이즈가 순위를 점유하지 않도록 검사. 선정 점수/이유 공개.</td></tr>
+<tr><td>F5-3</td><td>비직관적 연결·추천 질문</td><td>F5-2</td><td>분석</td><td>그룹/파일 경계를 넘는 기존 관계를 선정하고 왜 중요한지 설명. 후보를 새 확정 관계로 만들지 않음. 불명확한 관계·고립·낮은 응집도에서 확인 질문 생성.</td></tr>
+<tr><td>F5-4</td><td>대형 그래프 축약·상세 조회</td><td>F5-3,F1-3</td><td>화면</td><td>전체 그룹 보기→그룹 간 연결→멤버/원문 탐색. 대표 ID 나열 대신 이름과 의미 표시. 5,000노드 초과 기본 축약, 조회 페이지/잘림 안내·키보드 이동·초기화 지원.</td></tr>
+<tr><td>F5-5</td><td>구조·지식 보고서 생성</td><td>F5-4,F3-5,F4-4</td><td>보고서</td><td>프로젝트 구조·핵심 구성요소·숨은 연결·설계 이유·추천 질문·coverage/오래된 결과를 동일 리비전에서 생성. 문서/미디어 없는 프로젝트도 정상 동작. 없는 사실은 빈값/제한으로 표시.</td></tr>
+</tbody></table></div>
+<p><strong>검증:</strong> 정답 그룹·hub-noise·방향성·isolate·hyperedge 자료, 5만 노드/20만 관계 자료의 시간·메모리·그룹 품질과 화면 이동 측정. <strong>산출물:</strong> 분석 요약 API·축약 탐색·구조 보고서. <strong>G5:</strong> 중요 노드/그룹/원문이 같은 리비전과 근거를 가리킴.</p>
+
+<h2 id="f6">F6. SMSR 스킬·근거 기반 질의·설명·피드백 학습</h2>
+<p>Graphify CLI의 query가 스스로 모든 자연어 답변을 만드는 것으로 가정하지 않습니다. SMSR MCP는 근거를 제공하고, 호스트 에이전트 스킬이 그 근거로 설명합니다. 웹 자체 답변은 승인된 모델 실행기가 있을 때만 제공하며 없으면 근거 자료를 보여줍니다.</p>
+<div class="scroll"><table class="tasks"><thead><tr><th>ID</th><th>작업 / 상위: F6</th><th>선행</th><th>담당</th><th>구체적인 완료 기준</th></tr></thead><tbody>
+<tr><td>F6-1</td><td>실제 그래프 어휘·관련도 검색</td><td>F2-4</td><td>질의</td><td>라벨/심벌 분해·IDF/관련도·필요 시 기존 벡터를 결합. 한국어 질문 확장은 실제 존재하는 어휘/노드만 허용. 무관한 토큰·동명 노드·없는 개념은 명확히 구분.</td></tr>
+<tr><td>F6-2</td><td>질문 근거 패키지·query 스킬</td><td>F6-1</td><td>스킬</td><td>smsr-query가 기존 검색/관계/경로를 조합. 방향·종류·깊이·토큰 예산 안에서 출처·리비전·hash를 포함하고 잘림/미분석 범위 고지. 원문 질문을 DB/파일에 저장하지 않음.</td></tr>
+<tr><td>F6-3</td><td>구성요소 설명 스킬</td><td>F6-2,F3-5</td><td>스킬</td><td>smsr-explain으로 역할·caller/callee·관련 문서·설계 이유를 근거와 함께 설명. 명시된 이유와 추론을 분리하며 이유가 없으면 미확인이라고 답함. 메타데이터 건수만 반환하지 않음.</td></tr>
+<tr><td>F6-4</td><td>영향·유지관리·보고서 스킬</td><td>F6-2,F5-5</td><td>스킬</td><td>smsr-impact·smsr-maintain·smsr-report를 기존 API로 연결. 영향 경로/검사 대상, 최신성/진단, 구조 보고서 사용 시나리오 검증. 읽기 질문만으로 색인·훅 설치·파일 수정을 시작하지 않음.</td></tr>
+<tr><td>F6-5</td><td>구조화 피드백·교훈 요약</td><td>F6-2</td><td>학습</td><td>USEFUL/ERROR/CORRECTED를 기존 기록과 연결하고 dead-end는 명시 결과 등급으로 추가. 노드·경로·짧은 비밀 제거 요약·리비전으로 선호 근거/교정/실패 경로를 결정적으로 집계. 원문 질문 로그 금지.</td></tr>
+<tr><td>F6-6</td><td>학습 재사용·스킬 실사용 인수</td><td>F6-3,F6-4,F6-5</td><td>검증</td><td>다음 탐색에 교훈을 반영하되 구조적 사실을 덮어쓰지 않음. 코드 변경 시 stale 교훈 감쇠/제외. 좋은/무관한/미해결 질문·오류 교정·재시작 세션에서 실제 스킬 호출과 답변 근거 확인.</td></tr>
+</tbody></table></div>
+<p><strong>검증:</strong> 고정 질문집의 seed/경로/인용 일치, 토큰 예산, 무근거 답변 거절, 동명 disambiguation, 원문 질문/비밀값 저장 0건, 학습 전후 검색과 stale 교정 대조. <strong>산출물:</strong> 5개 SMSR 지식 스킬·근거 패키지 API·안전한 교훈 요약. <strong>G6:</strong> 스킬 문서 존재가 아니라 실제 SMSR 데이터 활용까지 확인.</p>
+
+<h2 id="f7">F7. 변경 감시·갱신 운영·스킬 연결</h2>
+<div class="scroll"><table class="tasks"><thead><tr><th>ID</th><th>작업 / 상위: F7</th><th>선행</th><th>담당</th><th>구체적인 완료 기준</th></tr></thead><tbody>
+<tr><td>F7-1</td><td>프로젝트 감시 범위·토글</td><td>F2-4,F3-5</td><td>운영</td><td>허용된 프로젝트/폴더만 감시. 기본 제외·심볼릭 링크·cache/output 재색인 루프 방지, OS 이벤트 overflow 시 안전한 재스캔. 켜기/끄기·마지막 상태 표시.</td></tr>
+<tr><td>F7-2</td><td>갱신 큐·변경 영향 재분석</td><td>F7-1</td><td>운영</td><td>debounce·파일 쓰기 안정화·동일 프로젝트 직렬 실행·수동/훅 요청 합치기. 기존 부분 재분석/fallback 활용. 의미/미디어 고비용 갱신은 승인 예산 내에서만 수행.</td></tr>
+<tr><td>F7-3</td><td>운영 중단·복구·캐시 관리</td><td>F7-2</td><td>운영</td><td>중간 실패/앱 종료/파일 삭제/DB 잠금 후 이전 결과 유지와 재개 확인. 기존 DPAPI·lease·TTL/용량 정책을 의미/미디어 파생 캐시에 확대. 활성 자료를 지우지 않음.</td></tr>
+<tr><td>F7-4</td><td>스킬 배포·훅 상태·사용 안내</td><td>F7-3,F6-6</td><td>연결</td><td>스킬 manifest/버전/프로젝트 지침·적용 상태·업데이트 검사·기존 훅 보존/백업/해제 제공. 전역 설치 기능은 미적용 상태로 인수하고 별도 승인 시 적용. 지원하지 않는 Codex 훅 컨텍스트 주입을 보장하지 않음.</td></tr>
+</tbody></table></div>
+<p><strong>검증:</strong> 연속 저장·rename·삭제·event overflow·동시 수동색인·restart·외부 경로·무승인 모델 호출·기존 훅 충돌 검사. <strong>산출물:</strong> watcher·갱신 큐·상태 화면·스킬 설치/복구 안내. <strong>G7:</strong> 변경 자동 반영과 비용/권한/실패 보존이 함께 검증됨.</p>
+
+<h2 id="f8">F8. 공통 웹 UI·지식 내보내기·실제 제품 인수</h2>
+<p>색인/분석 대기는 공통 thinking-orbs, 짧은 상태 문구, 취소/결과로 표시합니다. 기존 작업 이력·실시간 활동 접힘·산출물 근거·노드 드래그/초기화·원문 버튼을 유지합니다.</p>
+<div class="scroll"><table class="tasks"><thead><tr><th>ID</th><th>작업 / 상위: F8</th><th>선행</th><th>담당</th><th>구체적인 완료 기준</th></tr></thead><tbody>
+<tr><td>F8-1</td><td>통합 찾기·근거·분석 상태 화면</td><td>F5-5,F6-6,F4-4</td><td>화면</td><td>파일 종류 필터·그룹/관계·설명·질문 근거를 찾기 안에서 표시. 이미지·페이지·셀·시간 구간 원문 이동, 정확성/coverage·진행/실패/갱신을 짧게 표현. 상세 기술 정보는 접기.</td></tr>
+<tr><td>F8-2</td><td>JSON·독립 HTML·SVG·GraphML</td><td>F5-5,F1-3</td><td>산출물</td><td>동일 리비전의 전체/선택 범위·노드 종류·관계·hyperedge·출처·분석 범위를 내보냄. HTML은 서버 없이 열리고 대형 그룹 축약/상세 탐색 가능. SVG/GraphML 특수문자·한글·방향성 보존.</td></tr>
+<tr><td>F8-3</td><td>Wiki·Obsidian 지식 산출물</td><td>F8-2</td><td>산출물</td><td>그룹별 구조 설명·핵심 개념·근거 링크·관련 문서·추천 질문 생성. 노드 ID와 한글/동명 파일명 충돌 방지. 새 출력 폴더 기본, 기존 사용자 노트/설정 덮어쓰기 금지.</td></tr>
+<tr><td>F8-4</td><td>전체 회귀·성능·실제 환경 인수</td><td>F8-1,F8-3,F7-4</td><td>검증</td><td>R01~R14 인수표 모두 PASS. Python/Node/앱 회귀·원본 전체 Release 빌드·운영 DB 사본·실제 HTTP/MCP/브라우저·재시작 확인. 실제 SMSR/AO3와 문서/미디어 자료를 구분 검증. 알려진 제한은 명시.</td></tr>
+<tr><td>F8-5</td><td>README·고지·최종 결과·배포 인계</td><td>F8-4</td><td>인계</td><td>사용법·지원/미지원·설치/모델·보안·Graphify/thinking-orbs 고지·검증 근거·잔여 사항 갱신. 승인된 배포 시 실행본 hash·자산·재시작 검증. 커밋/푸시/릴리즈는 해당 요청 승인 범위에서만 수행.</td></tr>
+</tbody></table></div>
+<p><strong>검증:</strong> 실제 browser DOM·키보드·화면·움직임 감소·HTTP 자산, export 재읽기·hyperedge 표현·XSS/외부요청·기존 노트 보존, 전체 소스 빌드와 실행본 일치. <strong>산출물:</strong> 제품 화면·6종 지식 산출물·인수표·성능 보고서·설치/이전 안내. <strong>G8:</strong> 14개 기능이 실행→저장→조회→활용 경로와 증거를 갖춤.</p>
+
+<h2 id="decisions">4. 사용자 결정·실행 기본안</h2>
+<div class="scroll"><table><thead><tr><th>사항</th><th>제안 기본안</th><th>결정이 필요한 시점</th></tr></thead><tbody>
+<tr><td>초안 승인</td><td>수정 의견 반영 후 F0 시작. 승인된 전체 범위 안의 검증 통과마다 추가 수동 검토를 강제하지 않음.</td><td>기능 구현 전</td></tr>
+<tr><td>의미 분석 실행 방식</td><td>호스트 에이전트 제출 경로 먼저. 별도 무인 모델 실행은 로컬/사용자 승인 provider를 연결. 데이터가 외부로 나가는 범위를 명시.</td><td>F0-4/F3-2. 무인 웹 분석에는 실제 실행 모델 결정 필수.</td></tr>
+<tr><td>미디어 모델·다운로드·성능</td><td>로컬 음성 전사와 사용 가능한 이미지 이해 경로. 모델 크기/용량·CPU/GPU·보관 정책을 실측 후 확정.</td><td>F4 착수 전. 허용되지 않으면 BLOCKED, OCR만으로 vision 완료 처리 금지.</td></tr>
+<tr><td>고비용 자동 재분석</td><td>정적 변경은 debounce 자동 갱신. 의미/미디어는 예산과 동의가 있을 때 자동, 없으면 대기 표시.</td><td>F7 적용 전</td></tr>
+<tr><td>설치 위치·전역 훅</td><td>저장소 스킬 먼저. 전역 설치 기능 구현·미적용을 유지하고 기존 설정 백업/충돌 검사 제공.</td><td>전역 적용을 별도 요청할 때</td></tr>
+<tr><td>그래프 DB·외부 서버</td><td>SQLite 및 기존 Kuzu 읽기 경로 유지. 필요하면 같은 부하로 비교하여 결정.</td><td>성능 게이트 실패 시, 교체는 별도 승인</td></tr>
+<tr><td>출력·배포 대상</td><td>새 로컬 출력 폴더. 사용자 기존 Wiki/Obsidian과 release는 명시 요청 없이 덮어쓰기/게시하지 않음.</td><td>F8 설치/배포 전</td></tr>
+</tbody></table></div>
+<p>기존 결정은 다시 질문하지 않습니다. 새로운 비용·전송·환경 선택이 필요한 경우에만 구체적으로 확인합니다. 미결정 사항 때문에 독립적인 안전한 작업까지 중단하지 않습니다.</p>
+
+<h2 id="acceptance">5. 검증·완료 판정·위험 관리</h2>
+<h3>완료의 의미</h3>
+<ul><li>각 leaf는 표의 결과와 연결된 검사가 성공해야 SUCCESS. 코드 복사·스킬 파일 생성·파일 색인만으로 전체 완료 처리 금지.</li><li>언어별 통과는 F0 고정 지원 범위의 정답/원본 대조 기준입니다. 원본에 없는 동적 해소·실행 의미를 성공률에 섞지 않습니다.</li><li>정적 관계·모델 추론·학습 선호를 별도로 저장/표시하고, 근거 없는 결과는 AMBIGUOUS 또는 미확인.</li><li>최종 완료는 R01~R14의 필수 검사 모두 통과와 전체 원본 소스 빌드·실제 실행본 검증. 일부 기능만 제외한 임시 빌드는 전체 인수의 대체 근거로 사용하지 않음.</li><li>기존 자료의 백업·삭제/실패 보호·외부 경로·비밀값·XSS·무승인 전송/설정 변경 검사도 필수.</li></ul>
+<h3>성능 측정</h3>
+<p>냉/온 캐시, 자료 수·총 바이트·지원/제외 파일·노드/관계·관계 종류·시스템 자원을 함께 기록합니다. 실제 AO3·SMSR, 기존 5만 노드/20만 관계, 10,000파일·28MiB를 넘는 합성 자료로 전체/증분 색인 시간·peak 메모리·취소 반응·질의 p50/p95·UI 응답을 측정합니다. F0에서 고정한 기존 기준 대비 구조 질의 p95가 20% 이상 악화하면 원인 검토를 수행하고, 약속할 수 없는 상한은 완료 보고에 공개합니다. 정적 질의와 외부 모델 대기 시간을 분리합니다.</p>
+<h3>작업 이력</h3>
+<p>승인 후 구현 그래프는 페이즈를 parent, 표의 42개 작업을 leaf로 작성합니다. 선행 SUCCESS 후 후행 착수, 관련 추가 작업은 완료 노드를 재개하지 않고 새 sibling으로 연결합니다. 시작 때 요청 요약, 의미 있는 진행·검증·실패 때 event, 조용한 활성 작업만 heartbeat, 최종 실제 result·산출물·남은 위험을 기록합니다. 작업별 날짜 이력과 요청당 1개 daily activity를 남깁니다. 원문 질문·raw command·tool input/output·사고 과정은 기록하지 않습니다.</p>
+<h3>반복 실패·중단 규칙</h3>
+<p>같은 원인으로 3회 실패하면 즉시 재시도를 중단하고 원인·시도 요약·새 계획·필요한 결정을 기록합니다. 조건 부족은 BLOCKED, 실제 실패는 FAILED, 작업 중단/요청 전환은 CANCELLED. 부모는 필수 자식과 검증이 성공했을 때만 완료됩니다. 조용히 누락시키거나 실패한 입력을 처리 완료로 표시하지 않습니다.</p>
+<h3>주요 위험과 대응</h3>
+<ul><li>upstream 업데이트 회귀: 고정 commit·원본 대조·기존 어댑터 회귀와 변경 고지를 함께 유지.</li><li>의미 추출의 환각/악성 지시: 비신뢰 원문 경계·허용 schema·존재/출처 검증·확실성 표기, 근거 없는 호출 생성 금지.</li><li>동명 병합·hyperedge 오연결: 프로젝트/소유 범위·안정 ID·멤버 검사, 근거 부족 시 후보로 남김.</li><li>대형 분석의 memory/시간 초과: 분할·고정 snapshot·취소·재개·실패 원자성, 숨겨진 잘림 금지.</li><li>감시 루프·모델 비용 폭증: output/cache 제외·debounce·단일 실행·예산·고비용 분석 opt-in.</li><li>저장소의 동시 미커밋 작업: 변경 파일 경계 확인·불필요 수정 금지·겹침 조율. 공유 소스가 미완성이면 전체 완료로 보고하지 않음.</li></ul>
+
+<h2 id="sources">6. 참조와 예상 산출물</h2>
+<p>원본 기능 참고: <a href="https://github.com/Graphify-Labs/graphify/tree/ef4450d9c28acb2b8cdc22d369c1777b77148eef">Graphify 비교 기준 commit</a>, <a href="https://github.com/Graphify-Labs/graphify/blob/ef4450d9c28acb2b8cdc22d369c1777b77148eef/graphify/analyze.py">핵심 노드·연결·질문 분석</a>, <a href="https://github.com/Graphify-Labs/graphify/blob/ef4450d9c28acb2b8cdc22d369c1777b77148eef/graphify/reflect.py">학습 결과 집계</a>. Graphify 기능은 기반 코드와 동작 기준을 참고하며, SMSR 구현 여부는 DB/MCP/HTTP/스킬/화면 검증으로 별도 판정합니다.</p>
+<p>기존 이력: <a href="smsr-graph-capability-plan-2026-09-28.html">이전 그래프 기능 계획</a>, <a href="graph-analysis-upgrade-2026-10-01.md">분석 보강 결과</a>, <a href="../src/SMSR.App/GraphRuntime/vendor/UPSTREAM.json">현재 vendor manifest</a>, <a href="../README.md">README</a>, <a href="development-log/2026-10-01.md">날짜별 개발 이력</a>.</p>
+<p>최종 산출물: 지원/검증 행렬·안전한 지식 데이터/근거·문서/미디어 분석 경로·구조 요약 API/화면·5개 지식 스킬·피드백 교훈·감시/갱신·6종 export·사용법/고지·인수/성능/배포 보고서. <strong>현재 제공한 것은 이 계획서 초안이며 위 구현 산출물은 아직 생성하지 않았습니다.</strong></p>
+<h3>이번 계획서 자체의 검증 결과</h3>
+<p><code>node scripts/test_graphify_roadmap.mjs</code>: 9개 페이즈·42개 세부 작업·14개 요구사항, 중복 ID/앵커·없는 선행 ID·의존 순환 0건, 로컬 링크·초안/개인정보 보호 표시 검증 통과. 실제 브라우저 렌더링은 도구 보안 정책의 <code>file://</code> 차단으로 미검증이며 우회하지 않았습니다. 파일 뷰어 열기는 요청했으며, 실제 열림과 화면 검증 성공을 대신하지 않습니다. 기능 구현·앱 빌드·배포는 이번 계획서 작성 범위가 아닙니다.</p>
+</main></body></html>
